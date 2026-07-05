@@ -1,4 +1,7 @@
 {
   "name": "ParkingLocation",
-  "displayName": "ParkingLocation"
+  "displayName": "ParkingLocation",
+  "android": {
+    "usesCleartextTraffic": true
+  }
 }
