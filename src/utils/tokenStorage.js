@@ -5,7 +5,9 @@ const SERVICE_NAME = "auth_token";
 const tokenStorage = {
     async setToken(token) {
         try {
-            await Keychain.setGenericPassword("user_token", token, { service: SERVICE_NAME });
+            await Keychain.setGenericPassword("user_token", token, {
+                service: SERVICE_NAME,
+            });
         } catch (error) {
             console.error("Could not save token:", error);
         }
@@ -13,7 +15,9 @@ const tokenStorage = {
 
     async getToken() {
         try {
-            const credentials = await Keychain.getGenericPassword({ service: SERVICE_NAME });
+            const credentials = await Keychain.getGenericPassword({
+                service: SERVICE_NAME,
+            });
             if (credentials) {
                 return credentials.password;
             }

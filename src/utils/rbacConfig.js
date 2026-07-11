@@ -1,4 +1,4 @@
-// 1. Define all available roles in the system (4 roles)
+// Define all available roles in the system (4 roles)
 export const ROLES = {
     SUPER_ADMIN: "super_admin",
     AGENCY_ADMIN: "agency_admin",
@@ -14,16 +14,16 @@ export const ROLE_DISPLAY_NAMES = {
     [ROLES.USER]: "User",
 };
 
-// 2. Define granular permissions (actions or feature areas)
+// Define granular permissions (actions or feature areas)
 export const PERMISSIONS = {
-    VIEW_MAP: "view_map",                 // Search and view parking locations on the map
-    BOOK_PARKING: "book_parking",         // Ability to reserve a parking slot
+    VIEW_MAP: "view_map", // Search and view parking locations on the map
+    BOOK_PARKING: "book_parking", // Ability to reserve a parking slot
     MANAGE_LOCATIONS: "manage_locations", // Add/edit/remove parking lots
-    MANAGE_USERS: "manage_users",         // Add/edit/remove roles, approve agencies/employees
-    MANAGE_BOOKINGS: "manage_bookings",   // Check-in/out, handle parking slots
+    MANAGE_USERS: "manage_users", // Add/edit/remove roles, approve agencies/employees
+    MANAGE_BOOKINGS: "manage_bookings", // Check-in/out, handle parking slots
 };
 
-// 3. Define the Role-to-Permissions Matrix
+// Define the Role-to-Permissions Matrix
 export const ROLE_PERMISSIONS = {
     // Super Admin has full system privileges
     [ROLES.SUPER_ADMIN]: [
@@ -43,14 +43,8 @@ export const ROLE_PERMISSIONS = {
     ],
 
     // Agency User handles day-to-day slot checkin, checkout, and parking management
-    [ROLES.AGENCY_USER]: [
-        PERMISSIONS.VIEW_MAP,
-        PERMISSIONS.MANAGE_BOOKINGS,
-    ],
+    [ROLES.AGENCY_USER]: [PERMISSIONS.VIEW_MAP, PERMISSIONS.MANAGE_BOOKINGS],
 
     // Regular User registers on the app, views map, and books slots
-    [ROLES.USER]: [
-        PERMISSIONS.VIEW_MAP,
-        PERMISSIONS.BOOK_PARKING,
-    ],
+    [ROLES.USER]: [PERMISSIONS.VIEW_MAP, PERMISSIONS.BOOK_PARKING],
 };

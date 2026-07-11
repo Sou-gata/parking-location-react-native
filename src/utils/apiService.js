@@ -21,7 +21,8 @@ apiClient.interceptors.request.use(
         if (config.data && typeof config.data.append === "function") {
             delete config.headers["Content-Type"];
             // Also ensure no default is lurking in the common headers
-            if (config.headers.common) delete config.headers.common["Content-Type"];
+            if (config.headers.common)
+                delete config.headers.common["Content-Type"];
         }
 
         return config;

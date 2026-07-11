@@ -7,12 +7,18 @@ import {
     Card,
     Surface,
 } from "react-native-paper";
-import { BackHandler, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import {
+    BackHandler,
+    ScrollView,
+    StyleSheet,
+    TouchableOpacity,
+    View,
+} from "react-native";
 import { launchImageLibrary } from "react-native-image-picker";
 import { setConnected } from "@maplibre/maplibre-react-native";
 import { MaterialDesignIcons } from "@react-native-vector-icons/material-design-icons";
 import { useDispatch } from "react-redux";
-import { registerNormalUser } from "../store/parkingSlice";
+import { registerNormalUser } from "../store/slices/parkingSlice";
 
 import SignupMap from "../components/SignupMap";
 import apiService from "../utils/apiService";
@@ -29,7 +35,10 @@ const UserSignup = ({ navigation }) => {
             navigation.goBack();
             return true;
         };
-        const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction);
+        const backHandler = BackHandler.addEventListener(
+            "hardwareBackPress",
+            backAction
+        );
         return () => backHandler.remove();
     }, [navigation]);
 
@@ -59,7 +68,13 @@ const UserSignup = ({ navigation }) => {
     };
 
     const handleSignup = async () => {
-        if (!inputs.name || !inputs.username || !inputs.email || !inputs.password) {
+        if (
+            !inputs.name ||
+            !inputs.username ||
+            !inputs.email ||
+            !inputs.phoneNumber ||
+            !inputs.password
+        ) {
             toast.error("Please fill in all required fields.", "Error", true);
             return;
         }
@@ -80,22 +95,20 @@ const UserSignup = ({ navigation }) => {
 
             const registrationData = {
                 name: inputs.name,
+                full_name: inputs.name,
                 username: inputs.username,
                 email: inputs.email,
                 phone_number: inputs.phoneNumber,
                 password: inputs.password,
                 address: inputs.address || "",
+                user_address: inputs.address || "",
                 landmark: inputs.landmark || "",
                 latitude: Number(inputs.latitude || 0),
                 longitude: Number(inputs.longitude || 0),
                 profile_photo: photoBase64,
             };
 
-            try {
-                await apiService.post("users/userregister", registrationData);
-            } catch (apiError) {
-                console.log("API signup failed, falling back to local Redux store registration");
-            }
+            await apiService.post("users/userregister", registrationData);
 
             dispatch(registerNormalUser(registrationData));
 
@@ -131,7 +144,10 @@ const UserSignup = ({ navigation }) => {
                 <View className="relative">
                     <Surface elevation={5} style={{ borderRadius: 64 }}>
                         {inputs.photo ? (
-                            <Avatar.Image source={{ uri: inputs.photo.uri }} size={96} />
+                            <Avatar.Image
+                                source={{ uri: inputs.photo.uri }}
+                                size={96}
+                            />
                         ) : (
                             <Avatar.Icon
                                 icon="account"
@@ -146,7 +162,11 @@ const UserSignup = ({ navigation }) => {
                         activeOpacity={0.8}
                         className="absolute bottom-0 right-0 bg-primary rounded-full border-4 border-white p-2"
                     >
-                        <MaterialDesignIcons name="camera" size={24} color="white" />
+                        <MaterialDesignIcons
+                            name="camera"
+                            size={24}
+                            color="white"
+                        />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -156,22 +176,43 @@ const UserSignup = ({ navigation }) => {
                     {/* Personal Information Section */}
                     <Card style={styles.card}>
                         <Card.Content className="gap-4">
-                            <Text style={{ fontWeight: "bold" }} className="text-lg text-gray-800">
+                            <Text
+                                style={{ fontWeight: "bold" }}
+                                className="text-lg text-gray-800"
+                            >
                                 Personal Information
                             </Text>
                             <TextInput
-                                label="Full Name"
+                                label={
+                                    <Text>
+                                        Full Name{" "}
+                                        <Text style={{ color: "#ef4444" }}>
+                                            *
+                                        </Text>
+                                    </Text>
+                                }
                                 value={inputs.name}
-                                onChangeText={(text) => setInputs({ ...inputs, name: text })}
+                                onChangeText={(text) =>
+                                    setInputs({ ...inputs, name: text })
+                                }
                                 mode="outlined"
                                 outlineColor="#e2e8f0"
                                 activeOutlineColor="#4338ca"
                                 left={<TextInput.Icon icon="account" />}
                             />
                             <TextInput
-                                label="Email Address"
+                                label={
+                                    <Text>
+                                        Email Address{" "}
+                                        <Text style={{ color: "#ef4444" }}>
+                                            *
+                                        </Text>
+                                    </Text>
+                                }
                                 value={inputs.email}
-                                onChangeText={(text) => setInputs({ ...inputs, email: text })}
+                                onChangeText={(text) =>
+                                    setInputs({ ...inputs, email: text })
+                                }
                                 mode="outlined"
                                 outlineColor="#e2e8f0"
                                 activeOutlineColor="#4338ca"
@@ -179,9 +220,18 @@ const UserSignup = ({ navigation }) => {
                                 left={<TextInput.Icon icon="email" />}
                             />
                             <TextInput
-                                label="Phone Number"
+                                label={
+                                    <Text>
+                                        Phone Number{" "}
+                                        <Text style={{ color: "#ef4444" }}>
+                                            *
+                                        </Text>
+                                    </Text>
+                                }
                                 value={inputs.phoneNumber}
-                                onChangeText={(text) => setInputs({ ...inputs, phoneNumber: text })}
+                                onChangeText={(text) =>
+                                    setInputs({ ...inputs, phoneNumber: text })
+                                }
                                 mode="outlined"
                                 outlineColor="#e2e8f0"
                                 activeOutlineColor="#4338ca"
@@ -193,22 +243,43 @@ const UserSignup = ({ navigation }) => {
 
                     <Card style={styles.card}>
                         <Card.Content className="gap-4">
-                            <Text style={{ fontWeight: "bold" }} className="text-lg text-gray-800">
+                            <Text
+                                style={{ fontWeight: "bold" }}
+                                className="text-lg text-gray-800"
+                            >
                                 Account Security
                             </Text>
                             <TextInput
-                                label="Username"
+                                label={
+                                    <Text>
+                                        Username{" "}
+                                        <Text style={{ color: "#ef4444" }}>
+                                            *
+                                        </Text>
+                                    </Text>
+                                }
                                 value={inputs.username}
-                                onChangeText={(text) => setInputs({ ...inputs, username: text })}
+                                onChangeText={(text) =>
+                                    setInputs({ ...inputs, username: text })
+                                }
                                 mode="outlined"
                                 outlineColor="#e2e8f0"
                                 activeOutlineColor="#4338ca"
                                 left={<TextInput.Icon icon="account-circle" />}
                             />
                             <TextInput
-                                label="Password"
+                                label={
+                                    <Text>
+                                        Password{" "}
+                                        <Text style={{ color: "#ef4444" }}>
+                                            *
+                                        </Text>
+                                    </Text>
+                                }
                                 value={inputs.password}
-                                onChangeText={(text) => setInputs({ ...inputs, password: text })}
+                                onChangeText={(text) =>
+                                    setInputs({ ...inputs, password: text })
+                                }
                                 mode="outlined"
                                 outlineColor="#e2e8f0"
                                 activeOutlineColor="#4338ca"
@@ -216,10 +287,20 @@ const UserSignup = ({ navigation }) => {
                                 left={<TextInput.Icon icon="lock" />}
                             />
                             <TextInput
-                                label="Confirm Password"
+                                label={
+                                    <Text>
+                                        Confirm Password{" "}
+                                        <Text style={{ color: "#ef4444" }}>
+                                            *
+                                        </Text>
+                                    </Text>
+                                }
                                 value={inputs.confirmPassword}
                                 onChangeText={(text) =>
-                                    setInputs({ ...inputs, confirmPassword: text })
+                                    setInputs({
+                                        ...inputs,
+                                        confirmPassword: text,
+                                    })
                                 }
                                 mode="outlined"
                                 outlineColor="#e2e8f0"
@@ -233,13 +314,18 @@ const UserSignup = ({ navigation }) => {
                     {/* Location Section */}
                     <Card style={styles.card}>
                         <Card.Content className="gap-4">
-                            <Text style={{ fontWeight: "bold" }} className="text-lg text-gray-800">
+                            <Text
+                                style={{ fontWeight: "bold" }}
+                                className="text-lg text-gray-800"
+                            >
                                 Your Location
                             </Text>
                             <TextInput
                                 label="Address"
                                 value={inputs.address}
-                                onChangeText={(text) => setInputs({ ...inputs, address: text })}
+                                onChangeText={(text) =>
+                                    setInputs({ ...inputs, address: text })
+                                }
                                 mode="outlined"
                                 outlineColor="#e2e8f0"
                                 activeOutlineColor="#4338ca"
@@ -249,7 +335,9 @@ const UserSignup = ({ navigation }) => {
                             <TextInput
                                 label="Landmark"
                                 value={inputs.landmark}
-                                onChangeText={(text) => setInputs({ ...inputs, landmark: text })}
+                                onChangeText={(text) =>
+                                    setInputs({ ...inputs, landmark: text })
+                                }
                                 mode="outlined"
                                 outlineColor="#e2e8f0"
                                 activeOutlineColor="#4338ca"
@@ -283,9 +371,15 @@ const UserSignup = ({ navigation }) => {
                     </Button>
 
                     <View className="flex-row justify-center items-center mt-2 mb-8">
-                        <Text className="text-gray-600">Already have an account? </Text>
-                        <TouchableOpacity onPress={() => navigation.replace("Login")}>
-                            <Text className="text-primary font-bold">Log In</Text>
+                        <Text className="text-gray-600">
+                            Already have an account?{" "}
+                        </Text>
+                        <TouchableOpacity
+                            onPress={() => navigation.replace("Login")}
+                        >
+                            <Text className="text-primary font-bold">
+                                Log In
+                            </Text>
                         </TouchableOpacity>
                     </View>
                 </View>

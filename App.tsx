@@ -28,7 +28,6 @@ function App() {
                 <View style={{ flex: 1 }}>
                     <SafeAreaProvider>
                         <AuthInitializer>
-                            <Toast />
                             <NavigationContainer>
                                 <StatusBar
                                     backgroundColor="#4338ca"
@@ -36,6 +35,7 @@ function App() {
                                 />
                                 <Screens />
                             </NavigationContainer>
+                            <Toast />
                         </AuthInitializer>
                     </SafeAreaProvider>
                 </View>

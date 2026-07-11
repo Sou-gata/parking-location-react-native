@@ -1,12 +1,11 @@
-import React, { useEffect, useRef } from "react";
-import { Animated, View, StyleSheet, Dimensions, Modal } from "react-native";
+import React, { useEffect, useRef, useCallback } from "react";
+import { Animated, View } from "react-native";
 import { Text, Surface } from "react-native-paper";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialDesignIcons } from "@react-native-vector-icons/material-design-icons";
 import { useSelector, useDispatch } from "react-redux";
 import { hideToast, ToastType } from "../store/slices/toastSlice";
 import { RootState } from "../store/store";
-
-const { width } = Dimensions.get("window");
 
 interface ToastConfig {
     color: string;
@@ -43,10 +42,21 @@ const Toast: React.FC = () => {
         (state: RootState) => state.toast
     );
     const animation = useRef(new Animated.Value(0)).current;
+    const insets = useSafeAreaInsets();
+
+    const handleHide = useCallback(() => {
+        Animated.timing(animation, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+        }).start(() => {
+            dispatch(hideToast());
+        });
+    }, [animation, dispatch]);
 
     useEffect(() => {
         if (visible) {
-            // Slide Down
+            // Slide Up
             Animated.spring(animation, {
                 toValue: 1,
                 useNativeDriver: true,
@@ -63,106 +73,61 @@ const Toast: React.FC = () => {
         } else {
             animation.setValue(0);
         }
-    }, [visible]);
-
-    const handleHide = () => {
-        Animated.timing(animation, {
-            toValue: 0,
-            duration: 300,
-            useNativeDriver: true,
-        }).start(() => {
-            dispatch(hideToast());
-        });
-    };
+    }, [visible, animation, handleHide]);
 
     if (!visible && (animation as any)._value === 0) return null;
 
     const config = TOAST_TYPES[type] || TOAST_TYPES.info;
     const translateY = animation.interpolate({
         inputRange: [0, 1],
-        outputRange: [-100, 50], // Start off-screen, slide to y=50
+        outputRange: [200, 0], // Start off-screen at bottom, slide up to its natural position
     });
 
     return (
-        <Modal
-            transparent={true}
-            visible={visible || (animation as any)._value !== 0}
-            animationType="none"
-            pointerEvents="none"
+        <Animated.View
+            className="absolute bottom-0 left-0 right-0 items-center z-[9999] px-5"
+            style={[
+                {
+                    transform: [{ translateY }],
+                    opacity: animation,
+                    paddingBottom: Math.max(insets.bottom, 16),
+                },
+            ]}
+            pointerEvents="box-none"
         >
-            <Animated.View
-                style={[styles.container, { transform: [{ translateY }], opacity: animation }]}
-                pointerEvents="box-none"
+            <Surface
+                elevation={4}
+                className="w-full max-w-[450px] bg-white rounded-xl border-l-[5px] p-3"
+                style={{ borderLeftColor: config.color }}
             >
-                <Surface elevation={4} style={[styles.toast, { borderLeftColor: config.color }]}>
-                    <View style={styles.content}>
-                        <View
-                            style={[styles.iconContainer, { backgroundColor: `${config.color}20` }]}
-                        >
-                            <MaterialDesignIcons
-                                name={config.icon as any}
-                                size={24}
-                                color={config.color}
-                            />
-                        </View>
-                        <View style={styles.textContainer}>
-                            {showHeading && (
-                                <Text style={[styles.title, { color: config.color }]}>
-                                    {title || config.title}
-                                </Text>
-                            )}
-                            <Text style={styles.message} numberOfLines={2}>
-                                {message}
-                            </Text>
-                        </View>
+                <View className="flex-row items-center gap-3">
+                    <View
+                        className="w-10 h-10 rounded-full justify-center items-center"
+                        style={{ backgroundColor: `${config.color}20` }}
+                    >
+                        <MaterialDesignIcons
+                            name={config.icon as any}
+                            size={24}
+                            color={config.color}
+                        />
                     </View>
-                </Surface>
-            </Animated.View>
-        </Modal>
+                    <View className="flex-1">
+                        {showHeading && (
+                            <Text
+                                className="font-bold text-base"
+                                style={{ color: config.color }}
+                            >
+                                {title || config.title}
+                            </Text>
+                        )}
+                        <Text className="text-slate-500 text-[13px]" numberOfLines={2}>
+                            {message}
+                        </Text>
+                    </View>
+                </View>
+            </Surface>
+        </Animated.View>
     );
 };
-
-const styles = StyleSheet.create({
-    container: {
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        alignItems: "center",
-        zIndex: 9999,
-        paddingHorizontal: 20,
-    },
-    toast: {
-        width: "100%",
-        maxWidth: 450,
-        backgroundColor: "white",
-        borderRadius: 12,
-        borderLeftWidth: 5,
-        padding: 12,
-    },
-    content: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 12,
-    },
-    iconContainer: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    textContainer: {
-        flex: 1,
-    },
-    title: {
-        fontWeight: "bold",
-        fontSize: 16,
-    },
-    message: {
-        color: "#64748b",
-        fontSize: 13,
-    },
-});
 
 export default Toast;

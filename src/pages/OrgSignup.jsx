@@ -9,14 +9,21 @@ import {
     List,
     Checkbox,
     Switch,
+    Divider,
 } from "react-native-paper";
-import { BackHandler, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import {
+    BackHandler,
+    ScrollView,
+    StyleSheet,
+    TouchableOpacity,
+    View,
+} from "react-native";
 import { launchImageLibrary } from "react-native-image-picker";
 import { setConnected } from "@maplibre/maplibre-react-native";
 import { MaterialDesignIcons } from "@react-native-vector-icons/material-design-icons";
 import { pick, isCancel } from "@react-native-documents/picker";
 import { useDispatch } from "react-redux";
-import { registerAgencyRequest } from "../store/parkingSlice";
+import { registerAgencyRequest } from "../store/slices/parkingSlice";
 
 import SignupMap from "../components/SignupMap";
 import apiService from "../utils/apiService";
@@ -24,8 +31,16 @@ import useToast from "../hooks/useToast";
 import { fileToBase64 } from "../utils/helperFunctions";
 
 const VEHICLE_TYPES = [
-    { id: "twoWheeler", label: "Two-Wheeler (Bike/Scooter)", icon: "motorbike" },
-    { id: "threeWheeler", label: "Three-Wheeler (Auto Rickshaw)", icon: "rickshaw" },
+    {
+        id: "twoWheeler",
+        label: "Two-Wheeler (Bike/Scooter)",
+        icon: "motorbike",
+    },
+    {
+        id: "threeWheeler",
+        label: "Three-Wheeler (Auto Rickshaw)",
+        icon: "rickshaw",
+    },
     { id: "car", label: "Car (Hatchback/Sedan)", icon: "car" },
     { id: "suv", label: "SUV / MUV", icon: "car-estate" },
     { id: "van", label: "Van", icon: "van-passenger" },
@@ -43,7 +58,10 @@ const Signup = ({ navigation }) => {
             navigation.goBack();
             return true;
         };
-        const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction);
+        const backHandler = BackHandler.addEventListener(
+            "hardwareBackPress",
+            backAction
+        );
         return () => backHandler.remove();
     }, [navigation]);
 
@@ -57,7 +75,8 @@ const Signup = ({ navigation }) => {
         address: "",
         landmark: "",
         photo: null,
-        document: null,
+        document: null, // Address Proof Document
+        aadhaarCard: null, // Aadhaar Card Document
         latitude: null,
         longitude: null,
         loading: false,
@@ -96,8 +115,29 @@ const Signup = ({ navigation }) => {
         }
     };
 
+    const handleAadhaarPick = async () => {
+        try {
+            const [pickerResult] = await pick({
+                type: ["image/*", "application/pdf"],
+            });
+            setInputs({ ...inputs, aadhaarCard: pickerResult });
+        } catch (err) {
+            if (isCancel(err)) {
+                console.log("User cancelled Aadhaar picker");
+            } else {
+                console.error("AadhaarPicker Error:", err);
+            }
+        }
+    };
+
     const handleSignup = async () => {
-        if (!inputs.name || !inputs.username || !inputs.email || !inputs.password) {
+        if (
+            !inputs.name ||
+            !inputs.username ||
+            !inputs.email ||
+            !inputs.phoneNumber ||
+            !inputs.password
+        ) {
             toast.error("Please fill in all required fields.", "Error", true);
             return;
         }
@@ -107,11 +147,26 @@ const Signup = ({ navigation }) => {
             return;
         }
 
+        if (!inputs.aadhaarCard) {
+            toast.error("Please upload your Aadhaar Card.", "Error", true);
+            return;
+        }
+
+        if (!inputs.document) {
+            toast.error(
+                "Please upload your Address Proof Document.",
+                "Error",
+                true
+            );
+            return;
+        }
+
         setInputs((prev) => ({ ...prev, loading: true }));
 
         try {
             let photoBase64 = null;
             let documentBase64 = null;
+            let aadhaarBase64 = null;
 
             if (inputs.photo && inputs.photo.uri) {
                 photoBase64 = await fileToBase64(inputs.photo.uri);
@@ -119,6 +174,10 @@ const Signup = ({ navigation }) => {
 
             if (inputs.document && inputs.document.uri) {
                 documentBase64 = await fileToBase64(inputs.document.uri);
+            }
+
+            if (inputs.aadhaarCard && inputs.aadhaarCard.uri) {
+                aadhaarBase64 = await fileToBase64(inputs.aadhaarCard.uri);
             }
 
             const registrationData = {
@@ -133,23 +192,27 @@ const Signup = ({ navigation }) => {
                 longitude: Number(inputs.longitude || 0),
                 profile_photo: photoBase64,
                 verification_document: documentBase64,
+                aadhaar_card: aadhaarBase64,
             };
 
             // Add vehicle capacities
             VEHICLE_TYPES.forEach((type) => {
                 const v = inputs.vehicles[type.id];
-                const snakeId = type.id.replace(/[A-Z]/g, (l) => `_${l.toLowerCase()}`);
-                registrationData[`${snakeId}_capacity`] = Number(v.capacity || 0);
+                const snakeId = type.id.replace(
+                    /[A-Z]/g,
+                    (l) => `_${l.toLowerCase()}`
+                );
+                registrationData[`${snakeId}_capacity`] = Number(
+                    v.capacity || 0
+                );
                 if (type.id === "ev") {
-                    registrationData.ev_charging_support = v.chargingSupport ? true : false;
+                    registrationData.ev_charging_support = v.chargingSupport
+                        ? true
+                        : false;
                 }
             });
 
-            try {
-                await apiService.post("users/orgregister", registrationData);
-            } catch (apiError) {
-                console.log("API org register failed, falling back to local Redux store");
-            }
+            await apiService.post("users/orgregister", registrationData);
 
             dispatch(registerAgencyRequest(registrationData));
 
@@ -185,7 +248,10 @@ const Signup = ({ navigation }) => {
                 <View className="relative">
                     <Surface elevation={5} style={{ borderRadius: 64 }}>
                         {inputs.photo ? (
-                            <Avatar.Image source={{ uri: inputs.photo.uri }} size={96} />
+                            <Avatar.Image
+                                source={{ uri: inputs.photo.uri }}
+                                size={96}
+                            />
                         ) : (
                             <Avatar.Icon
                                 icon="account"
@@ -200,7 +266,11 @@ const Signup = ({ navigation }) => {
                         activeOpacity={0.8}
                         className="absolute bottom-0 right-0 bg-primary rounded-full border-4 border-white p-2"
                     >
-                        <MaterialDesignIcons name="camera" size={24} color="white" />
+                        <MaterialDesignIcons
+                            name="camera"
+                            size={24}
+                            color="white"
+                        />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -210,22 +280,43 @@ const Signup = ({ navigation }) => {
                     {/* Personal Information Section */}
                     <Card style={styles.card}>
                         <Card.Content className="gap-4">
-                            <Text style={{ fontWeight: "bold" }} className="text-lg text-gray-800">
+                            <Text
+                                style={{ fontWeight: "bold" }}
+                                className="text-lg text-gray-800"
+                            >
                                 Personal Information
                             </Text>
                             <TextInput
-                                label="Full Name"
+                                label={
+                                    <Text>
+                                        Full Name{" "}
+                                        <Text style={{ color: "#ef4444" }}>
+                                            *
+                                        </Text>
+                                    </Text>
+                                }
                                 value={inputs.name}
-                                onChangeText={(text) => setInputs({ ...inputs, name: text })}
+                                onChangeText={(text) =>
+                                    setInputs({ ...inputs, name: text })
+                                }
                                 mode="outlined"
                                 outlineColor="#e2e8f0"
                                 activeOutlineColor="#4338ca"
                                 left={<TextInput.Icon icon="account" />}
                             />
                             <TextInput
-                                label="Email Address"
+                                label={
+                                    <Text>
+                                        Email Address{" "}
+                                        <Text style={{ color: "#ef4444" }}>
+                                            *
+                                        </Text>
+                                    </Text>
+                                }
                                 value={inputs.email}
-                                onChangeText={(text) => setInputs({ ...inputs, email: text })}
+                                onChangeText={(text) =>
+                                    setInputs({ ...inputs, email: text })
+                                }
                                 mode="outlined"
                                 outlineColor="#e2e8f0"
                                 activeOutlineColor="#4338ca"
@@ -233,9 +324,18 @@ const Signup = ({ navigation }) => {
                                 left={<TextInput.Icon icon="email" />}
                             />
                             <TextInput
-                                label="Phone Number"
+                                label={
+                                    <Text>
+                                        Phone Number{" "}
+                                        <Text style={{ color: "#ef4444" }}>
+                                            *
+                                        </Text>
+                                    </Text>
+                                }
                                 value={inputs.phoneNumber}
-                                onChangeText={(text) => setInputs({ ...inputs, phoneNumber: text })}
+                                onChangeText={(text) =>
+                                    setInputs({ ...inputs, phoneNumber: text })
+                                }
                                 mode="outlined"
                                 outlineColor="#e2e8f0"
                                 activeOutlineColor="#4338ca"
@@ -247,22 +347,43 @@ const Signup = ({ navigation }) => {
 
                     <Card style={styles.card}>
                         <Card.Content className="gap-4">
-                            <Text style={{ fontWeight: "bold" }} className="text-lg text-gray-800">
+                            <Text
+                                style={{ fontWeight: "bold" }}
+                                className="text-lg text-gray-800"
+                            >
                                 Account Security
                             </Text>
                             <TextInput
-                                label="Username"
+                                label={
+                                    <Text>
+                                        Username{" "}
+                                        <Text style={{ color: "#ef4444" }}>
+                                            *
+                                        </Text>
+                                    </Text>
+                                }
                                 value={inputs.username}
-                                onChangeText={(text) => setInputs({ ...inputs, username: text })}
+                                onChangeText={(text) =>
+                                    setInputs({ ...inputs, username: text })
+                                }
                                 mode="outlined"
                                 outlineColor="#e2e8f0"
                                 activeOutlineColor="#4338ca"
                                 left={<TextInput.Icon icon="account-circle" />}
                             />
                             <TextInput
-                                label="Password"
+                                label={
+                                    <Text>
+                                        Password{" "}
+                                        <Text style={{ color: "#ef4444" }}>
+                                            *
+                                        </Text>
+                                    </Text>
+                                }
                                 value={inputs.password}
-                                onChangeText={(text) => setInputs({ ...inputs, password: text })}
+                                onChangeText={(text) =>
+                                    setInputs({ ...inputs, password: text })
+                                }
                                 mode="outlined"
                                 outlineColor="#e2e8f0"
                                 activeOutlineColor="#4338ca"
@@ -270,10 +391,20 @@ const Signup = ({ navigation }) => {
                                 left={<TextInput.Icon icon="lock" />}
                             />
                             <TextInput
-                                label="Confirm Password"
+                                label={
+                                    <Text>
+                                        Confirm Password{" "}
+                                        <Text style={{ color: "#ef4444" }}>
+                                            *
+                                        </Text>
+                                    </Text>
+                                }
                                 value={inputs.confirmPassword}
                                 onChangeText={(text) =>
-                                    setInputs({ ...inputs, confirmPassword: text })
+                                    setInputs({
+                                        ...inputs,
+                                        confirmPassword: text,
+                                    })
                                 }
                                 mode="outlined"
                                 outlineColor="#e2e8f0"
@@ -287,13 +418,18 @@ const Signup = ({ navigation }) => {
                     {/* Location Section */}
                     <Card style={styles.card}>
                         <Card.Content className="gap-4">
-                            <Text style={{ fontWeight: "bold" }} className="text-lg text-gray-800">
+                            <Text
+                                style={{ fontWeight: "bold" }}
+                                className="text-lg text-gray-800"
+                            >
                                 Your Location
                             </Text>
                             <TextInput
                                 label="Organization Address"
                                 value={inputs.address}
-                                onChangeText={(text) => setInputs({ ...inputs, address: text })}
+                                onChangeText={(text) =>
+                                    setInputs({ ...inputs, address: text })
+                                }
                                 mode="outlined"
                                 outlineColor="#e2e8f0"
                                 activeOutlineColor="#4338ca"
@@ -303,48 +439,14 @@ const Signup = ({ navigation }) => {
                             <TextInput
                                 label="Landmark"
                                 value={inputs.landmark}
-                                onChangeText={(text) => setInputs({ ...inputs, landmark: text })}
+                                onChangeText={(text) =>
+                                    setInputs({ ...inputs, landmark: text })
+                                }
                                 mode="outlined"
                                 outlineColor="#e2e8f0"
                                 activeOutlineColor="#4338ca"
                                 left={<TextInput.Icon icon="map-marker" />}
                             />
-                            {/* <TextInput
-                                label="House No"
-                                value={inputs.houseNo}
-                                onChangeText={(text) => setInputs({ ...inputs, houseNo: text })}
-                                mode="outlined"
-                                outlineColor="#e2e8f0"
-                                activeOutlineColor="#4338ca"
-                                left={<TextInput.Icon icon="map-marker" />}
-                            />
-                            <TextInput
-                                label="Street Name"
-                                value={inputs.streetName}
-                                onChangeText={(text) => setInputs({ ...inputs, streetName: text })}
-                                mode="outlined"
-                                outlineColor="#e2e8f0"
-                                activeOutlineColor="#4338ca"
-                                left={<TextInput.Icon icon="map-marker" />}
-                            />
-                            <TextInput
-                                label="City"
-                                value={inputs.city}
-                                onChangeText={(text) => setInputs({ ...inputs, city: text })}
-                                mode="outlined"
-                                outlineColor="#e2e8f0"
-                                activeOutlineColor="#4338ca"
-                                left={<TextInput.Icon icon="map-marker" />}
-                            />
-                            <TextInput
-                                label="Pin Code"
-                                value={inputs.pincode}
-                                onChangeText={(text) => setInputs({ ...inputs, pincode: text })}
-                                mode="outlined"
-                                outlineColor="#e2e8f0"
-                                activeOutlineColor="#4338ca"
-                                left={<TextInput.Icon icon="map-marker" />}
-                            /> */}
 
                             <View className="w-full overflow-hidden">
                                 <SignupMap
@@ -362,68 +464,139 @@ const Signup = ({ navigation }) => {
                     {/* Verification Documents Section */}
                     <Card style={styles.card}>
                         <Card.Content className="gap-4">
-                            <Text style={{ fontWeight: "bold" }} className="text-lg text-gray-800">
+                            <Text
+                                style={{ fontWeight: "bold" }}
+                                className="text-lg text-gray-800"
+                            >
                                 Verification Documents
                             </Text>
+
+                            {/* Aadhaar Card Upload */}
+                            <Text
+                                style={{ fontWeight: "bold" }}
+                                className="text-sm text-slate-700 mt-2"
+                            >
+                                Aadhaar Card *
+                            </Text>
                             <Text className="text-gray-500 text-xs mt-0">
-                                Upload a trade license, ID proof, or other relevant document (Image
+                                Upload a clear copy of your Aadhaar Card (Image
                                 or PDF)
                             </Text>
-
                             <TouchableOpacity
-                                onPress={handleDocumentPick}
+                                onPress={handleAadhaarPick}
                                 activeOpacity={0.7}
                                 style={styles.uploadArea}
-                                className="items-center justify-center py-8 bg-gray-50/50 rounded-xl"
+                                className="items-center justify-center py-6 bg-gray-50/50 rounded-xl"
                             >
-                                {inputs.document ? (
+                                {inputs.aadhaarCard ? (
                                     <View className="items-center gap-2 px-4">
                                         <MaterialDesignIcons
                                             name={
-                                                inputs.document.type === "application/pdf"
+                                                inputs.aadhaarCard.type ===
+                                                "application/pdf"
                                                     ? "file-pdf-box"
                                                     : "file-image"
                                             }
-                                            size={48}
+                                            size={36}
                                             color="#4338ca"
                                         />
                                         <Text
-                                            className="text-primary font-bold text-center"
+                                            className="text-primary font-bold text-center text-xs"
                                             numberOfLines={1}
                                         >
-                                            {inputs.document.name}
-                                        </Text>
-                                        <Text className="text-gray-500 text-xs">
-                                            {(inputs.document.size / 1024 / 1024).toFixed(2)} MB •{" "}
-                                            {inputs.document.type.split("/")[1].toUpperCase()}
+                                            {inputs.aadhaarCard.name}
                                         </Text>
                                         <Button
                                             mode="text"
-                                            onPress={() => setInputs({ ...inputs, document: null })}
+                                            onPress={() =>
+                                                setInputs({
+                                                    ...inputs,
+                                                    aadhaarCard: null,
+                                                })
+                                            }
                                             textColor="#ef4444"
-                                            className="mt-2"
+                                            className="mt-1"
                                             compact
                                         >
                                             Remove File
                                         </Button>
                                     </View>
                                 ) : (
-                                    <View className="items-center gap-3">
-                                        <View className="p-3 bg-indigo-50 rounded-full">
-                                            <MaterialDesignIcons
-                                                name="cloud-upload"
-                                                size={32}
-                                                color="#4338ca"
-                                            />
-                                        </View>
-                                        <View className="items-center">
-                                            <Text className="text-gray-700 font-bold">
-                                                Tap to upload document
-                                            </Text>
-                                            <Text className="text-gray-400 text-xs mt-1">
-                                                Supports PDF, JPEG, or PNG
-                                            </Text>
-                                        </View>
+                                    <View className="items-center gap-2">
+                                        <MaterialDesignIcons
+                                            name="cloud-upload"
+                                            size={24}
+                                            color="#4338ca"
+                                        />
+                                        <Text className="text-gray-700 font-bold text-xs text-center">
+                                            Tap to upload Aadhaar Card
+                                        </Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+
+                            <Divider className="my-2 bg-slate-100" />
+
+                            {/* Address Proof Document Upload */}
+                            <Text
+                                style={{ fontWeight: "bold" }}
+                                className="text-sm text-slate-700"
+                            >
+                                Address Proof Document *
+                            </Text>
+                            <Text className="text-gray-500 text-xs mt-0">
+                                Upload trade license, utility bill, or rent
+                                agreement (Image or PDF)
+                            </Text>
+                            <TouchableOpacity
+                                onPress={handleDocumentPick}
+                                activeOpacity={0.7}
+                                style={styles.uploadArea}
+                                className="items-center justify-center py-6 bg-gray-50/50 rounded-xl"
+                            >
+                                {inputs.document ? (
+                                    <View className="items-center gap-2 px-4">
+                                        <MaterialDesignIcons
+                                            name={
+                                                inputs.document.type ===
+                                                "application/pdf"
+                                                    ? "file-pdf-box"
+                                                    : "file-image"
+                                            }
+                                            size={36}
+                                            color="#4338ca"
+                                        />
+                                        <Text
+                                            className="text-primary font-bold text-center text-xs"
+                                            numberOfLines={1}
+                                        >
+                                            {inputs.document.name}
+                                        </Text>
+                                        <Button
+                                            mode="text"
+                                            onPress={() =>
+                                                setInputs({
+                                                    ...inputs,
+                                                    document: null,
+                                                })
+                                            }
+                                            textColor="#ef4444"
+                                            className="mt-1"
+                                            compact
+                                        >
+                                            Remove File
+                                        </Button>
+                                    </View>
+                                ) : (
+                                    <View className="items-center gap-2">
+                                        <MaterialDesignIcons
+                                            name="cloud-upload"
+                                            size={24}
+                                            color="#4338ca"
+                                        />
+                                        <Text className="text-gray-700 font-bold text-xs text-center">
+                                            Tap to upload Address Proof
+                                        </Text>
                                     </View>
                                 )}
                             </TouchableOpacity>
@@ -455,7 +628,8 @@ const Signup = ({ navigation }) => {
                                                 {...props}
                                                 icon={vehicle.icon}
                                                 color={
-                                                    inputs.vehicles[vehicle.id].selected
+                                                    inputs.vehicles[vehicle.id]
+                                                        .selected
                                                         ? "#4338ca"
                                                         : "#64748b"
                                                 }
@@ -463,34 +637,45 @@ const Signup = ({ navigation }) => {
                                         )}
                                         style={styles.accordion}
                                         titleStyle={{
-                                            color: inputs.vehicles[vehicle.id].selected
+                                            color: inputs.vehicles[vehicle.id]
+                                                .selected
                                                 ? "#4338ca"
                                                 : "#1e293b",
-                                            fontWeight: inputs.vehicles[vehicle.id].selected
+                                            fontWeight: inputs.vehicles[
+                                                vehicle.id
+                                            ].selected
                                                 ? "700"
                                                 : "400",
                                         }}
                                     >
                                         <View
                                             className="pb-4 pt-2 gap-4 bg-gray-50/50"
-                                            style={{ paddingHorizontal: 16, overflow: "visible" }}
+                                            style={{
+                                                paddingHorizontal: 16,
+                                                overflow: "visible",
+                                            }}
                                         >
                                             <Checkbox.Item
                                                 label="Enable this category"
                                                 status={
-                                                    inputs.vehicles[vehicle.id].selected
+                                                    inputs.vehicles[vehicle.id]
+                                                        .selected
                                                         ? "checked"
                                                         : "unchecked"
                                                 }
                                                 onPress={() => {
-                                                    const currentV = inputs.vehicles[vehicle.id];
+                                                    const currentV =
+                                                        inputs.vehicles[
+                                                            vehicle.id
+                                                        ];
                                                     setInputs({
                                                         ...inputs,
                                                         vehicles: {
                                                             ...inputs.vehicles,
                                                             [vehicle.id]: {
                                                                 ...currentV,
-                                                                selected: !currentV.selected,
+                                                                selected:
+                                                                    !currentV.selected,
                                                             },
                                                         },
                                                     });
@@ -499,25 +684,37 @@ const Signup = ({ navigation }) => {
                                                 mode="android"
                                             />
 
-                                            {inputs.vehicles[vehicle.id].selected && (
+                                            {inputs.vehicles[vehicle.id]
+                                                .selected && (
                                                 <View
                                                     className="gap-4"
-                                                    style={{ padding: 4, overflow: "visible" }}
+                                                    style={{
+                                                        padding: 4,
+                                                        overflow: "visible",
+                                                    }}
                                                 >
                                                     <TextInput
                                                         label="Total Vehicle Capacity"
-                                                        value={inputs.vehicles[vehicle.id].capacity}
+                                                        value={
+                                                            inputs.vehicles[
+                                                                vehicle.id
+                                                            ].capacity
+                                                        }
                                                         onChangeText={(text) =>
                                                             setInputs({
                                                                 ...inputs,
                                                                 vehicles: {
                                                                     ...inputs.vehicles,
-                                                                    [vehicle.id]: {
-                                                                        ...inputs.vehicles[
-                                                                            vehicle.id
-                                                                        ],
-                                                                        capacity: text,
-                                                                    },
+                                                                    [vehicle.id]:
+                                                                        {
+                                                                            ...inputs
+                                                                                .vehicles[
+                                                                                vehicle
+                                                                                    .id
+                                                                            ],
+                                                                            capacity:
+                                                                                text,
+                                                                        },
                                                                 },
                                                             })
                                                         }
@@ -526,12 +723,15 @@ const Signup = ({ navigation }) => {
                                                         outlineColor="#e2e8f0"
                                                         activeOutlineColor="#4338ca"
                                                         style={{
-                                                            backgroundColor: "white",
+                                                            backgroundColor:
+                                                                "white",
                                                             marginHorizontal: 6,
                                                         }}
                                                         outlineStyle={{
-                                                            backgroundColor: "white",
-                                                            borderColor: "#e2e8f0",
+                                                            backgroundColor:
+                                                                "white",
+                                                            borderColor:
+                                                                "#e2e8f0",
                                                         }}
                                                     />
 
@@ -539,29 +739,38 @@ const Signup = ({ navigation }) => {
                                                         <View className="flex-row items-center justify-between px-2 bg-indigo-50/50 p-3 rounded-lg border border-indigo-100">
                                                             <View>
                                                                 <Text className="font-semibold text-indigo-900">
-                                                                    Charging Support
+                                                                    Charging
+                                                                    Support
                                                                 </Text>
                                                                 <Text className="text-xs text-indigo-600">
-                                                                    Availability of charging ports
+                                                                    Availability
+                                                                    of charging
+                                                                    ports
                                                                 </Text>
                                                             </View>
                                                             <Switch
                                                                 value={
-                                                                    inputs.vehicles.ev
+                                                                    inputs
+                                                                        .vehicles
+                                                                        .ev
                                                                         .chargingSupport
                                                                 }
-                                                                onValueChange={(val) =>
+                                                                onValueChange={(
+                                                                    val
+                                                                ) =>
                                                                     setInputs({
                                                                         ...inputs,
-                                                                        vehicles: {
-                                                                            ...inputs.vehicles,
-                                                                            ev: {
-                                                                                ...inputs.vehicles
-                                                                                    .ev,
-                                                                                chargingSupport:
-                                                                                    val,
+                                                                        vehicles:
+                                                                            {
+                                                                                ...inputs.vehicles,
+                                                                                ev: {
+                                                                                    ...inputs
+                                                                                        .vehicles
+                                                                                        .ev,
+                                                                                    chargingSupport:
+                                                                                        val,
+                                                                                },
                                                                             },
-                                                                        },
                                                                     })
                                                                 }
                                                                 color="#4338ca"
@@ -589,9 +798,15 @@ const Signup = ({ navigation }) => {
                     </Button>
 
                     <View className="flex-row justify-center items-center mt-2 mb-8">
-                        <Text className="text-gray-600">Already have an account? </Text>
-                        <TouchableOpacity onPress={() => navigation.replace("Login")}>
-                            <Text className="text-primary font-bold">Log In</Text>
+                        <Text className="text-gray-600">
+                            Already have an account?{" "}
+                        </Text>
+                        <TouchableOpacity
+                            onPress={() => navigation.replace("Login")}
+                        >
+                            <Text className="text-primary font-bold">
+                                Log In
+                            </Text>
                         </TouchableOpacity>
                     </View>
                 </View>

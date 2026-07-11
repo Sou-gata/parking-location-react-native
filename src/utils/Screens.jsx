@@ -9,6 +9,9 @@ import ManageUsers from "../pages/ManageUsers";
 import MyBookings from "../pages/MyBookings";
 import CheckInOut from "../pages/CheckInOut";
 import ManageParking from "../pages/ManageParking";
+import Profile from "../pages/Profile";
+import Wallet from "../pages/Wallet";
+import SuperAdminSettings from "../pages/SuperAdminSettings";
 
 const Stack = createNativeStackNavigator();
 
@@ -59,6 +62,30 @@ const Screens = () => {
                         component={ManageParking}
                         options={{
                             title: "Manage Parking",
+                            headerBackTitle: "Back",
+                        }}
+                    />
+                    <Stack.Screen
+                        name="Profile"
+                        component={Profile}
+                        options={{
+                            title: "My Profile",
+                            headerBackTitle: "Back",
+                        }}
+                    />
+                    <Stack.Screen
+                        name="Wallet"
+                        component={Wallet}
+                        options={{
+                            title: "My Wallet",
+                            headerBackTitle: "Back",
+                        }}
+                    />
+                    <Stack.Screen
+                        name="SuperAdminSettings"
+                        component={SuperAdminSettings}
+                        options={{
+                            title: "Settings",
                             headerBackTitle: "Back",
                         }}
                     />

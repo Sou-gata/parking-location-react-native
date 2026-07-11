@@ -25,7 +25,7 @@ import { useSelector, useDispatch } from "react-redux";
 import useToast from "../hooks/useToast";
 import useRolePermissions from "../hooks/useRolePermissions";
 import { ROLES } from "../utils/rbacConfig";
-import { updateAgencyCapacities } from "../store/parkingSlice";
+import { updateAgencyCapacities } from "../store/slices/parkingSlice";
 import apiService from "../utils/apiService";
 
 const STANDARD_VEHICLES = {
@@ -61,8 +61,34 @@ export default function ManageParking({ navigation }) {
             id: a.org_id || a.id,
             name: a.org_name || a.name,
             address: a.org_address || a.address,
-            twoWheeler_capacity: a.two_wheeler_capacity !== undefined ? a.two_wheeler_capacity : a.twoWheeler_capacity,
-            threeWheeler_capacity: a.three_wheeler_capacity !== undefined ? a.three_wheeler_capacity : a.threeWheeler_capacity,
+            twoWheeler_capacity:
+                a.two_wheeler_capacity !== undefined
+                    ? a.two_wheeler_capacity
+                    : a.twoWheeler_capacity,
+            threeWheeler_capacity:
+                a.three_wheeler_capacity !== undefined
+                    ? a.three_wheeler_capacity
+                    : a.threeWheeler_capacity,
+            twoWheeler_rate:
+                a.two_wheeler_rate !== undefined
+                    ? parseFloat(a.two_wheeler_rate)
+                    : a.twoWheeler_rate,
+            threeWheeler_rate:
+                a.three_wheeler_rate !== undefined
+                    ? parseFloat(a.three_wheeler_rate)
+                    : a.threeWheeler_rate,
+            car_rate:
+                a.car_rate !== undefined ? parseFloat(a.car_rate) : a.car_rate,
+            suv_rate:
+                a.suv_rate !== undefined ? parseFloat(a.suv_rate) : a.suv_rate,
+            van_rate:
+                a.van_rate !== undefined ? parseFloat(a.van_rate) : a.van_rate,
+            pickup_rate:
+                a.pickup_rate !== undefined
+                    ? parseFloat(a.pickup_rate)
+                    : a.pickup_rate,
+            ev_rate:
+                a.ev_rate !== undefined ? parseFloat(a.ev_rate) : a.ev_rate,
         };
     };
 
@@ -78,7 +104,9 @@ export default function ManageParking({ navigation }) {
                 }
             } else if (role === ROLES.AGENCY_ADMIN) {
                 if (user?.agencyId) {
-                    const agencyRes = await apiService.get(`agencies/${user.agencyId}`);
+                    const agencyRes = await apiService.get(
+                        `agencies/${user.agencyId}`
+                    );
                     if (agencyRes && agencyRes.success) {
                         const mapped = mapAgencyFromApi(agencyRes.data);
                         loadedAgencies = [mapped];
@@ -88,12 +116,15 @@ export default function ManageParking({ navigation }) {
             }
 
             // Resolve the current agency ID to load bookings
-            const resolvedAgencyId = role === ROLES.AGENCY_ADMIN
-                ? user?.agencyId
-                : (selectedAgencyId || (loadedAgencies[0]?.id));
+            const resolvedAgencyId =
+                role === ROLES.AGENCY_ADMIN
+                    ? user?.agencyId
+                    : selectedAgencyId || loadedAgencies[0]?.id;
 
-            if (resolvedAgencyId) {
-                const bookingsRes = await apiService.get(`bookings/agency/${resolvedAgencyId}`);
+            if (resolvedAgencyId && !isNaN(Number(resolvedAgencyId))) {
+                const bookingsRes = await apiService.get(
+                    `bookings/agency/${resolvedAgencyId}`
+                );
                 if (bookingsRes && bookingsRes.success) {
                     setApiBookings(bookingsRes.data);
                 }
@@ -110,24 +141,32 @@ export default function ManageParking({ navigation }) {
     }, [role, user?.agencyId, selectedAgencyId]);
 
     const activeAgencies = apiAgencies.length > 0 ? apiAgencies : reduxAgencies;
-    const activeBookings = apiBookings.length > 0 ? apiBookings : reduxBookings;
+    const activeBookings = apiAgencies.length > 0 ? apiBookings : reduxBookings;
 
     // Resolve which agency we are managing
-    const currentAgency = role === ROLES.AGENCY_ADMIN
-        ? (activeAgencies.find(
-              (a) =>
-                  String(a.id) === String(user?.agencyId) ||
-                  a.owner === user?.name ||
-                  a.email === user?.email ||
-                  a.users?.some((u) => String(u.id) === String(user?.id))
-          ) || activeAgencies[0])
-        : (activeAgencies.find((a) => String(a.id) === String(selectedAgencyId)) || activeAgencies[0]);
+    const currentAgency =
+        role === ROLES.AGENCY_ADMIN
+            ? activeAgencies.find(
+                  (a) =>
+                      String(a.id) === String(user?.agencyId) ||
+                      a.owner === user?.name ||
+                      a.email === user?.email ||
+                      a.users?.some((u) => String(u.id) === String(user?.id))
+              ) || activeAgencies[0]
+            : activeAgencies.find(
+                  (a) => String(a.id) === String(selectedAgencyId)
+              ) || activeAgencies[0];
 
     useEffect(() => {
         if (role === ROLES.AGENCY_ADMIN && currentAgency) {
             setSelectedAgencyId(currentAgency.id);
-        } else if (role === ROLES.SUPER_ADMIN && !selectedAgencyId && activeAgencies.length > 0) {
-            setSelectedAgencyId(activeAgencies[0].id);
+        } else if (role === ROLES.SUPER_ADMIN && activeAgencies.length > 0) {
+            const exists = activeAgencies.some(
+                (a) => String(a.id) === String(selectedAgencyId)
+            );
+            if (!selectedAgencyId || !exists) {
+                setSelectedAgencyId(activeAgencies[0].id);
+            }
         }
     }, [role, currentAgency, activeAgencies, selectedAgencyId]);
 
@@ -143,6 +182,7 @@ export default function ManageParking({ navigation }) {
     const [selectedVehicleType, setSelectedVehicleType] = useState("");
     const [customVehicleName, setCustomVehicleName] = useState("");
     const [capacityVal, setCapacityVal] = useState("");
+    const [rateVal, setRateVal] = useState("");
 
     // Helper functions for labels and icons
     const getVehicleLabel = (type) => {
@@ -166,9 +206,42 @@ export default function ManageParking({ navigation }) {
     // Calculate capacities list dynamically based on the current agency's property keys ending with "_capacity"
     const getCapacitiesList = () => {
         if (!currentAgency) return [];
-        const keys = Object.keys(currentAgency).filter((k) => k.endsWith("_capacity"));
-        
-        return keys.map((key) => {
+
+        // 1. Map standard vehicles
+        const list = Object.keys(STANDARD_VEHICLES).map((type) => {
+            const key = `${type}_capacity`;
+            const total = currentAgency[key] || 0;
+            const parkedCount = activeBookings.filter(
+                (b) =>
+                    String(b.agencyId) === String(currentAgency.id) &&
+                    b.status === "checked_in" &&
+                    b.vehicleType === type
+            ).length;
+
+            return {
+                key,
+                type,
+                total,
+                parked: parkedCount,
+            };
+        });
+
+        // 2. Map any custom vehicles ending with _capacity
+        const allCapacityKeys = Object.keys(currentAgency).filter((k) =>
+            k.endsWith("_capacity")
+        );
+        const standardKeys = Object.keys(STANDARD_VEHICLES).map(
+            (type) => `${type}_capacity`
+        );
+
+        allCapacityKeys.forEach((key) => {
+            if (standardKeys.includes(key)) return;
+            if (
+                key === "two_wheeler_capacity" ||
+                key === "three_wheeler_capacity"
+            )
+                return;
+
             const type = key.replace("_capacity", "");
             const total = currentAgency[key] || 0;
             const parkedCount = activeBookings.filter(
@@ -177,14 +250,16 @@ export default function ManageParking({ navigation }) {
                     b.status === "checked_in" &&
                     b.vehicleType === type
             ).length;
-            
-            return {
+
+            list.push({
                 key,
                 type,
                 total,
                 parked: parkedCount,
-            };
+            });
         });
+
+        return list;
     };
 
     const capacitiesList = getCapacitiesList();
@@ -192,7 +267,9 @@ export default function ManageParking({ navigation }) {
     // Get currently parked vehicles
     const parkedVehicles = currentAgency
         ? activeBookings.filter(
-              (b) => String(b.agencyId) === String(currentAgency.id) && b.status === "checked_in"
+              (b) =>
+                  String(b.agencyId) === String(currentAgency.id) &&
+                  b.status === "checked_in"
           )
         : [];
 
@@ -211,6 +288,10 @@ export default function ManageParking({ navigation }) {
         setIsAddingNew(false);
         setSelectedVehicleType(cap.type);
         setCapacityVal(cap.total.toString());
+        const rateKey = `${cap.type}_rate`;
+        const currentRate =
+            currentAgency[rateKey] || VEHICLE_TYPE_RATES[cap.type] || 0;
+        setRateVal(currentRate.toString());
         setEditModalVisible(true);
     };
 
@@ -219,6 +300,7 @@ export default function ManageParking({ navigation }) {
         setSelectedVehicleType("");
         setCustomVehicleName("");
         setCapacityVal("");
+        setRateVal("");
         setEditModalVisible(true);
     };
 
@@ -226,9 +308,16 @@ export default function ManageParking({ navigation }) {
         let vehicleType = selectedVehicleType;
         if (isAddingNew) {
             if (selectedVehicleType === "custom") {
-                const cleanedName = customVehicleName.trim().replace(/\s+/g, "_").toLowerCase();
+                const cleanedName = customVehicleName
+                    .trim()
+                    .replace(/\s+/g, "_")
+                    .toLowerCase();
                 if (!cleanedName) {
-                    toast.error("Please enter a custom vehicle type name.", "Error", true);
+                    toast.error(
+                        "Please enter a custom vehicle type name.",
+                        "Error",
+                        true
+                    );
                     return;
                 }
                 vehicleType = cleanedName;
@@ -240,22 +329,51 @@ export default function ManageParking({ navigation }) {
 
         const capNum = parseInt(capacityVal, 10);
         if (isNaN(capNum) || capNum < 0) {
-            toast.error("Capacity must be a non-negative number.", "Error", true);
+            toast.error(
+                "Capacity must be a non-negative number.",
+                "Error",
+                true
+            );
+            return;
+        }
+
+        const rateNum = parseFloat(rateVal);
+        if (isNaN(rateNum) || rateNum < 0) {
+            toast.error(
+                "Hourly rate must be a non-negative number.",
+                "Error",
+                true
+            );
             return;
         }
 
         if (apiAgencies.length > 0) {
             try {
                 // Real capacity update via API
-                const res = await apiService.put(`agencies/${currentAgency.id}/capacities`, {
-                    capacities: {
-                        [vehicleType]: capNum
+                const capRes = await apiService.put(
+                    `agencies/${currentAgency.id}/capacities`,
+                    {
+                        capacities: {
+                            [vehicleType]: capNum,
+                        },
                     }
-                });
+                );
 
-                if (res && res.success) {
+                // Real rate update via API
+                const rateRes = await apiService.put(
+                    `agencies/${currentAgency.id}/rates`,
+                    {
+                        rates: {
+                            [vehicleType]: rateNum,
+                        },
+                    }
+                );
+
+                if (capRes && capRes.success && rateRes && rateRes.success) {
                     toast.success(
-                        `Capacity for ${getVehicleLabel(vehicleType)} updated to ${capNum}!`,
+                        `Details for ${getVehicleLabel(
+                            vehicleType
+                        )} updated successfully!`,
                         "Success",
                         true
                     );
@@ -263,27 +381,38 @@ export default function ManageParking({ navigation }) {
                     // Refresh data
                     fetchAgenciesAndBookings();
                 } else {
-                    toast.error(res?.message || "Failed to update capacities via API", "Error", true);
+                    toast.error(
+                        "Failed to update capacities or rates",
+                        "Error",
+                        true
+                    );
                 }
             } catch (error) {
-                console.error("Error updating capacities via API:", error);
-                const msg = error.response?.data?.message || "Failed to update capacities via API";
+                console.error(
+                    "Error updating capacities/rates via API:",
+                    error
+                );
+                const msg =
+                    error.response?.data?.message ||
+                    "Failed to update capacities or rates via API";
                 toast.error(msg, "Error", true);
             }
         } else {
             // Fallback to Redux
             const capacityKey = `${vehicleType}_capacity`;
+            const rateKey = `${vehicleType}_rate`;
             dispatch(
                 updateAgencyCapacities({
                     agencyId: currentAgency.id,
                     capacities: {
                         [capacityKey]: capNum,
+                        [rateKey]: rateNum,
                     },
                 })
             );
 
             toast.success(
-                `Capacity for ${getVehicleLabel(vehicleType)} updated to ${capNum}!`,
+                `Details for ${getVehicleLabel(vehicleType)} updated locally!`,
                 "Success",
                 true
             );
@@ -307,13 +436,18 @@ export default function ManageParking({ navigation }) {
     const formatDateTime = (isoString) => {
         if (!isoString) return "-";
         const date = new Date(isoString);
-        return date.toLocaleTimeString("en-IN", {
-            hour: "2-digit",
-            minute: "2-digit",
-        }) + " (" + date.toLocaleDateString("en-IN", {
-            day: "numeric",
-            month: "short",
-        }) + ")";
+        return (
+            date.toLocaleTimeString("en-IN", {
+                hour: "2-digit",
+                minute: "2-digit",
+            }) +
+            " (" +
+            date.toLocaleDateString("en-IN", {
+                day: "numeric",
+                month: "short",
+            }) +
+            ")"
+        );
     };
 
     if (!currentAgency) {
@@ -327,8 +461,13 @@ export default function ManageParking({ navigation }) {
     return (
         <View className="flex-1 bg-slate-50">
             {/* Header info */}
-            <Surface elevation={2} className="bg-indigo-700 px-5 pt-4 pb-5 rounded-b-3xl">
-                <Text className="text-white text-2xl font-bold">{currentAgency.name}</Text>
+            <Surface
+                elevation={2}
+                className="bg-indigo-700 px-5 pt-4 pb-5 rounded-b-3xl"
+            >
+                <Text className="text-white text-2xl font-bold">
+                    {currentAgency.name}
+                </Text>
                 <View className="flex-row items-center mt-1">
                     <Avatar.Icon
                         size={18}
@@ -336,7 +475,10 @@ export default function ManageParking({ navigation }) {
                         style={{ backgroundColor: "transparent" }}
                         color="#a5b4fc"
                     />
-                    <Text className="text-indigo-200 text-xs ml-1" numberOfLines={1}>
+                    <Text
+                        className="text-indigo-200 text-xs ml-1"
+                        numberOfLines={1}
+                    >
                         {currentAgency.address}
                     </Text>
                 </View>
@@ -356,11 +498,18 @@ export default function ManageParking({ navigation }) {
                     <Text className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
                         Simulating Agency (Super Admin View)
                     </Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        className="flex-row"
+                    >
                         {activeAgencies.map((agency) => (
                             <Chip
                                 key={agency.id}
-                                selected={String(selectedAgencyId) === String(agency.id)}
+                                selected={
+                                    String(selectedAgencyId) ===
+                                    String(agency.id)
+                                }
                                 onPress={() => setSelectedAgencyId(agency.id)}
                                 className="mr-2"
                                 selectedColor="#4338ca"
@@ -385,10 +534,13 @@ export default function ManageParking({ navigation }) {
                 >
                     <Text
                         className={`text-sm font-bold ${
-                            activeTab === "capacities" ? "text-indigo-600" : "text-slate-500"
+                            activeTab === "capacities"
+                                ? "text-indigo-600"
+                                : "text-slate-500"
                         }`}
                     >
-                        Capacities ({capacitiesList.filter((c) => c.total > 0).length})
+                        Capacities (
+                        {capacitiesList.filter((c) => c.total > 0).length})
                     </Text>
                 </Pressable>
                 <Pressable
@@ -401,7 +553,9 @@ export default function ManageParking({ navigation }) {
                 >
                     <Text
                         className={`text-sm font-bold ${
-                            activeTab === "parked" ? "text-indigo-600" : "text-slate-500"
+                            activeTab === "parked"
+                                ? "text-indigo-600"
+                                : "text-slate-500"
                         }`}
                     >
                         Parked Vehicles ({parkedVehicles.length})
@@ -415,7 +569,10 @@ export default function ManageParking({ navigation }) {
                     <FlatList
                         data={capacitiesList}
                         keyExtractor={(item) => item.key}
-                        contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
+                        contentContainerStyle={{
+                            padding: 16,
+                            paddingBottom: 80,
+                        }}
                         showsVerticalScrollIndicator={false}
                         ListHeaderComponent={
                             <View className="flex-row justify-between items-center mb-4">
@@ -436,7 +593,8 @@ export default function ManageParking({ navigation }) {
                             </View>
                         }
                         renderItem={({ item }) => {
-                            const ratio = item.total > 0 ? item.parked / item.total : 0;
+                            const ratio =
+                                item.total > 0 ? item.parked / item.total : 0;
                             let barColor = "#22c55e"; // green
                             if (ratio >= 0.9) {
                                 barColor = "#ef4444"; // red
@@ -445,16 +603,25 @@ export default function ManageParking({ navigation }) {
                             }
 
                             return (
-                                <Card className="bg-white mb-3 border border-slate-100" elevation={1}>
+                                <Card
+                                    className="bg-white mb-3 border border-slate-100"
+                                    elevation={1}
+                                >
                                     <Card.Content className="flex-row items-center py-4 px-4">
                                         <Avatar.Icon
                                             size={44}
                                             icon={getVehicleIcon(item.type)}
                                             style={{
                                                 backgroundColor:
-                                                    item.total === 0 ? "#f1f5f9" : "#e0e7ff",
+                                                    item.total === 0
+                                                        ? "#f1f5f9"
+                                                        : "#e0e7ff",
                                             }}
-                                            color={item.total === 0 ? "#94a3b8" : "#4338ca"}
+                                            color={
+                                                item.total === 0
+                                                    ? "#94a3b8"
+                                                    : "#4338ca"
+                                            }
                                         />
                                         <View className="ml-4 flex-1">
                                             <View className="flex-row justify-between items-center mb-1">
@@ -473,15 +640,31 @@ export default function ManageParking({ navigation }) {
                                                         : `${item.parked} / ${item.total}`}
                                                 </Badge>
                                             </View>
+                                            <Text className="text-xs text-slate-500 font-medium mb-1">
+                                                Rate: ₹
+                                                {currentAgency[
+                                                    `${item.type}_rate`
+                                                ] ||
+                                                    VEHICLE_TYPE_RATES[
+                                                        item.type
+                                                    ] ||
+                                                    0}
+                                                /hr
+                                            </Text>
                                             {item.total > 0 ? (
                                                 <View className="w-full mt-1">
                                                     <ProgressBar
                                                         progress={ratio}
                                                         color={barColor}
-                                                        style={{ height: 6, borderRadius: 3 }}
+                                                        style={{
+                                                            height: 6,
+                                                            borderRadius: 3,
+                                                        }}
                                                     />
                                                     <Text className="text-xs text-slate-400 mt-1">
-                                                        {item.total - item.parked} spots available
+                                                        {item.total -
+                                                            item.parked}{" "}
+                                                        spots available
                                                     </Text>
                                                 </View>
                                             ) : (
@@ -494,7 +677,9 @@ export default function ManageParking({ navigation }) {
                                             icon="pencil-outline"
                                             size={20}
                                             iconColor="#64748b"
-                                            onPress={() => openEditCapacity(item)}
+                                            onPress={() =>
+                                                openEditCapacity(item)
+                                            }
                                         />
                                     </Card.Content>
                                 </Card>
@@ -515,14 +700,21 @@ export default function ManageParking({ navigation }) {
                             outlineColor="#e2e8f0"
                             activeOutlineColor="#4338ca"
                             left={<TextInput.Icon icon="magnify" />}
-                            style={{ flex: 1, backgroundColor: "white", height: 42 }}
+                            style={{
+                                flex: 1,
+                                backgroundColor: "white",
+                                height: 42,
+                            }}
                         />
                     </View>
 
                     <FlatList
                         data={filteredParkedVehicles}
                         keyExtractor={(item) => item.id}
-                        contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
+                        contentContainerStyle={{
+                            padding: 16,
+                            paddingBottom: 80,
+                        }}
                         showsVerticalScrollIndicator={false}
                         ListEmptyComponent={
                             <View className="items-center justify-center py-10 px-4 bg-white rounded-xl border border-slate-100">
@@ -543,7 +735,10 @@ export default function ManageParking({ navigation }) {
                             </View>
                         }
                         renderItem={({ item }) => (
-                            <Card className="bg-white mb-3 border border-slate-100" elevation={1}>
+                            <Card
+                                className="bg-white mb-3 border border-slate-100"
+                                elevation={1}
+                            >
                                 <Card.Content className="p-4">
                                     {/* Top Row: Vehicle Plate and Type Chip */}
                                     <View className="flex-row justify-between items-center mb-3">
@@ -553,8 +748,12 @@ export default function ManageParking({ navigation }) {
                                             </Text>
                                         </View>
                                         <Chip
-                                            icon={getVehicleIcon(item.vehicleType)}
-                                            style={{ backgroundColor: "#e0e7ff" }}
+                                            icon={getVehicleIcon(
+                                                item.vehicleType
+                                            )}
+                                            style={{
+                                                backgroundColor: "#e0e7ff",
+                                            }}
                                             textStyle={{
                                                 fontSize: 11,
                                                 color: "#4338ca",
@@ -575,7 +774,13 @@ export default function ManageParking({ navigation }) {
                                                 {item.userPhone || "No Phone"}
                                             </Text>
                                         </View>
-                                        <Badge style={{ backgroundColor: "#cbd5e1", color: "#475569" }} className="font-semibold text-xs">
+                                        <Badge
+                                            style={{
+                                                backgroundColor: "#cbd5e1",
+                                                color: "#475569",
+                                            }}
+                                            className="font-semibold text-xs"
+                                        >
                                             {item.bookingCode}
                                         </Badge>
                                     </View>
@@ -588,16 +793,21 @@ export default function ManageParking({ navigation }) {
                                             <Avatar.Icon
                                                 size={16}
                                                 icon="clock-outline"
-                                                style={{ backgroundColor: "transparent" }}
+                                                style={{
+                                                    backgroundColor:
+                                                        "transparent",
+                                                }}
                                                 color="#64748b"
                                             />
                                             <Text className="text-xs text-slate-500 ml-1">
-                                                In: {formatDateTime(item.startTime)}
+                                                In:{" "}
+                                                {formatDateTime(item.startTime)}
                                             </Text>
                                         </View>
                                         <View className="flex-row items-center bg-emerald-50 px-2 py-0.5 rounded">
                                             <Text className="text-xs text-emerald-800 font-bold">
-                                                Duration: {formatElapsed(item.startTime)}
+                                                Duration:{" "}
+                                                {formatElapsed(item.startTime)}
                                             </Text>
                                         </View>
                                     </View>
@@ -621,7 +831,9 @@ export default function ManageParking({ navigation }) {
                     }}
                 >
                     <Text className="text-lg font-bold text-slate-800 mb-4">
-                        {isAddingNew ? "Add Vehicle Capacity" : "Modify Capacity"}
+                        {isAddingNew
+                            ? "Add Vehicle Capacity"
+                            : "Modify Capacity"}
                     </Text>
 
                     {isAddingNew ? (
@@ -636,15 +848,19 @@ export default function ManageParking({ navigation }) {
                             >
                                 {Object.keys(STANDARD_VEHICLES).map((type) => {
                                     // Check if capacity is already configured to show it differently or skip it
-                                    const alreadyConfigured = capacitiesList.some(
-                                        (c) => c.type === type && c.total > 0
-                                    );
+                                    const alreadyConfigured =
+                                        capacitiesList.some(
+                                            (c) =>
+                                                c.type === type && c.total > 0
+                                        );
                                     if (alreadyConfigured) return null;
 
                                     return (
                                         <Chip
                                             key={type}
-                                            selected={selectedVehicleType === type}
+                                            selected={
+                                                selectedVehicleType === type
+                                            }
                                             onPress={() => {
                                                 setSelectedVehicleType(type);
                                                 setCustomVehicleName("");
@@ -659,7 +875,9 @@ export default function ManageParking({ navigation }) {
                                 <Chip
                                     key="custom"
                                     selected={selectedVehicleType === "custom"}
-                                    onPress={() => setSelectedVehicleType("custom")}
+                                    onPress={() =>
+                                        setSelectedVehicleType("custom")
+                                    }
                                     className="mr-2"
                                     selectedColor="#4338ca"
                                 >
@@ -702,8 +920,20 @@ export default function ManageParking({ navigation }) {
                         mode="outlined"
                         outlineColor="#e2e8f0"
                         activeOutlineColor="#4338ca"
-                        className="bg-white mb-6"
+                        className="bg-white mb-4"
                         left={<TextInput.Icon icon="counter" />}
+                    />
+
+                    <TextInput
+                        label="Hourly Rate (₹/hr)"
+                        value={rateVal}
+                        onChangeText={setRateVal}
+                        keyboardType="numeric"
+                        mode="outlined"
+                        outlineColor="#e2e8f0"
+                        activeOutlineColor="#4338ca"
+                        className="bg-white mb-6"
+                        left={<TextInput.Icon icon="currency-inr" />}
                     />
 
                     <View className="flex-row justify-end gap-3">
@@ -729,5 +959,3 @@ export default function ManageParking({ navigation }) {
         </View>
     );
 }
-
-

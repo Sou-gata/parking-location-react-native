@@ -9,7 +9,7 @@ import {
     ScrollView,
 } from "react-native";
 import { useSelector, useDispatch } from "react-redux";
-import { logout, updateUser } from "../store/userSlice";
+import { logoutAndClearToken, updateUser } from "../store/slices/userSlice";
 import {
     Drawer,
     IconButton,
@@ -67,7 +67,7 @@ const Home = ({ navigation }) => {
 
     const handleLogout = () => {
         toggleDrawer(false);
-        dispatch(logout());
+        dispatch(logoutAndClearToken());
     };
 
     const handleRoleSwitch = (newRole) => {
@@ -207,7 +207,10 @@ const Home = ({ navigation }) => {
                                 <Drawer.Item
                                     icon="account"
                                     label="Profile"
-                                    onPress={() => toggleDrawer(false)}
+                                    onPress={() => {
+                                        toggleDrawer(false);
+                                        navigation.navigate("Profile");
+                                    }}
                                 />
 
                                 {/* Customer Feature */}
@@ -223,6 +226,16 @@ const Home = ({ navigation }) => {
                                         }}
                                     />
                                 </PermissionGuard>
+                                {role === ROLES.USER && (
+                                    <Drawer.Item
+                                        icon="wallet"
+                                        label="Wallet"
+                                        onPress={() => {
+                                            toggleDrawer(false);
+                                            navigation.navigate("Wallet");
+                                        }}
+                                    />
+                                )}
 
                                 {/* Security Guard / Manager booking operations */}
                                 <PermissionGuard
@@ -247,7 +260,9 @@ const Home = ({ navigation }) => {
                                         label="Manage Parking"
                                         onPress={() => {
                                             toggleDrawer(false);
-                                            navigation.navigate("ManageParking");
+                                            navigation.navigate(
+                                                "ManageParking"
+                                            );
                                         }}
                                     />
                                 </PermissionGuard>
@@ -270,11 +285,18 @@ const Home = ({ navigation }) => {
                                     />
                                 </PermissionGuard>
 
-                                <Drawer.Item
-                                    icon="cog"
-                                    label="Settings"
-                                    onPress={() => toggleDrawer(false)}
-                                />
+                                {role === ROLES.SUPER_ADMIN && (
+                                    <Drawer.Item
+                                        icon="cog"
+                                        label="Settings"
+                                        onPress={() => {
+                                            toggleDrawer(false);
+                                            navigation.navigate(
+                                                "SuperAdminSettings"
+                                            );
+                                        }}
+                                    />
+                                )}
                             </Drawer.Section>
                         </ScrollView>
                     </View>

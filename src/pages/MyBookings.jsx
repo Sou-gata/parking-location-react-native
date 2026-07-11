@@ -2,7 +2,7 @@ import React from "react";
 import { View, ScrollView, FlatList, StyleSheet } from "react-native";
 import { Text, Card, Button, Avatar, Chip, Divider } from "react-native-paper";
 import { useSelector, useDispatch } from "react-redux";
-import { cancelBooking } from "../store/parkingSlice";
+import { cancelBooking } from "../store/slices/parkingSlice";
 import useToast from "../hooks/useToast";
 
 const VEHICLE_TYPE_LABELS = {
@@ -33,12 +33,18 @@ export default function MyBookings() {
 
     // Filter bookings to only show current user's bookings
     const myBookings = bookings.filter(
-        (b) => b.userId === currentUser?.id || b.userPhone === currentUser?.phone_number
+        (b) =>
+            b.userId === currentUser?.id ||
+            b.userPhone === currentUser?.phone_number
     );
 
     const handleCancel = (bookingCode) => {
         dispatch(cancelBooking(bookingCode));
-        toast.success(`Booking ${bookingCode} cancelled successfully!`, "Success", true);
+        toast.success(
+            `Booking ${bookingCode} cancelled successfully!`,
+            "Success",
+            true
+        );
     };
 
     const getStatusColor = (status) => {
@@ -97,22 +103,42 @@ export default function MyBookings() {
                                     <View className="flex-row items-center flex-1 pr-2">
                                         <Avatar.Icon
                                             size={40}
-                                            icon={VEHICLE_TYPE_ICONS[item.vehicleType] || "car"}
-                                            style={{ backgroundColor: `${statusColor}20` }}
+                                            icon={
+                                                VEHICLE_TYPE_ICONS[
+                                                    item.vehicleType
+                                                ] || "car"
+                                            }
+                                            style={{
+                                                backgroundColor: `${statusColor}20`,
+                                            }}
                                             color={statusColor}
                                         />
                                         <View className="ml-3 flex-1">
-                                            <Text className="text-base font-bold text-slate-800" numberOfLines={1}>
+                                            <Text
+                                                className="text-base font-bold text-slate-800"
+                                                numberOfLines={1}
+                                            >
                                                 {item.agencyName}
                                             </Text>
                                             <Text className="text-xs text-slate-400">
-                                                Code: <Text className="font-mono font-bold text-slate-600">{item.bookingCode}</Text>
+                                                Code:{" "}
+                                                <Text className="font-mono font-bold text-slate-600">
+                                                    {item.bookingCode}
+                                                </Text>
                                             </Text>
                                         </View>
                                     </View>
                                     <Chip
-                                        textStyle={{ color: "white", fontSize: 11, fontWeight: "bold" }}
-                                        style={{ backgroundColor: statusColor, height: 26, justifyContent: "center" }}
+                                        textStyle={{
+                                            color: "white",
+                                            fontSize: 11,
+                                            fontWeight: "bold",
+                                        }}
+                                        style={{
+                                            backgroundColor: statusColor,
+                                            height: 26,
+                                            justifyContent: "center",
+                                        }}
                                         compact
                                     >
                                         {getStatusLabel(item.status)}
@@ -123,33 +149,59 @@ export default function MyBookings() {
 
                                 <View className="gap-2">
                                     <View className="flex-row justify-between">
-                                        <Text className="text-sm text-slate-500">Vehicle Number:</Text>
-                                        <Text className="text-sm font-bold text-slate-700">{item.vehicleNumber}</Text>
+                                        <Text className="text-sm text-slate-500">
+                                            Vehicle Number:
+                                        </Text>
+                                        <Text className="text-sm font-bold text-slate-700">
+                                            {item.vehicleNumber}
+                                        </Text>
                                     </View>
                                     <View className="flex-row justify-between">
-                                        <Text className="text-sm text-slate-500">Vehicle Type:</Text>
-                                        <Text className="text-sm font-semibold text-slate-700">{VEHICLE_TYPE_LABELS[item.vehicleType] || item.vehicleType}</Text>
+                                        <Text className="text-sm text-slate-500">
+                                            Vehicle Type:
+                                        </Text>
+                                        <Text className="text-sm font-semibold text-slate-700">
+                                            {VEHICLE_TYPE_LABELS[
+                                                item.vehicleType
+                                            ] || item.vehicleType}
+                                        </Text>
                                     </View>
                                     <View className="flex-row justify-between">
-                                        <Text className="text-sm text-slate-500">Booked Duration:</Text>
-                                        <Text className="text-sm font-semibold text-slate-700">{item.bookedDuration} Hrs</Text>
+                                        <Text className="text-sm text-slate-500">
+                                            Booked Duration:
+                                        </Text>
+                                        <Text className="text-sm font-semibold text-slate-700">
+                                            {item.bookedDuration} Hrs
+                                        </Text>
                                     </View>
                                     <View className="flex-row justify-between">
-                                        <Text className="text-sm text-slate-500">Rate:</Text>
-                                        <Text className="text-sm font-semibold text-slate-700">₹{item.hourlyRate}/hr</Text>
+                                        <Text className="text-sm text-slate-500">
+                                            Rate:
+                                        </Text>
+                                        <Text className="text-sm font-semibold text-slate-700">
+                                            ₹{item.hourlyRate}/hr
+                                        </Text>
                                     </View>
 
                                     <Divider className="my-1.5 bg-slate-50" />
 
                                     <View className="flex-row justify-between">
-                                        <Text className="text-sm text-slate-500">Booked For:</Text>
-                                        <Text className="text-sm font-medium text-slate-700">{formatDateTime(item.startTime)}</Text>
+                                        <Text className="text-sm text-slate-500">
+                                            Booked For:
+                                        </Text>
+                                        <Text className="text-sm font-medium text-slate-700">
+                                            {formatDateTime(item.startTime)}
+                                        </Text>
                                     </View>
 
                                     {item.status === "completed" && (
                                         <View className="flex-row justify-between mt-1 p-2 bg-emerald-50 rounded-lg border border-emerald-100">
-                                            <Text className="text-sm font-bold text-emerald-800">Amount Paid:</Text>
-                                            <Text className="text-sm font-bold text-emerald-800">₹{item.totalBill}</Text>
+                                            <Text className="text-sm font-bold text-emerald-800">
+                                                Amount Paid:
+                                            </Text>
+                                            <Text className="text-sm font-bold text-emerald-800">
+                                                ₹{item.totalBill}
+                                            </Text>
                                         </View>
                                     )}
                                 </View>
@@ -159,7 +211,9 @@ export default function MyBookings() {
                                 <Card.Actions className="border-t border-slate-50 px-4 py-2 bg-slate-50/50 rounded-b-xl">
                                     <Button
                                         mode="outlined"
-                                        onPress={() => handleCancel(item.bookingCode)}
+                                        onPress={() =>
+                                            handleCancel(item.bookingCode)
+                                        }
                                         textColor="#ef4444"
                                         style={{ borderColor: "#fee2e2" }}
                                         className="flex-1 rounded-lg"
@@ -184,7 +238,8 @@ export default function MyBookings() {
                             No Bookings Yet
                         </Text>
                         <Text className="text-sm text-slate-400 text-center mt-1 px-8">
-                            Any parking slots you reserve will appear here. Find nearby parking locations on the map to get started.
+                            Any parking slots you reserve will appear here. Find
+                            nearby parking locations on the map to get started.
                         </Text>
                     </View>
                 }

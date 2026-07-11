@@ -13,10 +13,11 @@ import {
     Button,
     Card,
     Surface,
-    RadioButton,
+    Avatar,
+    IconButton,
 } from "react-native-paper";
 import { useDispatch } from "react-redux";
-import { loginSuccess } from "../store/userSlice";
+import { loginSuccess } from "../store/slices/userSlice";
 import useToast from "../hooks/useToast";
 import apiService from "../utils/apiService";
 import tokenStorage from "../utils/tokenStorage";
@@ -30,7 +31,6 @@ export default function Login({ navigation }) {
     });
 
     const [visible, setVisible] = useState(false);
-    const [selectedOption, setSelectedOption] = useState("user");
     const [loading, setLoading] = useState(false);
 
     const handleLogin = async () => {
@@ -57,22 +57,26 @@ export default function Login({ navigation }) {
             if (response && response.success) {
                 const { token, user } = response.data;
 
-                // Store token securely
                 await tokenStorage.setToken(token);
 
-                // Update Redux state
                 dispatch(loginSuccess({ user, token }));
 
-                toast.success(`Welcome back, ${user.name || "User"}!`, "Success", true);
-
-                // Navigate to Home or Dashboard (assuming Home exists)
-                navigation.replace("Home");
+                toast.success(
+                    `Welcome back, ${user.name || "User"}!`,
+                    "Success",
+                    true
+                );
             } else {
-                throw new Error(response?.message || "Invalid username or password");
+                throw new Error(
+                    response?.message || "Invalid username or password"
+                );
             }
         } catch (error) {
             console.error("Login Error:", error);
-            const message = error.response?.data?.message || error.message || "Invalid username or password";
+            const message =
+                error.response?.data?.message ||
+                error.message ||
+                "Invalid username or password";
             toast.error(message, "Login Failed", true);
         } finally {
             setLoading(false);
@@ -196,70 +200,87 @@ export default function Login({ navigation }) {
                 onRequestClose={() => setVisible(false)}
             >
                 <View style={styles.modalOverlay}>
-                    <Surface elevation={5} style={styles.modalCard}>
-                        <Text
-                            className="text-xl font-bold text-gray-800 mb-4 text-center"
-                            style={{
-                                fontWeight: "bold",
-                                fontSize: 20,
-                                textAlign: "center",
-                            }}
-                        >
-                            Select Registration Type
+                    <Surface
+                        elevation={5}
+                        style={styles.modalCard}
+                        className="bg-white p-6 rounded-3xl w-[90%] max-w-[400px] self-center"
+                    >
+                        <Text className="text-xl font-bold text-slate-800 text-center mb-1">
+                            Join Parking Locator
+                        </Text>
+                        <Text className="text-xs text-slate-400 text-center mb-6 px-4">
+                            Select the type of account you want to register
                         </Text>
 
-                        <RadioButton.Group
-                            onValueChange={(value) => setSelectedOption(value)}
-                            value={selectedOption}
+                        {/* Card 1: Customer */}
+                        <Pressable
+                            onPress={() => {
+                                setVisible(false);
+                                navigation.replace("UserSignup");
+                            }}
+                            className="flex-row items-center p-4 mb-3 border border-slate-100 bg-slate-50/50 rounded-2xl active:bg-indigo-50/40 active:border-indigo-200"
                         >
-                            <RadioButton.Item
-                                label="User"
-                                value="user"
+                            <Avatar.Icon
+                                size={44}
+                                icon="car"
+                                style={{ backgroundColor: "#e0e7ff" }}
                                 color="#4338ca"
-                                labelStyle={{ color: "#1e293b" }}
                             />
-                            <RadioButton.Item
-                                label="Parking Owner"
-                                value="organization"
-                                color="#4338ca"
-                                labelStyle={{ color: "#1e293b" }}
+                            <View className="ml-3 flex-1">
+                                <Text className="text-sm font-bold text-slate-800">
+                                    Customer / Driver
+                                </Text>
+                                <Text className="text-[11px] text-slate-500 mt-0.5 font-medium">
+                                    Find, book, and navigate to parking spaces
+                                </Text>
+                            </View>
+                            <IconButton
+                                icon="chevron-right"
+                                iconColor="#4338ca"
+                                size={20}
+                                className="m-0"
                             />
-                        </RadioButton.Group>
+                        </Pressable>
 
-                        <View className="flex-row justify-end mt-4 gap-2">
-                            <Button
-                                onPress={() => setVisible(false)}
-                                textColor="#64748b"
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                mode="contained"
-                                onPress={() => {
-                                    if (!selectedOption) {
-                                        toast.error(
-                                            "Please select an option",
-                                            "Required",
-                                            true
-                                        );
-                                        return;
-                                    }
-                                    setVisible(false);
-                                    if (selectedOption === "user") {
-                                        navigation.replace("UserSignup");
-                                    } else {
-                                        navigation.replace("OrgSignup");
-                                    }
-                                }}
-                                style={{
-                                    borderRadius: 8,
-                                    backgroundColor: "#4338ca",
-                                }}
-                                labelStyle={{ color: "white" }}
-                            >
-                                Confirm
-                            </Button>
-                        </View>
+                        {/* Card 2: Agency */}
+                        <Pressable
+                            onPress={() => {
+                                setVisible(false);
+                                navigation.replace("OrgSignup");
+                            }}
+                            className="flex-row items-center p-4 mb-6 border border-slate-100 bg-slate-50/50 rounded-2xl active:bg-indigo-50/40 active:border-indigo-200"
+                        >
+                            <Avatar.Icon
+                                size={44}
+                                icon="office-building"
+                                style={{ backgroundColor: "#e0e7ff" }}
+                                color="#4338ca"
+                            />
+                            <View className="ml-3 flex-1">
+                                <Text className="text-sm font-bold text-slate-800">
+                                    Parking Agency Owner
+                                </Text>
+                                <Text className="text-[11px] text-slate-500 mt-0.5 font-medium">
+                                    List locations, manage rates and staff
+                                </Text>
+                            </View>
+                            <IconButton
+                                icon="chevron-right"
+                                iconColor="#4338ca"
+                                size={20}
+                                className="m-0"
+                            />
+                        </Pressable>
+
+                        <Button
+                            mode="outlined"
+                            onPress={() => setVisible(false)}
+                            textColor="#64748b"
+                            style={{ borderColor: "#cbd5e1", borderRadius: 12 }}
+                            className="py-0.5"
+                        >
+                            Cancel
+                        </Button>
                     </Surface>
                 </View>
             </Modal>
