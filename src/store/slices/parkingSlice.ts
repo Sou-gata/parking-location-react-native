@@ -12,6 +12,8 @@ export interface Agency {
     address: string;
     latitude: number | string;
     longitude: number | string;
+    commission_percentage?: number;
+    wallet_balance?: number;
     twoWheeler_capacity?: number;
     car_capacity?: number;
     ev_capacity?: number;
@@ -55,10 +57,13 @@ export interface Booking {
     status: "booked" | "checked_in" | "completed" | "cancelled";
     startTime: string;
     endTime: string | null;
+    bookingStartTime?: string | null;
+    bookingEndTime?: string | null;
     bookedDuration: number;
     hourlyRate: number;
     totalBill: number;
     paymentStatus: "pending" | "paid";
+    otp?: string;
 }
 
 export interface ParkingState {
@@ -149,9 +154,10 @@ const parkingSlice = createSlice({
                 email: string;
                 phone_number: string;
                 address: string;
+                commission_percentage?: number;
             }>
         ) => {
-            const { id, name, owner, email, phone_number, address } =
+            const { id, name, owner, email, phone_number, address, commission_percentage } =
                 action.payload;
             const agency = state.agencies.find((a) => a.id === id);
             if (agency) {
@@ -160,6 +166,9 @@ const parkingSlice = createSlice({
                 agency.email = email;
                 agency.phone_number = phone_number;
                 agency.address = address;
+                if (commission_percentage !== undefined) {
+                    agency.commission_percentage = commission_percentage;
+                }
             }
         },
         updateAgencyCapacities: (
@@ -246,6 +255,9 @@ const parkingSlice = createSlice({
         // --- Booking Management ---
         addBooking: (state, action: PayloadAction<Booking>) => {
             state.bookings.push(action.payload);
+        },
+        setBookings: (state, action: PayloadAction<Booking[]>) => {
+            state.bookings = action.payload;
         },
         checkInBooking: (state, action: PayloadAction<string>) => {
             const booking = state.bookings.find(
@@ -391,6 +403,7 @@ export const {
     registerNormalUser,
     registerAgencyRequest,
     setAgencies,
+    setBookings,
 } = parkingSlice.actions;
 
 export default parkingSlice.reducer;

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
     View,
     FlatList,
@@ -17,10 +17,10 @@ import {
     Text,
     TextInput,
     Button,
-    SegmentedButtons,
     Divider,
     Avatar,
     IconButton,
+    Menu,
 } from "react-native-paper";
 import {
     MapView,
@@ -40,6 +40,7 @@ import { addBooking, setAgencies } from "../store/slices/parkingSlice";
 import useToast from "../hooks/useToast";
 import apiService from "../utils/apiService";
 import { MaterialDesignIcons } from "@react-native-vector-icons/material-design-icons";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 cssInterop(MapView, { className: "style" });
 cssInterop(MarkerView, { className: "style" });
@@ -131,7 +132,23 @@ const INITIAL_BOOKING_STATE = {
     visible: false,
     vehicleNum: "",
     vehicleType: "car",
-    duration: "2",
+    fromDate: "",
+    fromTime: "",
+    toDate: "",
+    toTime: "",
+};
+
+const formatDate = (d) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+};
+
+const formatTime = (d) => {
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    return `${hours}:${minutes}`;
 };
 
 const HomeMap = () => {
@@ -140,7 +157,7 @@ const HomeMap = () => {
     const toastRef = useRef(toast);
     const cameraRef = useRef(null);
     const hasCenteredOnUser = useRef(false);
-    const debounceTimerRef = useRef(null); // useRef â€” no re-render on change
+    const debounceTimerRef = useRef(null); // useRef no re-render on change
 
     useEffect(() => {
         toastRef.current = toast;
@@ -148,6 +165,7 @@ const HomeMap = () => {
 
     const currentUser = useSelector((state) => state.user.user);
     const approvedAgencies = useSelector((state) => state.parking.agencies);
+    const bookings = useSelector((state) => state.parking.bookings);
 
     const [locationState, setLocationState] = useState(INITIAL_LOCATION_STATE);
 
@@ -166,6 +184,199 @@ const HomeMap = () => {
         (patch) => setBookingState((prev) => ({ ...prev, ...patch })),
         []
     );
+
+    const [pickerState, setPickerState] = useState({
+        visible: false,
+        mode: "date", // 'date' or 'time'
+        target: "from", // 'from' or 'to'
+        value: new Date(),
+    });
+
+    const [selectedVehicleOption, setSelectedVehicleOption] = useState("");
+    const [vehicleMenuVisible, setVehicleMenuVisible] = useState(false);
+
+    const openPicker = useCallback(
+        (mode, target) => {
+            let defaultDate = new Date();
+            try {
+                if (
+                    target === "from" &&
+                    bookingState.fromDate &&
+                    bookingState.fromTime
+                ) {
+                    const parsed = new Date(
+                        `${bookingState.fromDate}T${bookingState.fromTime}`
+                    );
+                    if (!isNaN(parsed.getTime())) {
+                        defaultDate = parsed;
+                    }
+                } else if (
+                    target === "to" &&
+                    bookingState.toDate &&
+                    bookingState.toTime
+                ) {
+                    const parsed = new Date(
+                        `${bookingState.toDate}T${bookingState.toTime}`
+                    );
+                    if (!isNaN(parsed.getTime())) {
+                        defaultDate = parsed;
+                    }
+                }
+            } catch (e) {
+                console.error("Error parsing default date for picker:", e);
+            }
+
+            setPickerState({
+                visible: true,
+                mode,
+                target,
+                value: defaultDate,
+            });
+        },
+        [
+            bookingState.fromDate,
+            bookingState.fromTime,
+            bookingState.toDate,
+            bookingState.toTime,
+        ]
+    );
+
+    const handlePickerChange = useCallback(
+        (event, selectedDate) => {
+            if (Platform.OS === "android") {
+                setPickerState((prev) => ({ ...prev, visible: false }));
+            }
+
+            if (selectedDate && event.type !== "dismissed") {
+                const { mode, target } = pickerState;
+
+                if (Platform.OS === "ios") {
+                    setPickerState((prev) => ({
+                        ...prev,
+                        value: selectedDate,
+                    }));
+                }
+
+                let proposedFromDate = bookingState.fromDate;
+                let proposedFromTime = bookingState.fromTime;
+                let proposedToDate = bookingState.toDate;
+                let proposedToTime = bookingState.toTime;
+
+                if (target === "from") {
+                    if (mode === "date") {
+                        proposedFromDate = formatDate(selectedDate);
+                    } else {
+                        proposedFromTime = formatTime(selectedDate);
+                    }
+                } else if (target === "to") {
+                    if (mode === "date") {
+                        proposedToDate = formatDate(selectedDate);
+                    } else {
+                        proposedToTime = formatTime(selectedDate);
+                    }
+                }
+
+                const now = new Date();
+                const proposedStart = new Date(
+                    `${proposedFromDate}T${proposedFromTime}`
+                );
+                const proposedEnd = new Date(
+                    `${proposedToDate}T${proposedToTime}`
+                );
+
+                if (
+                    target === "from" &&
+                    proposedStart.getTime() < now.getTime() - 60000
+                ) {
+                    toastRef.current.error(
+                        "Cannot select a start date/time in the past.",
+                        "Validation Error",
+                        true
+                    );
+                    if (Platform.OS === "ios") {
+                        let originalDate = new Date();
+                        const parsed = new Date(
+                            `${bookingState.fromDate}T${bookingState.fromTime}`
+                        );
+                        if (!isNaN(parsed.getTime())) {
+                            originalDate = parsed;
+                        }
+                        setPickerState((prev) => ({
+                            ...prev,
+                            value: originalDate,
+                        }));
+                    }
+                    return;
+                }
+
+                if (proposedEnd.getTime() <= proposedStart.getTime()) {
+                    if (target === "to") {
+                        toastRef.current.error(
+                            "End date/time must be after start date/time.",
+                            "Validation Error",
+                            true
+                        );
+                        if (Platform.OS === "ios") {
+                            let originalDate = new Date();
+                            const parsed = new Date(
+                                `${bookingState.toDate}T${bookingState.toTime}`
+                            );
+                            if (!isNaN(parsed.getTime())) {
+                                originalDate = parsed;
+                            }
+                            setPickerState((prev) => ({
+                                ...prev,
+                                value: originalDate,
+                            }));
+                        }
+                        return;
+                    } else {
+                        const bumpedTo = new Date(
+                            proposedStart.getTime() + 2 * 60 * 60 * 1000
+                        );
+                        setBooking({
+                            fromDate: proposedFromDate,
+                            fromTime: proposedFromTime,
+                            toDate: formatDate(bumpedTo),
+                            toTime: formatTime(bumpedTo),
+                        });
+                        return;
+                    }
+                }
+
+                if (target === "from") {
+                    setBooking({
+                        fromDate: proposedFromDate,
+                        fromTime: proposedFromTime,
+                    });
+                } else if (target === "to") {
+                    setBooking({
+                        toDate: proposedToDate,
+                        toTime: proposedToTime,
+                    });
+                }
+            } else {
+                setPickerState((prev) => ({ ...prev, visible: false }));
+            }
+        },
+        [pickerState, bookingState, setBooking]
+    );
+
+    const getMinimumDateForPicker = useCallback(() => {
+        if (pickerState.target === "to") {
+            try {
+                const parsed = new Date(
+                    `${bookingState.fromDate}T${bookingState.fromTime}`
+                );
+                if (!isNaN(parsed.getTime())) {
+                    return parsed;
+                }
+            } catch (e) {
+                console.error("Error parsing date for minimum date picker:", e);
+            }
+        }
+        return new Date();
+    }, [bookingState.fromDate, bookingState.fromTime, pickerState.target]);
 
     const requestLocationPermission = useCallback(async () => {
         if (Platform.OS === "android") {
@@ -311,9 +522,9 @@ const HomeMap = () => {
                     prev.coords[0] === coords[0] &&
                     prev.coords[1] === coords[1]
                 ) {
-                    return prev; // no change â€” skip re-render
+                    return prev; // no change skip re-render
                 }
-                // First live location update â€” fetch nearby
+                // First live location update fetch nearby
                 if (!prev.coords && !routingState.origin) {
                     fetchNearbyAgencies(
                         location.coords.latitude,
@@ -536,14 +747,130 @@ const HomeMap = () => {
                 agency[`${key}_capacity`] > 0 ||
                 agency[`${key}_capacity`] === undefined
         );
+
+        const now = new Date();
+        const twoHoursLater = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+
+        const savedVehicles = currentUser?.vehicle_numbers
+            ? (() => {
+                  try {
+                      if (currentUser.vehicle_numbers.startsWith("[")) {
+                          return JSON.parse(currentUser.vehicle_numbers);
+                      }
+                      return currentUser.vehicle_numbers
+                          .split(",")
+                          .map((v) => v.trim())
+                          .filter(Boolean);
+                  } catch (e) {
+                      return [];
+                  }
+              })()
+            : [];
+
+        const defaultVehicle = savedVehicles.length > 0 ? savedVehicles[0] : "";
+        setSelectedVehicleOption(defaultVehicle || "Other");
+
         setBooking({
             visible: true,
-            vehicleNum: "",
+            vehicleNum: defaultVehicle,
             vehicleType: supportedTypes[0] || "car",
+            fromDate: formatDate(now),
+            fromTime: formatTime(now),
+            toDate: formatDate(twoHoursLater),
+            toTime: formatTime(twoHoursLater),
         });
-    }, [parkingState.selectedLocation, setBooking]);
+    }, [parkingState.selectedLocation, currentUser, setBooking]);
 
-    const handleConfirmBooking = useCallback(() => {
+    // Calculate custom duration based on selected date & time
+    const getCalculatedDuration = useCallback(() => {
+        try {
+            if (
+                !bookingState.fromDate ||
+                !bookingState.fromTime ||
+                !bookingState.toDate ||
+                !bookingState.toTime
+            ) {
+                return 0;
+            }
+            const fromStr = `${bookingState.fromDate}T${bookingState.fromTime}`;
+            const toStr = `${bookingState.toDate}T${bookingState.toTime}`;
+            const start = new Date(fromStr);
+            const end = new Date(toStr);
+            if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+                return 0;
+            }
+            const diffMs = end.getTime() - start.getTime();
+            const diffHrs = diffMs / (1000 * 60 * 60);
+            return parseFloat(diffHrs.toFixed(2));
+        } catch {
+            return 0;
+        }
+    }, [
+        bookingState.fromDate,
+        bookingState.fromTime,
+        bookingState.toDate,
+        bookingState.toTime,
+    ]);
+
+    const calculatedDuration = getCalculatedDuration();
+
+    // Check slot availability for selected vehicle type at the selected agency
+    const getAvailabilityInfo = useCallback(() => {
+        const agency = parkingState.selectedLocation;
+        if (!agency) {
+            return {
+                isAvailable: false,
+                capacity: 0,
+                booked: 0,
+                availableSpots: 0,
+            };
+        }
+
+        const selectedType = bookingState.vehicleType;
+        const capacityKey = `${selectedType}_capacity`;
+        const snakeCapacityKey =
+            selectedType === "twoWheeler"
+                ? "two_wheeler_capacity"
+                : selectedType === "threeWheeler"
+                ? "three_wheeler_capacity"
+                : `${selectedType}_capacity`;
+
+        const capacity =
+            agency[capacityKey] !== undefined
+                ? Number(agency[capacityKey])
+                : agency[snakeCapacityKey] !== undefined
+                ? Number(agency[snakeCapacityKey])
+                : 20;
+
+        // Count active/booked bookings for this agency & vehicle type
+        const activeCount = (bookings || []).filter(
+            (b) =>
+                b.agencyId === agency.id &&
+                b.vehicleType === selectedType &&
+                (b.status === "booked" || b.status === "checked_in")
+        ).length;
+
+        return {
+            capacity,
+            booked: activeCount,
+            availableSpots: Math.max(0, capacity - activeCount),
+            isAvailable: activeCount < capacity,
+        };
+    }, [parkingState.selectedLocation, bookingState.vehicleType, bookings]);
+
+    const availability = getAvailabilityInfo();
+
+    const currentHourlyRate =
+        (parkingState.selectedLocation?.[`${bookingState.vehicleType}_rate`] ??
+            VEHICLE_TYPE_RATES[bookingState.vehicleType]) ||
+        40;
+
+    const estimatedCost = Math.max(
+        0,
+        parseFloat((currentHourlyRate * calculatedDuration).toFixed(2))
+    );
+
+    const handleConfirmBooking = useCallback(async () => {
         if (!bookingState.vehicleNum) {
             toast.error(
                 "Please enter your vehicle registration number.",
@@ -553,39 +880,118 @@ const HomeMap = () => {
             return;
         }
 
+        if (calculatedDuration <= 0) {
+            toast.error(
+                "Parking 'To' time must be after 'From' time.",
+                "Error",
+                true
+            );
+            return;
+        }
+
+        const startTimeStr = `${bookingState.fromDate}T${bookingState.fromTime}`;
+        const startTime = new Date(startTimeStr);
+        const now = new Date();
+        if (startTime.getTime() < now.getTime() - 60000) {
+            toast.error(
+                "Cannot create a booking starting in the past.",
+                "Error",
+                true
+            );
+            return;
+        }
+
+        if (!availability.isAvailable) {
+            toast.error(
+                "No parking spots are available for this vehicle type.",
+                "Unavailable",
+                true
+            );
+            return;
+        }
+
         const agency = parkingState.selectedLocation;
-        const bookingCode = `PK-${Math.floor(1000 + Math.random() * 9000)}`;
         const hourlyRate =
             agency[`${bookingState.vehicleType}_rate`] ||
             VEHICLE_TYPE_RATES[bookingState.vehicleType] ||
             40;
 
-        dispatch(
-            addBooking({
-                id: `book_${Date.now()}`,
-                bookingCode,
-                userId: currentUser?.id || "user_customer",
-                userName: currentUser?.name || "Customer",
-                userPhone: currentUser?.phone_number || "+91 7000000000",
-                agencyId: agency.id,
-                agencyName: agency.name,
-                vehicleType: bookingState.vehicleType,
-                vehicleNumber: bookingState.vehicleNum.toUpperCase(),
-                status: "booked",
-                startTime: new Date().toISOString(),
-                endTime: null,
-                bookedDuration: Number(bookingState.duration),
-                hourlyRate,
-                totalBill: 0,
-                paymentStatus: "pending",
-            })
-        );
+        const endTimeStr = `${bookingState.toDate}T${bookingState.toTime}`;
 
-        toast.success(
-            `Reserved successfully! Booking Code: ${bookingCode}`,
-            "Reservation Complete",
-            true
-        );
+        // Prepare request body for backend api
+        const bookingData = {
+            userId: currentUser?.id || null,
+            userName: currentUser?.name || "Customer",
+            userPhone: currentUser?.phone_number || "+91 7000000000",
+            agencyId: agency.id,
+            agencyName: agency.name,
+            vehicleType: bookingState.vehicleType,
+            vehicleNumber: bookingState.vehicleNum.toUpperCase(),
+            bookedDuration: calculatedDuration,
+            hourlyRate,
+            startTime: startTime.toISOString(),
+            endTime: new Date(endTimeStr).toISOString(),
+        };
+
+        try {
+            // Post to backend API
+            const res = await apiService.post("bookings/create", bookingData);
+
+            if (res && res.success) {
+                // If api call succeeded, add to local redux store using backend mapped response
+                const serverBooking = res.data;
+                dispatch(
+                    addBooking({
+                        id: serverBooking.id
+                            ? String(serverBooking.id)
+                            : `book_${Date.now()}`,
+                        bookingCode: serverBooking.bookingCode,
+                        userId: serverBooking.userId
+                            ? String(serverBooking.userId)
+                            : currentUser?.id || "user_customer",
+                        userName: serverBooking.userName,
+                        userPhone: serverBooking.userPhone || "+91 7000000000",
+                        agencyId: String(serverBooking.agencyId),
+                        agencyName: serverBooking.agencyName,
+                        vehicleType: serverBooking.vehicleType,
+                        vehicleNumber: serverBooking.vehicleNumber,
+                        status: serverBooking.status || "booked",
+                        startTime: serverBooking.startTime,
+                        endTime: serverBooking.endTime,
+                        bookingStartTime: serverBooking.bookingStartTime,
+                        bookingEndTime: serverBooking.bookingEndTime,
+                        bookedDuration: parseFloat(
+                            serverBooking.bookedDuration
+                        ),
+                        hourlyRate: parseFloat(serverBooking.hourlyRate),
+                        totalBill: parseFloat(serverBooking.totalBill || 0),
+                        paymentStatus: serverBooking.paymentStatus || "pending",
+                        otp: serverBooking.otp,
+                    })
+                );
+
+                toast.success(
+                    `Reserved successfully! Booking Code: ${serverBooking.bookingCode}`,
+                    "Reservation Complete",
+                    true
+                );
+            } else {
+                toast.error(
+                    res?.message ||
+                        "Failed to create booking on backend server.",
+                    "Booking Error",
+                    true
+                );
+            }
+        } catch (error) {
+            console.error("Booking API Error:", error);
+            toast.error(
+                "Failed to reach backend server. Booking not saved.",
+                "Connection Error",
+                true
+            );
+        }
+
         setBooking({ visible: false });
         setParkingState((prev) => ({ ...prev, isDrawerVisible: false }));
     }, [
@@ -595,14 +1001,10 @@ const HomeMap = () => {
         dispatch,
         toast,
         setBooking,
+        calculatedDuration,
+        availability,
+        estimatedCost,
     ]);
-
-    // Derived Values
-    const currentHourlyRate =
-        (parkingState.selectedLocation?.[`${bookingState.vehicleType}_rate`] ??
-            VEHICLE_TYPE_RATES[bookingState.vehicleType]) ||
-        40;
-    const estimatedCost = currentHourlyRate * Number(bookingState.duration);
 
     // Stable key for route ShapeSource (avoids stale layer IDs)
     const routeCoordCount =
@@ -794,20 +1196,115 @@ const HomeMap = () => {
                         {parkingState.selectedLocation?.name}
                     </Text>
 
-                    <TextInput
-                        label="Vehicle Registration Number *"
-                        value={bookingState.vehicleNum}
-                        onChangeText={(vehicleNum) =>
-                            setBooking({ vehicleNum })
+                    {(() => {
+                        const savedVehicles = currentUser?.vehicle_numbers
+                            ? (() => {
+                                  try {
+                                      if (currentUser.vehicle_numbers.startsWith("[")) {
+                                          return JSON.parse(currentUser.vehicle_numbers);
+                                      }
+                                      return currentUser.vehicle_numbers
+                                          .split(",")
+                                          .map((v) => v.trim())
+                                          .filter(Boolean);
+                                  } catch (e) {
+                                      console.error("Error parsing user vehicles:", e);
+                                      return [];
+                                  }
+                              })()
+                            : [];
+
+                        if (savedVehicles.length === 0) {
+                            return (
+                                <TextInput
+                                    label="Vehicle Registration Number *"
+                                    value={bookingState.vehicleNum}
+                                    onChangeText={(vehicleNum) =>
+                                        setBooking({ vehicleNum })
+                                    }
+                                    mode="outlined"
+                                    dense
+                                    autoCapitalize="characters"
+                                    className="bg-white mb-4"
+                                    outlineColor="#e2e8f0"
+                                    activeOutlineColor="#4338ca"
+                                    left={<TextInput.Icon icon="car-info" />}
+                                />
+                            );
                         }
-                        mode="outlined"
-                        dense
-                        autoCapitalize="characters"
-                        className="bg-white mb-4"
-                        outlineColor="#e2e8f0"
-                        activeOutlineColor="#4338ca"
-                        left={<TextInput.Icon icon="car-info" />}
-                    />
+
+                        return (
+                            <View className="mb-4">
+                                <Menu
+                                    visible={vehicleMenuVisible}
+                                    onDismiss={() => setVehicleMenuVisible(false)}
+                                    anchor={
+                                        <TouchableOpacity
+                                            onPress={() => setVehicleMenuVisible(true)}
+                                            activeOpacity={0.8}
+                                        >
+                                            <View pointerEvents="none">
+                                                <TextInput
+                                                    label="Select Vehicle *"
+                                                    value={
+                                                        selectedVehicleOption === "Other"
+                                                            ? "Other (Enter Manually)"
+                                                            : selectedVehicleOption
+                                                    }
+                                                    mode="outlined"
+                                                    dense
+                                                    className="bg-white"
+                                                    outlineColor="#e2e8f0"
+                                                    activeOutlineColor="#4338ca"
+                                                    editable={false}
+                                                    left={<TextInput.Icon icon="car" />}
+                                                    right={<TextInput.Icon icon="chevron-down" />}
+                                                />
+                                            </View>
+                                        </TouchableOpacity>
+                                    }
+                                    contentStyle={{ backgroundColor: "white" }}
+                                >
+                                    {savedVehicles.map((vNum) => (
+                                        <Menu.Item
+                                            key={vNum}
+                                            onPress={() => {
+                                                setSelectedVehicleOption(vNum);
+                                                setBooking({ vehicleNum: vNum });
+                                                setVehicleMenuVisible(false);
+                                            }}
+                                            title={vNum}
+                                        />
+                                    ))}
+                                    <Menu.Item
+                                        onPress={() => {
+                                            setSelectedVehicleOption("Other");
+                                            setBooking({ vehicleNum: "" });
+                                            setVehicleMenuVisible(false);
+                                        }}
+                                        title="Other (Enter Manually)"
+                                    />
+                                </Menu>
+
+                                {selectedVehicleOption === "Other" && (
+                                    <TextInput
+                                        label="Vehicle Registration Number *"
+                                        value={bookingState.vehicleNum}
+                                        onChangeText={(vehicleNum) =>
+                                            setBooking({ vehicleNum })
+                                        }
+                                        mode="outlined"
+                                        dense
+                                        autoCapitalize="characters"
+                                        className="bg-white mt-3"
+                                        outlineColor="#e2e8f0"
+                                        activeOutlineColor="#4338ca"
+                                        left={<TextInput.Icon icon="car-info" />}
+                                    />
+                                )}
+                            </View>
+                        );
+                    })()}
 
                     <Text className="text-sm font-semibold text-slate-700 mb-2">
                         Select Vehicle Type
@@ -855,7 +1352,7 @@ const HomeMap = () => {
                                                 : "text-slate-600"
                                         }`}
                                     >
-                                        {VEHICLE_TYPE_LABELS[key]} (â‚¹
+                                        {VEHICLE_TYPE_LABELS[key]} (₹
                                         {parkingState.selectedLocation?.[
                                             `${key}_rate`
                                         ] || VEHICLE_TYPE_RATES[key]}
@@ -865,21 +1362,174 @@ const HomeMap = () => {
                             ))}
                     </View>
 
-                    <Text className="text-sm font-semibold text-slate-700 mb-2">
-                        Estimated Duration
+                    <Text className="text-sm font-semibold text-slate-700 mb-1">
+                        Parking From
                     </Text>
-                    <SegmentedButtons
-                        value={bookingState.duration}
-                        onValueChange={(duration) => setBooking({ duration })}
-                        buttons={[
-                            { value: "1", label: "1 Hr" },
-                            { value: "2", label: "2 Hrs" },
-                            { value: "4", label: "4 Hrs" },
-                            { value: "8", label: "8 Hrs" },
-                        ]}
-                        theme={{ colors: { primary: "#4338ca" } }}
-                        style={{ marginBottom: 16 }}
-                    />
+                    <View className="flex-row gap-2 mb-3">
+                        <TouchableOpacity
+                            onPress={() => openPicker("date", "from")}
+                            className="flex-1"
+                        >
+                            <View pointerEvents="none">
+                                <TextInput
+                                    label="Date (YYYY-MM-DD)"
+                                    value={bookingState.fromDate}
+                                    mode="outlined"
+                                    dense
+                                    className="bg-white"
+                                    outlineColor="#e2e8f0"
+                                    activeOutlineColor="#4338ca"
+                                    placeholder="YYYY-MM-DD"
+                                    editable={false}
+                                    right={<TextInput.Icon icon="calendar" />}
+                                />
+                            </View>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => openPicker("time", "from")}
+                            className="flex-1"
+                        >
+                            <View pointerEvents="none">
+                                <TextInput
+                                    label="Time (HH:MM)"
+                                    value={bookingState.fromTime}
+                                    mode="outlined"
+                                    dense
+                                    className="bg-white"
+                                    outlineColor="#e2e8f0"
+                                    activeOutlineColor="#4338ca"
+                                    placeholder="HH:MM"
+                                    editable={false}
+                                    right={
+                                        <TextInput.Icon icon="clock-outline" />
+                                    }
+                                />
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+
+                    <Text className="text-sm font-semibold text-slate-700 mb-1">
+                        Parking To
+                    </Text>
+                    <View className="flex-row gap-2 mb-3">
+                        <TouchableOpacity
+                            onPress={() => openPicker("date", "to")}
+                            className="flex-1"
+                        >
+                            <View pointerEvents="none">
+                                <TextInput
+                                    label="Date (YYYY-MM-DD)"
+                                    value={bookingState.toDate}
+                                    mode="outlined"
+                                    dense
+                                    className="bg-white"
+                                    outlineColor="#e2e8f0"
+                                    activeOutlineColor="#4338ca"
+                                    placeholder="YYYY-MM-DD"
+                                    editable={false}
+                                    right={<TextInput.Icon icon="calendar" />}
+                                />
+                            </View>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => openPicker("time", "to")}
+                            className="flex-1"
+                        >
+                            <View pointerEvents="none">
+                                <TextInput
+                                    label="Time (HH:MM)"
+                                    value={bookingState.toTime}
+                                    mode="outlined"
+                                    dense
+                                    className="bg-white"
+                                    outlineColor="#e2e8f0"
+                                    activeOutlineColor="#4338ca"
+                                    placeholder="HH:MM"
+                                    editable={false}
+                                    right={
+                                        <TextInput.Icon icon="clock-outline" />
+                                    }
+                                />
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Native Picker Components */}
+                    {pickerState.visible && Platform.OS === "android" && (
+                        <DateTimePicker
+                            value={pickerState.value}
+                            mode={pickerState.mode}
+                            display="default"
+                            onChange={handlePickerChange}
+                            accentColor="#4338ca"
+                            minimumDate={getMinimumDateForPicker()}
+                        />
+                    )}
+
+                    {pickerState.visible && Platform.OS === "ios" && (
+                        <Portal>
+                            <Modal
+                                visible={pickerState.visible}
+                                onDismiss={() =>
+                                    setPickerState((prev) => ({
+                                        ...prev,
+                                        visible: false,
+                                    }))
+                                }
+                                className="bg-white p-6 m-5 rounded-2xl max-w-[350px] self-center w-[85%]"
+                            >
+                                <Text className="text-center font-bold text-slate-800 mb-4 text-base">
+                                    Select{" "}
+                                    {pickerState.mode === "date"
+                                        ? "Date"
+                                        : "Time"}
+                                </Text>
+                                <View className="items-center justify-center mb-4">
+                                    <DateTimePicker
+                                        value={pickerState.value}
+                                        mode={pickerState.mode}
+                                        display="spinner"
+                                        onChange={handlePickerChange}
+                                        accentColor="#4338ca"
+                                        minimumDate={getMinimumDateForPicker()}
+                                    />
+                                </View>
+                                <Button
+                                    mode="contained"
+                                    onPress={() =>
+                                        setPickerState((prev) => ({
+                                            ...prev,
+                                            visible: false,
+                                        }))
+                                    }
+                                    buttonColor="#4338ca"
+                                    textColor="white"
+                                >
+                                    Done
+                                </Button>
+                            </Modal>
+                        </Portal>
+                    )}
+
+                    <View className="flex-row justify-between mb-3 px-1">
+                        <Text className="text-xs text-slate-500">
+                            Duration:{" "}
+                            {calculatedDuration > 0
+                                ? `${calculatedDuration} Hrs`
+                                : "--"}
+                        </Text>
+                        <Text
+                            className={`text-xs font-bold ${
+                                availability.isAvailable
+                                    ? "text-emerald-600"
+                                    : "text-rose-600"
+                            }`}
+                        >
+                            {availability.isAvailable
+                                ? `Available (${availability.availableSpots} spots)`
+                                : "No spots available"}
+                        </Text>
+                    </View>
 
                     <Divider className="my-2 bg-slate-100" />
 
@@ -888,7 +1538,7 @@ const HomeMap = () => {
                             Estimated Cost:
                         </Text>
                         <Text className="font-bold text-indigo-700 text-xl">
-                            â‚¹{estimatedCost}
+                            ₹{estimatedCost}
                         </Text>
                     </View>
 
@@ -905,6 +1555,10 @@ const HomeMap = () => {
                             onPress={handleConfirmBooking}
                             buttonColor="#4338ca"
                             labelStyle={{ color: "white" }}
+                            disabled={
+                                !availability.isAvailable ||
+                                calculatedDuration <= 0
+                            }
                         >
                             Confirm Reservation
                         </Button>

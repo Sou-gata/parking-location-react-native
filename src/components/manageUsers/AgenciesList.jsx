@@ -2,7 +2,7 @@ import React from "react";
 import { View, FlatList, Pressable } from "react-native";
 import { Card, Avatar, Text, Badge, IconButton } from "react-native-paper";
 
-export default function AgenciesList({ agencies, onPressAgency }) {
+export default function AgenciesList({ agencies, onPressAgency, onEditAgency }) {
     return (
         <FlatList
             data={agencies}
@@ -12,7 +12,7 @@ export default function AgenciesList({ agencies, onPressAgency }) {
                 <Pressable onPress={() => onPressAgency(item)}>
                     <Card className="mb-4 bg-white border border-slate-100 rounded-xl elevation-1">
                         <Card.Content className="pb-3 flex-row items-center justify-between">
-                            <View className="flex-row items-center flex-1 pr-4">
+                            <View className="flex-row items-center flex-1 pr-2">
                                 <Avatar.Icon
                                     size={48}
                                     icon="office-building"
@@ -42,19 +42,29 @@ export default function AgenciesList({ agencies, onPressAgency }) {
                                     </Text>
                                 </View>
                             </View>
-                            <View className="items-end">
-                                <Badge className="bg-indigo-100 text-indigo-800 font-bold px-2 py-0.5 rounded text-xs mb-1">
-                                    {item.users?.length || 0} Users
-                                </Badge>
-                                <IconButton
-                                    icon="chevron-right"
-                                    iconColor="#4338ca"
-                                    size={24}
-                                    style={{
-                                        margin: 0,
-                                        marginRight: -8,
-                                    }}
-                                />
+                            <View className="flex-row items-center">
+                                <View className="items-end gap-1">
+                                    <Badge className="bg-indigo-100 text-indigo-800 font-bold px-2 py-0.5 rounded text-xs">
+                                        {item.users?.length || 0} Users
+                                    </Badge>
+                                    <Badge className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-xs">
+                                        {parseFloat(item.commission_percentage || 0).toFixed(1)}% Comm.
+                                    </Badge>
+                                    {item.wallet_balance !== undefined && (
+                                        <Text className="text-[11px] font-bold text-slate-600 mt-0.5">
+                                            ₹{parseFloat(item.wallet_balance || 0).toFixed(2)}
+                                        </Text>
+                                    )}
+                                </View>
+                                {onEditAgency && (
+                                    <IconButton
+                                        icon="pencil-outline"
+                                        iconColor="#4338ca"
+                                        size={20}
+                                        style={{ margin: 0, marginLeft: 4 }}
+                                        onPress={() => onEditAgency(item)}
+                                    />
+                                )}
                             </View>
                         </Card.Content>
                     </Card>

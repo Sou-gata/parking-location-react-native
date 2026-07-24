@@ -29,9 +29,11 @@ export default function Wallet() {
     const dispatch = useDispatch();
     const toast = useToast();
     const balance = useSelector((state) => state.user.walletBalance ?? 0.0);
+    const reservedBalance = useSelector((state) => state.user.reservedBalance ?? 0.0);
     const transactions = useSelector(
         (state) => state.user.walletTransactions ?? []
     );
+    const role = useSelector((state) => state.user.user?.role || "user");
 
     const [amount, setAmount] = useState("");
     const [loading, setLoading] = useState(false);
@@ -52,6 +54,7 @@ export default function Wallet() {
                 dispatch(
                     setWalletData({
                         walletBalance: balanceRes.data.walletBalance,
+                        reservedBalance: balanceRes.data.reservedBalance,
                         walletTransactions: transactionsRes.data,
                     })
                 );
@@ -178,6 +181,49 @@ export default function Wallet() {
         }
     };
 
+    // Agency Admin Cash Withdrawal State
+    const [withdrawModalVisible, setWithdrawModalVisible] = useState(false);
+    const [withdrawAmount, setWithdrawAmount] = useState("");
+    const [submittingWithdraw, setSubmittingWithdraw] = useState(false);
+
+    const handleRequestWithdrawal = async () => {
+        const numericAmount = parseFloat(withdrawAmount);
+        if (isNaN(numericAmount) || numericAmount <= 0) {
+            toast.error("Please enter a valid withdrawal amount.", "Error", true);
+            return;
+        }
+
+        if (numericAmount > balance) {
+            toast.error(`Amount cannot exceed available earnings (₹${(balance || 0).toFixed(2)}).`, "Error", true);
+            return;
+        }
+
+        setSubmittingWithdraw(true);
+        try {
+            const res = await apiService.post("wallets/agency/withdraw", {
+                amount: numericAmount,
+            });
+
+            if (res && res.success) {
+                toast.success(
+                    "Cash withdrawal request submitted successfully! Pending Super Admin approval.",
+                    "Submitted",
+                    true
+                );
+                setWithdrawModalVisible(false);
+                setWithdrawAmount("");
+                fetchWalletData();
+            } else {
+                toast.error(res?.message || "Failed to submit withdrawal request", "Error", true);
+            }
+        } catch (error) {
+            console.error("Error submitting withdrawal:", error);
+            toast.error(error.response?.data?.message || "Request failed", "Error", true);
+        } finally {
+            setSubmittingWithdraw(false);
+        }
+    };
+
     const formatDateTime = (isoString) => {
         if (!isoString) return "-";
         const date = new Date(isoString);
@@ -205,12 +251,33 @@ export default function Wallet() {
                         color="#fff"
                     />
                 </View>
-                <Text className="text-white opacity-80 text-sm font-semibold uppercase tracking-wider mb-2">
-                    Available Balance
+                <Text className="text-white opacity-80 text-sm font-semibold uppercase tracking-wider mb-1">
+                    {role === "user" ? "Total Wallet Balance" : "Total Agency Earnings"}
                 </Text>
-                <Text className="text-white text-4xl font-extrabold mb-4">
+                <Text className="text-white text-4xl font-extrabold mb-3">
                     ₹{(balance ?? 0).toFixed(2)}
                 </Text>
+
+                {role === "user" && (
+                    <View className="flex-row justify-between mb-3 pr-4 border-t border-indigo-500/40 pt-3">
+                        <View>
+                            <Text className="text-indigo-200 text-[10px] font-bold uppercase tracking-wider">
+                                Reserved Balance
+                            </Text>
+                            <Text className="text-white text-base font-bold mt-0.5">
+                                ₹{(reservedBalance ?? 0).toFixed(2)}
+                            </Text>
+                        </View>
+                        <View className="items-end">
+                            <Text className="text-indigo-200 text-[10px] font-bold uppercase tracking-wider">
+                                Available to Use
+                            </Text>
+                            <Text className="text-emerald-300 text-base font-extrabold mt-0.5">
+                                ₹{Math.max(0, (balance ?? 0) - (reservedBalance ?? 0)).toFixed(2)}
+                            </Text>
+                        </View>
+                    </View>
+                )}
                 <View className="flex-row items-center bg-indigo-700/50 self-start px-3 py-1 rounded-full">
                     <Avatar.Icon
                         size={16}
@@ -224,62 +291,90 @@ export default function Wallet() {
                 </View>
             </Surface>
 
+            {/* Agency Admin Cash Withdrawal Card */}
+            {role === "agency_admin" && (
+                <Card className="mt-6 bg-emerald-50/50 border border-emerald-100 rounded-2xl elevation-0">
+                    <Card.Content className="p-5 flex-row items-center justify-between">
+                        <View className="flex-1 pr-3">
+                            <Text className="text-base font-bold text-slate-800">
+                                Cash Withdrawal
+                            </Text>
+                            <Text className="text-xs text-slate-500 mt-0.5">
+                                Request cash payout of your earnings to Super Admin.
+                            </Text>
+                        </View>
+                        <Button
+                            mode="contained"
+                            onPress={() => setWithdrawModalVisible(true)}
+                            buttonColor="#16a34a"
+                            textColor="white"
+                            className="rounded-xl"
+                            labelStyle={{ fontWeight: "700" }}
+                        >
+                            Request Payout
+                        </Button>
+                    </Card.Content>
+                </Card>
+            )}
+
             {/* Quick Actions Card */}
-            <Card className="mt-6 bg-white border border-slate-100 rounded-2xl elevation-1">
-                <Card.Content className="p-5">
-                    <Text className="text-base font-bold text-slate-800 mb-4">
-                        Add Money to Wallet
-                    </Text>
+            {role === "user" && (
+                <Card className="mt-6 bg-white border border-slate-100 rounded-2xl elevation-1">
+                    <Card.Content className="p-5">
+                        <Text className="text-base font-bold text-slate-800 mb-4">
+                            Add Money to Wallet
+                        </Text>
 
-                    <TextInput
-                        mode="outlined"
-                        label="Amount (₹)"
-                        placeholder="Enter amount"
-                        keyboardType="numeric"
-                        value={amount}
-                        onChangeText={setAmount}
-                        activeOutlineColor="#4338ca"
-                        outlineColor="#cbd5e1"
-                        className="bg-white mb-4"
-                        left={<TextInput.Affix text="₹" />}
-                    />
+                        <TextInput
+                            mode="outlined"
+                            label="Amount (₹)"
+                            placeholder="Enter amount"
+                            keyboardType="numeric"
+                            value={amount}
+                            onChangeText={setAmount}
+                            activeOutlineColor="#4338ca"
+                            outlineColor="#cbd5e1"
+                            className="bg-white mb-4"
+                            left={<TextInput.Affix text="₹" />}
+                        />
 
-                    {/* Quick values buttons */}
-                    <View className="flex-row justify-between mb-5">
-                        {[100, 200, 500, 1000].map((val) => (
-                            <Button
-                                key={val}
-                                mode="outlined"
-                                compact
-                                onPress={() => handleQuickAdd(val)}
-                                textColor="#4338ca"
-                                style={{
-                                    borderColor: "#4338ca",
-                                    flex: 1,
-                                    marginHorizontal: 4,
-                                }}
-                                labelStyle={{
-                                    fontSize: 12,
-                                    fontWeight: "bold",
-                                }}
-                            >
-                                +₹{val}
-                            </Button>
-                        ))}
-                    </View>
+                        {/* Quick values buttons */}
+                        <View className="flex-row justify-between mb-5">
+                            {[100, 200, 500, 1000].map((val) => (
+                                <Button
+                                    key={val}
+                                    mode="outlined"
+                                    compact
+                                    onPress={() => handleQuickAdd(val)}
+                                    textColor="#4338ca"
+                                    style={{
+                                        borderColor: "#4338ca",
+                                        flex: 1,
+                                        marginHorizontal: 4,
+                                    }}
+                                    labelStyle={{
+                                        fontSize: 12,
+                                        fontWeight: "bold",
+                                    }}
+                                >
+                                    +₹{val}
+                                </Button>
+                            ))}
+                        </View>
 
-                    <Button
-                        mode="contained"
-                        onPress={handleInitiateAddMoney}
-                        loading={loadingQr}
-                        disabled={loadingQr}
-                        className="bg-indigo-600 rounded-xl py-1"
-                        labelStyle={{ fontWeight: "bold", fontSize: 15 }}
-                    >
-                        Proceed to Add Money
-                    </Button>
-                </Card.Content>
-            </Card>
+                        <Button
+                            mode="contained"
+                            onPress={handleInitiateAddMoney}
+                            loading={loadingQr}
+                            disabled={loadingQr}
+                            className="bg-indigo-600 rounded-xl py-1"
+                            labelStyle={{ fontWeight: "bold", fontSize: 15 }}
+                        >
+                            Proceed to Add Money
+                        </Button>
+                    </Card.Content>
+                </Card>
+            )}
 
             <Text className="text-lg font-bold text-slate-800 mt-6 mb-3">
                 Transaction History
@@ -297,54 +392,69 @@ export default function Wallet() {
                 renderItem={({ item }) => {
                     const isCredit = item.type === "credit";
                     return (
-                        <View className="flex-row items-center justify-between py-3.5 border-b bg-white px-4 rounded-xl mb-2 border border-slate-50 elevation-0">
-                            <View className="flex-row items-center flex-1 pr-3">
-                                <Avatar.Icon
-                                    size={38}
-                                    icon={
-                                        isCredit
-                                            ? "plus-circle"
-                                            : "minus-circle"
-                                    }
-                                    style={{
-                                        backgroundColor: isCredit
-                                            ? "#dcfce7"
-                                            : "#fee2e2",
-                                    }}
-                                    color={isCredit ? "#15803d" : "#b91c1c"}
-                                />
-                                <View className="ml-3 flex-1">
-                                    <Text
-                                        className="text-sm font-bold text-slate-800"
-                                        numberOfLines={1}
-                                    >
-                                        {item.description}
-                                    </Text>
-                                    <View className="flex-row items-center mt-1">
-                                        <Text className="text-xs text-slate-400">
-                                            {formatDateTime(item.date)}
-                                        </Text>
+                        <View className="bg-white p-3.5 rounded-xl mb-2 border border-slate-100 elevation-0">
+                            <View className="flex-row items-center justify-between">
+                                <View className="flex-row items-center flex-1 pr-3">
+                                    <Avatar.Icon
+                                        size={38}
+                                        icon={
+                                            isCredit
+                                                ? "plus-circle"
+                                                : "minus-circle"
+                                        }
+                                        style={{
+                                            backgroundColor: isCredit
+                                                ? "#dcfce7"
+                                                : "#fee2e2",
+                                        }}
+                                        color={isCredit ? "#15803d" : "#b91c1c"}
+                                    />
+                                    <View className="ml-3 flex-1">
                                         <Text
-                                            className={`text-[10px] ml-2 font-bold px-2 py-0.5 rounded-full uppercase ${
-                                                item.status === "approved"
-                                                    ? "bg-green-100 text-green-700"
-                                                    : item.status === "rejected"
-                                                    ? "bg-red-100 text-red-700"
-                                                    : "bg-amber-100 text-amber-700"
-                                            }`}
+                                            className="text-sm font-bold text-slate-800"
+                                            numberOfLines={1}
                                         >
-                                            {item.status || "approved"}
+                                            {item.description || (isCredit ? "Wallet Deposit" : "Cash Withdrawal")}
                                         </Text>
+                                        <View className="flex-row items-center mt-1">
+                                            <Text className="text-xs text-slate-400">
+                                                {formatDateTime(item.date)}
+                                            </Text>
+                                            <Text
+                                                className={`text-[10px] ml-2 font-bold px-2 py-0.5 rounded-full uppercase ${
+                                                    item.status === "approved"
+                                                        ? "bg-green-100 text-green-700"
+                                                        : item.status === "rejected"
+                                                        ? "bg-red-100 text-red-700"
+                                                        : "bg-amber-100 text-amber-700"
+                                                }`}
+                                            >
+                                                {item.status || "approved"}
+                                            </Text>
+                                        </View>
                                     </View>
                                 </View>
+                                <Text
+                                    className={`text-sm font-extrabold ${
+                                        isCredit ? "text-green-600" : "text-red-600"
+                                    }`}
+                                >
+                                    {isCredit ? "+" : "-"} ₹{item.amount.toFixed(2)}
+                                </Text>
                             </View>
-                            <Text
-                                className={`text-sm font-extrabold ${
-                                    isCredit ? "text-green-600" : "text-red-600"
-                                }`}
-                            >
-                                {isCredit ? "+" : "-"} ₹{item.amount.toFixed(2)}
-                            </Text>
+
+                            {/* Additional details: Tx ID or Rejection Reason */}
+                            {item.transactionNumber && (
+                                <Text className="text-xs text-slate-500 mt-2 border-t border-slate-50 pt-1.5">
+                                    <Text className="font-semibold text-slate-600">Ref / Tx ID:</Text> {item.transactionNumber}
+                                </Text>
+                            )}
+                            {item.status === "rejected" && item.rejectionReason && (
+                                <View className="mt-2 p-2 bg-red-50 rounded-lg border border-red-100">
+                                    <Text className="text-xs font-bold text-red-800">Rejection Reason:</Text>
+                                    <Text className="text-xs text-red-700 mt-0.5">{item.rejectionReason}</Text>
+                                </View>
+                            )}
                         </View>
                     );
                 }}
@@ -500,6 +610,70 @@ export default function Wallet() {
                                 disabled={submitting}
                                 className="flex-1 bg-indigo-600 rounded-xl"
                                 labelStyle={{ fontWeight: "bold" }}
+                            >
+                                Submit Request
+                            </Button>
+                        </View>
+                    </ScrollView>
+                </Modal>
+
+                {/* Agency Cash Withdrawal Request Modal */}
+                <Modal
+                    visible={withdrawModalVisible}
+                    onDismiss={() => setWithdrawModalVisible(false)}
+                    contentContainerStyle={{
+                        backgroundColor: "white",
+                        padding: 24,
+                        margin: 20,
+                        borderRadius: 24,
+                        maxHeight: "80%",
+                    }}
+                >
+                    <ScrollView showsVerticalScrollIndicator={false}>
+                        <Text className="text-xl font-extrabold text-slate-800 mb-1">
+                            Request Cash Withdrawal
+                        </Text>
+                        <Text className="text-xs text-slate-500 mb-5">
+                            Submit a request to withdraw your agency earnings. Requests cannot be cancelled once submitted.
+                        </Text>
+
+                        <View className="bg-indigo-50 p-4 rounded-2xl mb-4 border border-indigo-100 flex-row justify-between items-center">
+                            <Text className="text-xs font-semibold text-slate-600 uppercase">Available Balance</Text>
+                            <Text className="text-xl font-extrabold text-indigo-700">₹{(balance || 0).toFixed(2)}</Text>
+                        </View>
+
+                        <TextInput
+                            mode="outlined"
+                            label="Withdrawal Amount (₹)"
+                            placeholder="Enter amount to withdraw"
+                            keyboardType="numeric"
+                            value={withdrawAmount}
+                            onChangeText={setWithdrawAmount}
+                            activeOutlineColor="#16a34a"
+                            outlineColor="#cbd5e1"
+                            className="bg-white mb-5"
+                            left={<TextInput.Affix text="₹" />}
+                        />
+
+                        <View className="flex-row gap-3">
+                            <Button
+                                mode="outlined"
+                                onPress={() => setWithdrawModalVisible(false)}
+                                disabled={submittingWithdraw}
+                                className="flex-1 rounded-xl border-slate-200"
+                                textColor="#64748b"
+                                labelStyle={{ fontWeight: "bold" }}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                mode="contained"
+                                onPress={handleRequestWithdrawal}
+                                loading={submittingWithdraw}
+                                disabled={submittingWithdraw}
+                                buttonColor="#16a34a"
+                                className="flex-1 rounded-xl"
+                                labelStyle={{ fontWeight: "bold", color: "white" }}
                             >
                                 Submit Request
                             </Button>

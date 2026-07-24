@@ -15,6 +15,7 @@ import {
     List,
     IconButton,
     Badge,
+    TextInput,
 } from "react-native-paper";
 import { useSelector, useDispatch } from "react-redux";
 import { logoutAndClearToken, updateUser } from "../store/slices/userSlice";
@@ -30,6 +31,74 @@ export default function Profile({ navigation }) {
 
     const [profile, setProfile] = useState(reduxUser);
     const [loading, setLoading] = useState(false);
+
+    const [drivingLicence, setDrivingLicence] = useState("");
+    const [vehiclesList, setVehiclesList] = useState([]);
+    const [newVehicleInput, setNewVehicleInput] = useState("");
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        if (profile) {
+            setDrivingLicence(profile.driving_licence || "");
+            
+            let parsedVehicles = [];
+            try {
+                if (profile.vehicle_numbers) {
+                    if (profile.vehicle_numbers.startsWith("[")) {
+                        parsedVehicles = JSON.parse(profile.vehicle_numbers);
+                    } else {
+                        parsedVehicles = profile.vehicle_numbers
+                            .split(",")
+                            .map((v) => v.trim())
+                            .filter(Boolean);
+                    }
+                }
+            } catch (e) {
+                console.error("Error parsing vehicle numbers in profile:", e);
+            }
+            setVehiclesList(parsedVehicles);
+        }
+    }, [profile]);
+
+    const handleAddVehicle = () => {
+        const cleaned = newVehicleInput.trim().toUpperCase();
+        if (!cleaned) {
+            toast.error("Please enter a valid vehicle number", "Validation Error", true);
+            return;
+        }
+        if (vehiclesList.includes(cleaned)) {
+            toast.error("This vehicle number is already added", "Validation Error", true);
+            return;
+        }
+        setVehiclesList([...vehiclesList, cleaned]);
+        setNewVehicleInput("");
+    };
+
+    const handleRemoveVehicle = (indexToRemove) => {
+        setVehiclesList(vehiclesList.filter((_, idx) => idx !== indexToRemove));
+    };
+
+    const handleSaveChanges = async () => {
+        setSaving(true);
+        try {
+            const res = await apiService.put("users/profile", {
+                driving_licence: drivingLicence.trim(),
+                vehicle_numbers: JSON.stringify(vehiclesList),
+            });
+            if (res && res.success) {
+                toast.success("Profile details updated successfully", "Success", true);
+                setProfile(res.data);
+                dispatch(updateUser(res.data));
+            } else {
+                toast.error(res?.message || "Failed to update profile details", "Error", true);
+            }
+        } catch (error) {
+            console.error("Error updating profile:", error);
+            toast.error("Failed to reach server. Please try again later.", "Error", true);
+        } finally {
+            setSaving(false);
+        }
+    };
 
     const fetchProfile = async () => {
         setLoading(true);
@@ -234,6 +303,108 @@ export default function Profile({ navigation }) {
                                     </View>
                                 </>
                             )}
+                        </Card.Content>
+                    </Card>
+                )}
+
+                {/* 3.5 Vehicles & License Details (Only for Customer role) */}
+                {roleName === ROLES.USER && (
+                    <Card className="bg-white border border-slate-100 rounded-2xl elevation-1">
+                        <Card.Content className="p-4">
+                            <Text className="text-sm font-bold text-indigo-700 uppercase tracking-wider mb-4">
+                                Vehicles & License Details
+                            </Text>
+
+                            {/* Driving License */}
+                            <TextInput
+                                label="Driving License Number"
+                                value={drivingLicence}
+                                onChangeText={setDrivingLicence}
+                                mode="outlined"
+                                dense
+                                autoCapitalize="characters"
+                                className="bg-white mb-4"
+                                outlineColor="#e2e8f0"
+                                activeOutlineColor="#4338ca"
+                                left={<TextInput.Icon icon="card-account-details-outline" />}
+                            />
+
+                            <Divider className="bg-slate-100 mb-4" />
+
+                            <Text className="text-xs font-semibold text-slate-400 mb-2">
+                                Registered Vehicle Numbers
+                            </Text>
+
+                            {/* Vehicles List */}
+                            {vehiclesList.length === 0 ? (
+                                <Text className="text-sm text-slate-400 italic mb-4">
+                                    No vehicle numbers added yet.
+                                </Text>
+                            ) : (
+                                <View className="mb-4">
+                                    {vehiclesList.map((vehicle, idx) => (
+                                        <View
+                                            key={idx}
+                                            className="flex-row justify-between items-center bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-xl mb-1.5"
+                                        >
+                                            <View className="flex-row items-center">
+                                                <IconButton
+                                                    icon="car"
+                                                    iconColor="#64748b"
+                                                    size={18}
+                                                    className="m-0 mr-1"
+                                                />
+                                                <Text className="text-sm text-slate-700 font-bold">
+                                                    {vehicle}
+                                                </Text>
+                                            </View>
+                                            <IconButton
+                                                icon="trash-can-outline"
+                                                iconColor="#ef4444"
+                                                size={18}
+                                                className="m-0"
+                                                onPress={() => handleRemoveVehicle(idx)}
+                                            />
+                                        </View>
+                                    ))}
+                                </View>
+                            )}
+
+                            {/* Add Vehicle Input */}
+                            <View className="flex-row items-center gap-2 mb-4">
+                                <TextInput
+                                    label="Add Vehicle Number"
+                                    value={newVehicleInput}
+                                    onChangeText={setNewVehicleInput}
+                                    mode="outlined"
+                                    dense
+                                    placeholder="e.g. WB-02-1234"
+                                    autoCapitalize="characters"
+                                    className="flex-1 bg-white"
+                                    outlineColor="#e2e8f0"
+                                    activeOutlineColor="#4338ca"
+                                />
+                                <Button
+                                    mode="contained"
+                                    onPress={handleAddVehicle}
+                                    buttonColor="#4338ca"
+                                    className="rounded-lg h-[40px] justify-center"
+                                >
+                                    Add
+                                </Button>
+                            </View>
+
+                            <Button
+                                mode="contained"
+                                onPress={handleSaveChanges}
+                                loading={saving}
+                                disabled={saving}
+                                buttonColor="#4338ca"
+                                className="rounded-xl py-1"
+                                labelStyle={{ fontWeight: "bold" }}
+                            >
+                                Save Changes
+                            </Button>
                         </Card.Content>
                     </Card>
                 )}

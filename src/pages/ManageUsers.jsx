@@ -6,15 +6,15 @@ import { ROLES } from "../utils/rbacConfig";
 import SuperAdminManageUsers from "./SuperAdminManageUsers";
 import AgencyAdminManageUsers from "./AgencyAdminManageUsers";
 
-export default function ManageUsers({ navigation }) {
+export default function ManageUsers({ route, navigation }) {
     const { role } = useRolePermissions();
 
     if (role === ROLES.SUPER_ADMIN) {
-        return <SuperAdminManageUsers navigation={navigation} />;
+        return <SuperAdminManageUsers route={route} navigation={navigation} />;
     }
 
     if (role === ROLES.AGENCY_ADMIN) {
-        return <AgencyAdminManageUsers navigation={navigation} />;
+        return <AgencyAdminManageUsers route={route} navigation={navigation} />;
     }
 
     return (

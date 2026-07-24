@@ -67,6 +67,21 @@ export default function EditAgencyModal({
                 mode="outlined"
                 dense
                 multiline
+                className="bg-white mb-3"
+                outlineColor="#e2e8f0"
+                activeOutlineColor="#4338ca"
+            />
+            <TextInput
+                label="Commission Percentage (%)"
+                value={
+                    data.commission_percentage !== undefined && data.commission_percentage !== null
+                        ? String(data.commission_percentage)
+                        : ""
+                }
+                onChangeText={(text) => onChangeData({ ...data, commission_percentage: text })}
+                mode="outlined"
+                dense
+                keyboardType="numeric"
                 className="bg-white mb-4"
                 outlineColor="#e2e8f0"
                 activeOutlineColor="#4338ca"

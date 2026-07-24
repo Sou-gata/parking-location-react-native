@@ -1,24 +1,27 @@
-import React, { useState } from "react";
-import { View, FlatList, StyleSheet, Pressable } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, FlatList, Pressable } from "react-native";
 import {
     Text,
     Card,
     Button,
     TextInput,
     Avatar,
-    Chip,
     Divider,
     SegmentedButtons,
     Portal,
     Modal,
 } from "react-native-paper";
+import Chip from "../components/Chip";
 import { useSelector, useDispatch } from "react-redux";
 import {
     checkInBooking,
     checkOutBooking,
     addBooking,
+    setBookings,
+    setAgencies,
 } from "../store/slices/parkingSlice";
 import useToast from "../hooks/useToast";
+import apiService from "../utils/apiService";
 
 const VEHICLE_TYPE_LABELS = {
     twoWheeler: "Two-Wheeler",
@@ -50,12 +53,51 @@ const VEHICLE_TYPE_RATES = {
     ev: 60,
 };
 
+const mapAgencyFromApi = (a) => {
+    if (!a) return null;
+    return {
+        ...a,
+        id: a.org_id || a.id,
+        name: a.org_name || a.name,
+        address: a.org_address || a.address,
+        twoWheeler_capacity:
+            a.two_wheeler_capacity !== undefined
+                ? a.two_wheeler_capacity
+                : a.twoWheeler_capacity,
+        threeWheeler_capacity:
+            a.three_wheeler_capacity !== undefined
+                ? a.three_wheeler_capacity
+                : a.threeWheeler_capacity,
+        twoWheeler_rate:
+            a.two_wheeler_rate !== undefined
+                ? parseFloat(a.two_wheeler_rate)
+                : a.twoWheeler_rate,
+        threeWheeler_rate:
+            a.three_wheeler_rate !== undefined
+                ? parseFloat(a.three_wheeler_rate)
+                : a.threeWheeler_rate,
+        car_rate:
+            a.car_rate !== undefined ? parseFloat(a.car_rate) : a.car_rate,
+        suv_rate:
+            a.suv_rate !== undefined ? parseFloat(a.suv_rate) : a.suv_rate,
+        van_rate:
+            a.van_rate !== undefined ? parseFloat(a.van_rate) : a.van_rate,
+        pickup_rate:
+            a.pickup_rate !== undefined
+                ? parseFloat(a.pickup_rate)
+                : a.pickup_rate,
+        ev_rate:
+            a.ev_rate !== undefined ? parseFloat(a.ev_rate) : a.ev_rate,
+    };
+};
+
 export default function CheckInOut() {
     const dispatch = useDispatch();
     const toast = useToast();
     const currentUser = useSelector((state) => state.user.user);
     const bookings = useSelector((state) => state.parking.bookings);
     const agencies = useSelector((state) => state.parking.agencies);
+    const [loading, setLoading] = useState(false);
 
     // Get staff's agency
     const myAgency =
@@ -73,20 +115,74 @@ export default function CheckInOut() {
     const [searchQuery, setSearchQuery] = useState("");
     const [tab, setTab] = useState("checked_in"); // checked_in (Parked), booked (Reserved), completed
 
-    // Modals
-    const [checkoutModalVisible, setCheckoutModalVisible] = useState(false);
-    const [walkinModalVisible, setWalkinModalVisible] = useState(false);
+    // Checkout state (selectedBooking serves as the open/close state for checkout modal)
     const [selectedBooking, setSelectedBooking] = useState(null);
 
-    // Walk-in form states
-    const [walkinName, setWalkinName] = useState("");
-    const [walkinPhone, setWalkinPhone] = useState("");
-    const [walkinVehicleNum, setWalkinVehicleNum] = useState("");
-    const [walkinVehicleType, setWalkinVehicleType] = useState("car");
+    // Walk-in form state (null means modal is closed, object means modal is open)
+    const [walkinForm, setWalkinForm] = useState(null);
 
-    // Checkout calculated variables
-    const [actualDuration, setActualDuration] = useState(0);
-    const [calculatedBill, setCalculatedBill] = useState(0);
+    // OTP verification state
+    const [otpState, setOtpState] = useState({
+        targetBooking: null,
+        input: "",
+    });
+
+    const fetchAgenciesAndBookings = async () => {
+        setLoading(true);
+        try {
+            let resolvedAgencyId = currentUser?.agencyId;
+            let loadedAgencies = [];
+
+            if (currentUser?.role === "super_admin") {
+                const agenciesRes = await apiService.get("agencies");
+                if (agenciesRes && agenciesRes.success) {
+                    loadedAgencies = agenciesRes.data.map(mapAgencyFromApi);
+                    dispatch(setAgencies(loadedAgencies));
+                    resolvedAgencyId = resolvedAgencyId || loadedAgencies[0]?.id;
+                }
+            } else if (currentUser?.agencyId) {
+                const agencyRes = await apiService.get(`agencies/${currentUser.agencyId}`);
+                if (agencyRes && agencyRes.success) {
+                    loadedAgencies = [mapAgencyFromApi(agencyRes.data)];
+                    dispatch(setAgencies(loadedAgencies));
+                }
+            }
+
+            if (resolvedAgencyId) {
+                const bookingsRes = await apiService.get(`bookings/agency/${resolvedAgencyId}`);
+                if (bookingsRes && bookingsRes.success) {
+                    dispatch(setBookings(bookingsRes.data));
+                }
+            }
+        } catch (error) {
+            console.error("Error fetching checkin/checkout data:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchAgenciesAndBookings();
+    }, [currentUser?.agencyId, currentUser?.role]);
+
+    // Checkout calculated variables (derived dynamically)
+    let actualDuration = 0;
+    let calculatedBill = 0;
+    if (selectedBooking) {
+        const start = new Date(selectedBooking.startTime);
+        const end = new Date();
+        const diffMs = end - start;
+        // Minimum 1 hour, rounded up to nearest half hour
+        actualDuration = Math.max(
+            1,
+            Math.ceil((diffMs / (1000 * 60 * 60)) * 2) / 2
+        );
+        calculatedBill = actualDuration * selectedBooking.hourlyRate;
+    }
+
+    const updateWalkinForm = (key, value) => {
+        setWalkinForm((prev) => (prev ? { ...prev, [key]: value } : null));
+    };
 
     // Income calculations
     const completedBookings = myAgencyBookings.filter(
@@ -114,67 +210,124 @@ export default function CheckInOut() {
         .filter((b) => b.status === tab)
         .filter(handleSearch);
 
-    const handleCheckIn = (code) => {
-        dispatch(checkInBooking(code));
-        toast.success(`Check-in successful for ${code}!`, "Checked In", true);
+    const handleCheckIn = async (code, otp = null) => {
+        try {
+            const res = await apiService.post("bookings/checkin", {
+                bookingCode: code,
+                otp: otp ? otp.trim() : undefined,
+            });
+            if (res && res.success) {
+                dispatch(checkInBooking(code));
+                toast.success(res.message || `Check-in successful for ${code}!`, "Checked In", true);
+                return true;
+            } else {
+                toast.error(res?.message || "Check-in failed.", "Error", true);
+                return false;
+            }
+        } catch (error) {
+            console.error("Check-in Error:", error);
+            const errMsg = error.response?.data?.message || error.message || "Failed to check in. Network error.";
+            toast.error(errMsg, "Error", true);
+            return false;
+        }
+    };
+
+    const triggerCheckIn = (booking) => {
+        if (booking.otp) {
+            setOtpState({
+                targetBooking: booking,
+                input: "",
+            });
+        } else {
+            handleCheckIn(booking.bookingCode);
+        }
+    };
+
+    const handleVerifyOtpAndCheckIn = async () => {
+        if (!otpState.targetBooking) return;
+        if (!otpState.input.trim()) {
+            toast.error("Please enter the 6-digit OTP.", "Error", true);
+            return;
+        }
+
+        const success = await handleCheckIn(otpState.targetBooking.bookingCode, otpState.input);
+        if (success) {
+            setOtpState({
+                targetBooking: null,
+                input: "",
+            });
+        }
     };
 
     const openCheckoutModal = (booking) => {
-        const start = new Date(booking.startTime);
-        const end = new Date();
-        const diffMs = end - start;
-        // Minimum 1 hour, rounded up to nearest half hour
-        const diffHrs = Math.max(
-            1,
-            Math.ceil((diffMs / (1000 * 60 * 60)) * 2) / 2
-        );
-
-        setActualDuration(diffHrs);
-        setCalculatedBill(diffHrs * booking.hourlyRate);
         setSelectedBooking(booking);
-        setCheckoutModalVisible(true);
     };
 
-    const handleConfirmCheckout = () => {
+    const handleConfirmCheckout = async () => {
         if (!selectedBooking) return;
-        dispatch(
-            checkOutBooking({
+        try {
+            const res = await apiService.post("bookings/checkout", {
                 bookingCode: selectedBooking.bookingCode,
-                totalBill: calculatedBill,
-                actualEndTime: new Date().toISOString(),
-            })
-        );
-        toast.success(
-            `Checked out successfully! Bill: ₹${calculatedBill}`,
-            "Checkout Complete",
-            true
-        );
-        setCheckoutModalVisible(false);
-        setSelectedBooking(null);
+            });
+
+            if (res && res.success) {
+                const finalBill = res.data?.totalBill ?? calculatedBill;
+                const endTimeStr =
+                    res.data?.endTime ||
+                    res.data?.checkoutTime ||
+                    new Date().toISOString();
+
+                dispatch(
+                    checkOutBooking({
+                        bookingCode: selectedBooking.bookingCode,
+                        totalBill: finalBill,
+                        actualEndTime: endTimeStr,
+                    })
+                );
+                toast.success(
+                    res.message ||
+                        `Checked out successfully! Bill: ₹${finalBill.toFixed(2)}`,
+                    "Checkout Complete",
+                    true
+                );
+                setSelectedBooking(null);
+                fetchAgenciesAndBookings();
+            } else {
+                toast.error(res?.message || "Checkout failed.", "Error", true);
+            }
+        } catch (error) {
+            console.error("Checkout Error:", error);
+            const errMsg =
+                error.response?.data?.message ||
+                error.message ||
+                "Failed to check out vehicle. Network error.";
+            toast.error(errMsg, "Error", true);
+        }
     };
 
     const handleRegisterWalkin = () => {
-        if (!walkinVehicleNum) {
+        if (!walkinForm?.vehicleNum) {
             toast.error("Please enter the vehicle number.", "Error", true);
             return;
         }
 
+        const vehicleType = walkinForm.vehicleType || "car";
         const bookingCode = `WK-${Math.floor(1000 + Math.random() * 9000)}`;
         const hourlyRate =
-            myAgency?.[`${walkinVehicleType}_rate`] ||
-            VEHICLE_TYPE_RATES[walkinVehicleType] ||
+            myAgency?.[`${vehicleType}_rate`] ||
+            VEHICLE_TYPE_RATES[vehicleType] ||
             40;
 
         const newBooking = {
             id: `book_${Date.now()}`,
             bookingCode,
             userId: null,
-            userName: walkinName || "Walk-In Customer",
-            userPhone: walkinPhone || "N/A",
+            userName: walkinForm.name || "Walk-In Customer",
+            userPhone: walkinForm.phone || "N/A",
             agencyId: myAgency?.id,
             agencyName: myAgency?.name,
-            vehicleType: walkinVehicleType,
-            vehicleNumber: walkinVehicleNum.toUpperCase(),
+            vehicleType: vehicleType,
+            vehicleNumber: walkinForm.vehicleNum.toUpperCase(),
             status: "checked_in", // Checked in immediately
             startTime: new Date().toISOString(),
             endTime: null,
@@ -191,12 +344,8 @@ export default function CheckInOut() {
             true
         );
 
-        // Reset fields
-        setWalkinName("");
-        setWalkinPhone("");
-        setWalkinVehicleNum("");
-        setWalkinVehicleType("car");
-        setWalkinModalVisible(false);
+        // Reset fields and close modal
+        setWalkinForm(null);
         setTab("checked_in");
     };
 
@@ -206,6 +355,15 @@ export default function CheckInOut() {
         return date.toLocaleDateString("en-IN", {
             day: "numeric",
             month: "short",
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+    };
+
+    const formatTime = (isoString) => {
+        if (!isoString) return "-";
+        const date = new Date(isoString);
+        return date.toLocaleTimeString("en-IN", {
             hour: "2-digit",
             minute: "2-digit",
         });
@@ -269,7 +427,12 @@ export default function CheckInOut() {
                 />
                 <Button
                     mode="contained"
-                    onPress={() => setWalkinModalVisible(true)}
+                    onPress={() => setWalkinForm({
+                        name: "",
+                        phone: "",
+                        vehicleNum: "",
+                        vehicleType: "car",
+                    })}
                     buttonColor="#4338ca"
                     className="h-10 justify-center rounded-lg"
                     icon="plus"
@@ -314,6 +477,8 @@ export default function CheckInOut() {
                     paddingHorizontal: 16,
                     paddingBottom: 40,
                 }}
+                refreshing={loading}
+                onRefresh={fetchAgenciesAndBookings}
                 renderItem={({ item }) => (
                     <Card className="mb-4 bg-white border border-slate-100 rounded-xl elevation-1">
                         <Card.Content className="pb-3">
@@ -374,14 +539,29 @@ export default function CheckInOut() {
                                     <Text className="font-semibold">Rate:</Text>{" "}
                                     ₹{item.hourlyRate}/hr
                                 </Text>
-                                <Text className="text-sm text-slate-600">
-                                    <Text className="font-semibold">
-                                        {item.status === "booked"
-                                            ? "Reserved For:"
-                                            : "Checked In At:"}
-                                    </Text>{" "}
-                                    {formatDateTime(item.startTime)}
-                                </Text>
+                                {item.status === "booked" ? (
+                                    <>
+                                        <Text className="text-sm text-slate-600">
+                                            <Text className="font-semibold">
+                                                Reserved For:
+                                            </Text>{" "}
+                                            {formatDateTime(item.bookingStartTime)}
+                                        </Text>
+                                        <Text className="text-sm text-slate-600">
+                                            <Text className="font-semibold">
+                                                Booking Time:
+                                            </Text>{" "}
+                                            {formatTime(item.bookingStartTime)} - {formatTime(item.bookingEndTime)} ({item.bookedDuration} Hrs)
+                                        </Text>
+                                    </>
+                                ) : (
+                                    <Text className="text-sm text-slate-600">
+                                        <Text className="font-semibold">
+                                            Checked In At:
+                                        </Text>{" "}
+                                        {formatDateTime(item.startTime)}
+                                    </Text>
+                                )}
 
                                 {item.status === "completed" && (
                                     <>
@@ -410,7 +590,7 @@ export default function CheckInOut() {
                                     <Button
                                         mode="contained"
                                         onPress={() =>
-                                            handleCheckIn(item.bookingCode)
+                                            triggerCheckIn(item)
                                         }
                                         buttonColor="#16a34a"
                                         className="flex-1 rounded-lg"
@@ -466,8 +646,8 @@ export default function CheckInOut() {
             <Portal>
                 {/* 1. Walk-In Registration Modal */}
                 <Modal
-                    visible={walkinModalVisible}
-                    onDismiss={() => setWalkinModalVisible(false)}
+                    visible={!!walkinForm}
+                    onDismiss={() => setWalkinForm(null)}
                     className="bg-white p-6 m-5 rounded-2xl max-w-[500px] self-center w-[90%]"
                 >
                     <Text className="text-lg font-bold text-slate-800 mb-4">
@@ -476,8 +656,8 @@ export default function CheckInOut() {
 
                     <TextInput
                         label="Vehicle Registration Number *"
-                        value={walkinVehicleNum}
-                        onChangeText={setWalkinVehicleNum}
+                        value={walkinForm?.vehicleNum || ""}
+                        onChangeText={(val) => updateWalkinForm("vehicleNum", val)}
                         mode="outlined"
                         dense
                         autoCapitalize="characters"
@@ -488,8 +668,8 @@ export default function CheckInOut() {
 
                     <TextInput
                         label="Customer Name (Optional)"
-                        value={walkinName}
-                        onChangeText={setWalkinName}
+                        value={walkinForm?.name || ""}
+                        onChangeText={(val) => updateWalkinForm("name", val)}
                         mode="outlined"
                         dense
                         className="bg-white mb-3"
@@ -499,8 +679,8 @@ export default function CheckInOut() {
 
                     <TextInput
                         label="Phone Number (Optional)"
-                        value={walkinPhone}
-                        onChangeText={setWalkinPhone}
+                        value={walkinForm?.phone || ""}
+                        onChangeText={(val) => updateWalkinForm("phone", val)}
                         mode="outlined"
                         dense
                         keyboardType="phone-pad"
@@ -516,9 +696,9 @@ export default function CheckInOut() {
                         {Object.keys(VEHICLE_TYPE_LABELS).map((key) => (
                             <Pressable
                                 key={key}
-                                onPress={() => setWalkinVehicleType(key)}
+                                onPress={() => updateWalkinForm("vehicleType", key)}
                                 className={`flex-row items-center px-3 py-1.5 rounded-full border ${
-                                    walkinVehicleType === key
+                                    walkinForm?.vehicleType === key
                                         ? "bg-indigo-50 border-indigo-600"
                                         : "bg-white border-slate-200"
                                 }`}
@@ -528,14 +708,14 @@ export default function CheckInOut() {
                                     icon={VEHICLE_TYPE_ICONS[key]}
                                     style={{ backgroundColor: "transparent" }}
                                     color={
-                                        walkinVehicleType === key
+                                        walkinForm?.vehicleType === key
                                             ? "#4338ca"
                                             : "#64748b"
                                     }
                                 />
                                 <Text
                                     className={`text-xs ml-1.5 font-bold ${
-                                        walkinVehicleType === key
+                                        walkinForm?.vehicleType === key
                                             ? "text-indigo-800"
                                             : "text-slate-600"
                                     }`}
@@ -551,7 +731,7 @@ export default function CheckInOut() {
                     <View className="flex-row justify-end gap-2 mt-2">
                         <Button
                             mode="outlined"
-                            onPress={() => setWalkinModalVisible(false)}
+                            onPress={() => setWalkinForm(null)}
                             textColor="#64748b"
                         >
                             Cancel
@@ -569,8 +749,8 @@ export default function CheckInOut() {
 
                 {/* 2. Checkout Billing Modal */}
                 <Modal
-                    visible={checkoutModalVisible}
-                    onDismiss={() => setCheckoutModalVisible(false)}
+                    visible={!!selectedBooking}
+                    onDismiss={() => setSelectedBooking(null)}
                     className="bg-white p-6 m-5 rounded-2xl max-w-[450px] self-center w-[90%]"
                 >
                     <Text className="text-lg font-bold text-slate-800 mb-2">
@@ -657,16 +837,74 @@ export default function CheckInOut() {
 
                     <Button
                         mode="text"
-                        onPress={() => setCheckoutModalVisible(false)}
+                        onPress={() => setSelectedBooking(null)}
                         textColor="#ef4444"
                         className="mt-2"
                     >
                         Cancel Checkout
                     </Button>
                 </Modal>
+
+                {/* 3. OTP Verification Modal */}
+                <Modal
+                    visible={!!otpState.targetBooking}
+                    onDismiss={() => {
+                        setOtpState({
+                            targetBooking: null,
+                            input: "",
+                        });
+                    }}
+                    className="bg-white p-6 m-5 rounded-2xl max-w-[400px] self-center w-[85%]"
+                >
+                    <Text className="text-lg font-bold text-slate-800 mb-2">
+                        Verify Entry OTP
+                    </Text>
+                    <Text className="text-sm text-slate-500 mb-4">
+                        Please ask the customer for the 6-digit verification OTP visible on their booking details.
+                    </Text>
+
+                    <TextInput
+                        label="Enter 6-Digit OTP *"
+                        value={otpState.input}
+                        onChangeText={(val) => setOtpState(prev => ({ ...prev, input: val }))}
+                        mode="outlined"
+                        dense
+                        keyboardType="numeric"
+                        maxLength={6}
+                        className="bg-white mb-4 text-center text-lg tracking-widest font-mono"
+                        outlineColor="#e2e8f0"
+                        activeOutlineColor="#4338ca"
+                    />
+
+                    <View className="flex-row gap-2 mt-2">
+                        <Button
+                            mode="outlined"
+                            onPress={() => {
+                                setOtpState({
+                                    targetBooking: null,
+                                    input: "",
+                                });
+                            }}
+                            className="flex-1 rounded-lg"
+                            textColor="#64748b"
+                            style={{ borderColor: "#cbd5e1" }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            mode="contained"
+                            onPress={handleVerifyOtpAndCheckIn}
+                            className="flex-1 rounded-lg"
+                            buttonColor="#4338ca"
+                            textColor="white"
+                        >
+                            Verify & Check-In
+                        </Button>
+                    </View>
+                </Modal>
             </Portal>
         </View>
     );
 }
 
-const styles = StyleSheet.create({});
+

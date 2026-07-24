@@ -32,6 +32,7 @@ export interface UserState {
     isLoggedIn: boolean;
     loading: boolean;
     walletBalance: number;
+    reservedBalance: number;
     walletTransactions: WalletTransaction[];
 }
 
@@ -41,6 +42,7 @@ const initialState: UserState = {
     isLoggedIn: false,
     loading: false,
     walletBalance: 500.0,
+    reservedBalance: 0.0,
     walletTransactions: [],
 };
 
@@ -127,10 +129,14 @@ const userSlice = createSlice({
             state,
             action: PayloadAction<{
                 walletBalance: number | string;
+                reservedBalance?: number | string;
                 walletTransactions: WalletTransaction[];
             }>
         ) => {
-            state.walletBalance = Number(action.payload.walletBalance);
+            state.walletBalance = Math.max(0, Number(action.payload.walletBalance));
+            if (action.payload.reservedBalance !== undefined) {
+                state.reservedBalance = Math.max(0, Number(action.payload.reservedBalance));
+            }
             state.walletTransactions = action.payload.walletTransactions;
         },
     },

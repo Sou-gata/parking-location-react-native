@@ -77,18 +77,7 @@ const ParkingDetailDrawer = ({
 
                 {/* Details Grid */}
                 <View className="flex-row justify-between mb-6">
-                    <View className="items-center flex-1">
-                        <MaterialDesignIcons
-                            name="currency-usd"
-                            size={28}
-                            color="#4338ca"
-                        />
-                        <Text className="mt-1 font-bold text-gray-800">
-                            ₹{location?.price || "40"}/hr
-                        </Text>
-                        <Text className="text-gray-500 text-xs">Rate</Text>
-                    </View>
-                    <View className="items-center flex-1 border-x border-gray-100">
+                    <View className="items-center flex-1 border-r border-gray-100">
                         <MaterialDesignIcons
                             name="car-multiple"
                             size={28}

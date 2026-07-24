@@ -19,6 +19,9 @@ import {
     Badge,
 } from "react-native-paper";
 import HomeMap from "../components/HomeMap";
+import UserDashboard from "./UserDashboard";
+import AgencyAdminDashboard from "./AgencyAdminDashboard";
+import SuperAdminDashboard from "./SuperAdminDashboard";
 import useRolePermissions from "../hooks/useRolePermissions";
 import { ROLES, PERMISSIONS, ROLE_DISPLAY_NAMES } from "../utils/rbacConfig";
 import PermissionGuard from "../components/PermissionGuard";
@@ -28,8 +31,9 @@ const DRAWER_WIDTH = width * 0.75;
 
 const Home = ({ navigation }) => {
     const dispatch = useDispatch();
-    const { role, hasPermission } = useRolePermissions();
+    const { role } = useRolePermissions();
     const user = useSelector((state) => state.user.user);
+    const [activeView, setActiveView] = useState("dashboard"); // 'dashboard' or 'map'
     const [drawerOpen, setDrawerOpen] = useState(false);
     const drawerAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
     const backdropAnim = useRef(new Animated.Value(0)).current;
@@ -74,14 +78,39 @@ const Home = ({ navigation }) => {
         dispatch(updateUser({ role: newRole }));
     };
 
+    const renderRoleDashboard = () => {
+        if (role === ROLES.SUPER_ADMIN) {
+            return (
+                <SuperAdminDashboard
+                    navigation={navigation}
+                    onOpenMap={() => setActiveView("map")}
+                />
+            );
+        } else if (role === ROLES.AGENCY_ADMIN || role === ROLES.AGENCY_USER) {
+            return (
+                <AgencyAdminDashboard
+                    navigation={navigation}
+                    onOpenMap={() => setActiveView("map")}
+                />
+            );
+        } else {
+            return (
+                <UserDashboard
+                    navigation={navigation}
+                    onOpenMap={() => setActiveView("map")}
+                />
+            );
+        }
+    };
+
     return (
         <View className="flex-1 bg-gray-50">
             <StatusBar backgroundColor="#4338ca" barStyle="light-content" />
 
-            {/* Header */}
+            {/* Top Navigation Bar */}
             <Surface
                 elevation={4}
-                className="bg-primary rounded-b-3xl flex-row items-center justify-between px-2"
+                className="bg-indigo-700 rounded-b-3xl flex-row items-center justify-between px-2"
                 style={{ height: 110, paddingTop: StatusBar.currentHeight }}
             >
                 <IconButton
@@ -90,20 +119,30 @@ const Home = ({ navigation }) => {
                     size={28}
                     onPress={() => toggleDrawer(true)}
                 />
+
                 <Text className="text-white text-xl font-bold">
-                    Parking Locator
+                    {activeView === "dashboard" ? "Dashboard" : "Map View"}
                 </Text>
+
                 <IconButton
-                    icon="bell"
+                    icon={activeView === "dashboard" ? "map-marker" : "view-dashboard"}
                     iconColor="white"
                     size={24}
-                    onPress={() => {}}
+                    onPress={() =>
+                        setActiveView(
+                            activeView === "dashboard" ? "map" : "dashboard"
+                        )
+                    }
                 />
             </Surface>
 
-            {/* Main Content - Map with Search */}
+            {/* Main Active View */}
             <View className="flex-1">
-                <HomeMap />
+                {activeView === "dashboard" ? (
+                    renderRoleDashboard()
+                ) : (
+                    <HomeMap />
+                )}
             </View>
 
             {/* Backdrop */}
@@ -199,10 +238,22 @@ const Home = ({ navigation }) => {
                         >
                             <Drawer.Section showDivider={false}>
                                 <Drawer.Item
-                                    icon="home"
-                                    label="Home"
-                                    active={true}
-                                    onPress={() => toggleDrawer(false)}
+                                    icon="view-dashboard"
+                                    label="Dashboard"
+                                    active={activeView === "dashboard"}
+                                    onPress={() => {
+                                        setActiveView("dashboard");
+                                        toggleDrawer(false);
+                                    }}
+                                />
+                                <Drawer.Item
+                                    icon="map-search"
+                                    label="Map View"
+                                    active={activeView === "map"}
+                                    onPress={() => {
+                                        setActiveView("map");
+                                        toggleDrawer(false);
+                                    }}
                                 />
                                 <Drawer.Item
                                     icon="account"
@@ -226,10 +277,16 @@ const Home = ({ navigation }) => {
                                         }}
                                     />
                                 </PermissionGuard>
-                                {role === ROLES.USER && (
+                                {(role === ROLES.USER ||
+                                    role === ROLES.SUPER_ADMIN ||
+                                    role === ROLES.AGENCY_ADMIN) && (
                                     <Drawer.Item
                                         icon="wallet"
-                                        label="Wallet"
+                                        label={
+                                            role === ROLES.USER
+                                                ? "Wallet"
+                                                : "Earnings"
+                                        }
                                         onPress={() => {
                                             toggleDrawer(false);
                                             navigation.navigate("Wallet");

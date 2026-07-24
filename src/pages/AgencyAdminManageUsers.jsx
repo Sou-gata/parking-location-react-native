@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { View, ScrollView, ActivityIndicator } from "react-native";
-import { TextInput, Chip, Portal } from "react-native-paper";
+import { TextInput, Portal } from "react-native-paper";
+import Chip from "../components/Chip";
 import { useSelector, useDispatch } from "react-redux";
 import useToast from "../hooks/useToast";
 import useRolePermissions from "../hooks/useRolePermissions";
@@ -495,7 +496,7 @@ export default function AgencyAdminManageUsers({ navigation }) {
                         <Chip
                             selected={selectedRoleFilter === "all"}
                             onPress={() => setSelectedRoleFilter("all")}
-                            className="mr-2 h-9 items-center justify-center rounded-full"
+                            className="mr-2 h-9"
                             selectedColor={
                                 selectedRoleFilter === "all"
                                     ? "#fff"
@@ -519,7 +520,7 @@ export default function AgencyAdminManageUsers({ navigation }) {
                                     onPress={() =>
                                         setSelectedRoleFilter(roleValue)
                                     }
-                                    className="mr-2 h-9 items-center justify-center rounded-full"
+                                    className="mr-2 h-9"
                                     selectedColor={
                                         selectedRoleFilter === roleValue
                                             ? "#fff"

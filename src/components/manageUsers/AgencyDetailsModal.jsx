@@ -71,6 +71,25 @@ export default function AgencyDetailsModal({
                     </View>
                 </View>
 
+                {/* Commission & Financials */}
+                <Card className="mb-4 bg-emerald-50/60 border border-emerald-100 rounded-xl" elevation={0}>
+                    <Card.Content className="p-3 flex-row justify-around items-center">
+                        <View className="items-center">
+                            <Text className="text-xs font-semibold text-slate-500 uppercase">Commission Rate</Text>
+                            <Text className="text-lg font-bold text-emerald-800 mt-0.5">
+                                {parseFloat(agency.commission_percentage || 0).toFixed(2)}%
+                            </Text>
+                        </View>
+                        <View className="h-8 w-[1px] bg-emerald-200" />
+                        <View className="items-center">
+                            <Text className="text-xs font-semibold text-slate-500 uppercase">Agency Balance</Text>
+                            <Text className="text-lg font-bold text-indigo-900 mt-0.5">
+                                ₹{parseFloat(agency.wallet_balance || 0).toFixed(2)}
+                            </Text>
+                        </View>
+                    </Card.Content>
+                </Card>
+
                 {/* Email, Address, Landmark, Coordinates */}
                 <Card className="mb-4 bg-slate-50 border border-slate-100 rounded-xl" elevation={0}>
                     <Card.Content className="p-3 gap-2">

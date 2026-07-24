@@ -3,11 +3,11 @@ import { View, ScrollView, Pressable, ActivityIndicator } from "react-native";
 import {
     Text,
     TextInput,
-    Chip,
     SegmentedButtons,
     Portal,
     IconButton,
 } from "react-native-paper";
+import Chip from "../components/Chip";
 import { useSelector, useDispatch } from "react-redux";
 import useToast from "../hooks/useToast";
 import useRolePermissions from "../hooks/useRolePermissions";
@@ -34,23 +34,49 @@ import AgenciesList from "../components/manageUsers/AgenciesList";
 import AgencyDetailsModal from "../components/manageUsers/AgencyDetailsModal";
 import WalletRequestsTab from "../components/manageUsers/WalletRequestsTab";
 import WalletDetailsModal from "../components/manageUsers/WalletDetailsModal";
+import WithdrawalActionModal from "../components/manageUsers/WithdrawalActionModal";
+import AdminTransactionHistoryTab from "../components/manageUsers/AdminTransactionHistoryTab";
 
-export default function SuperAdminManageUsers({ navigation }) {
+export default function SuperAdminManageUsers({ route, navigation }) {
     const toast = useToast();
     const dispatch = useDispatch();
     const { role } = useRolePermissions();
 
-    const [tab, setTab] = useState("requests"); // "requests" or "active"
+    const [tab, setTab] = useState(route?.params?.initialTab || "requests");
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedRoleFilter, setSelectedRoleFilter] = useState("all");
+
+    const handleTabChange = (selectedTab) => {
+        setTab(selectedTab);
+        setSearchQuery("");
+        setSelectedRoleFilter("all");
+        setSelectedAgency(null);
+    };
+
+    useEffect(() => {
+        if (route?.params?.initialTab) {
+            handleTabChange(route.params.initialTab);
+        }
+    }, [route?.params?.initialTab]);
 
     // API state
     const [apiAgencies, setApiAgencies] = useState([]);
     const [apiRequests, setApiRequests] = useState([]);
-    const [walletRequests, setWalletRequests] = useState([]);
+    const [userWalletRequests, setUserWalletRequests] = useState([]);
+    const [agencyWithdrawalRequests, setAgencyWithdrawalRequests] = useState(
+        []
+    );
+    const [adminHistory, setAdminHistory] = useState([]);
+    const [selectedAgencyFilterId, setSelectedAgencyFilterId] = useState("all");
     const [apiStaff, setApiStaff] = useState([]);
     const [apiLoading, setApiLoading] = useState(false);
     const [useApiData, setUseApiData] = useState(false);
+
+    // Agency Withdrawal Modal states
+    const [withdrawalModalVisible, setWithdrawalModalVisible] = useState(false);
+    const [selectedWithdrawalRequest, setSelectedWithdrawalRequest] =
+        useState(null);
+    const [withdrawalActionType, setWithdrawalActionType] = useState("approve"); // "approve" or "reject"
 
     // Fetch from Redux
     const reduxRequests = useSelector(
@@ -82,11 +108,26 @@ export default function SuperAdminManageUsers({ navigation }) {
                 setApiRequests(requestsRes.data);
             }
 
-            // Fetch pending wallet requests
-            const walletRes = await apiService.get("wallets/requests");
-            if (walletRes && walletRes.success) {
-                setWalletRequests(walletRes.data);
+            // Fetch pending customer deposit requests
+            const customerWalletRes = await apiService.get("wallets/requests");
+            if (customerWalletRes && customerWalletRes.success) {
+                setUserWalletRequests(customerWalletRes.data);
             }
+
+            // Fetch pending agency withdrawal requests
+            const agencyWithdrawRes = await apiService.get(
+                "wallets/agency/requests"
+            );
+            if (agencyWithdrawRes && agencyWithdrawRes.success) {
+                setAgencyWithdrawalRequests(agencyWithdrawRes.data);
+            }
+
+            // Fetch admin transaction history
+            const historyRes = await apiService.get("wallets/admin/history");
+            if (historyRes && historyRes.success) {
+                setAdminHistory(historyRes.data);
+            }
+
             setUseApiData(true);
         } catch (error) {
             console.error(
@@ -274,6 +315,12 @@ export default function SuperAdminManageUsers({ navigation }) {
     };
 
     const handleApproveWallet = async (request) => {
+        if (request.type === "agency_withdrawal" || request.agencyId) {
+            setSelectedWithdrawalRequest(request);
+            setWithdrawalActionType("approve");
+            setWithdrawalModalVisible(true);
+            return;
+        }
         try {
             const res = await apiService.post(
                 `wallets/requests/${request.id}/approve`
@@ -301,6 +348,12 @@ export default function SuperAdminManageUsers({ navigation }) {
     };
 
     const handleRejectWallet = async (request) => {
+        if (request.type === "agency_withdrawal" || request.agencyId) {
+            setSelectedWithdrawalRequest(request);
+            setWithdrawalActionType("reject");
+            setWithdrawalModalVisible(true);
+            return;
+        }
         try {
             const res = await apiService.post(
                 `wallets/requests/${request.id}/reject`
@@ -327,6 +380,57 @@ export default function SuperAdminManageUsers({ navigation }) {
         }
     };
 
+    const handleConfirmWithdrawalSubmit = async (data) => {
+        if (!selectedWithdrawalRequest) return;
+        const reqId = selectedWithdrawalRequest.id;
+
+        if (withdrawalActionType === "approve") {
+            const res = await apiService.post(
+                `wallets/agency/requests/${reqId}/approve`,
+                data
+            );
+            if (res && res.success) {
+                toast.success(
+                    `Approved cash withdrawal of ₹${parseFloat(
+                        selectedWithdrawalRequest.amount || 0
+                    ).toFixed(2)} for ${
+                        selectedWithdrawalRequest.agencyName || "Agency"
+                    }!`,
+                    "Approved",
+                    true
+                );
+                fetchData();
+            } else {
+                toast.error(
+                    res?.message || "Failed to approve withdrawal",
+                    "Error",
+                    true
+                );
+            }
+        } else {
+            const res = await apiService.post(
+                `wallets/agency/requests/${reqId}/reject`,
+                data
+            );
+            if (res && res.success) {
+                toast.success(
+                    `Rejected withdrawal request for ${
+                        selectedWithdrawalRequest.agencyName || "Agency"
+                    }.`,
+                    "Rejected",
+                    true
+                );
+                fetchData();
+            } else {
+                toast.error(
+                    res?.message || "Failed to reject withdrawal",
+                    "Error",
+                    true
+                );
+            }
+        }
+    };
+
     // Open Edit Agency Modal
     const openEditAgency = (agency) => {
         setAgencyEditData({
@@ -336,6 +440,10 @@ export default function SuperAdminManageUsers({ navigation }) {
             email: agency.email,
             phone_number: agency.phone_number,
             address: agency.address,
+            commission_percentage:
+                agency.commission_percentage !== undefined
+                    ? agency.commission_percentage
+                    : 0,
         });
         setEditAgencyVisible(true);
     };
@@ -345,6 +453,12 @@ export default function SuperAdminManageUsers({ navigation }) {
             toast.error("Please fill in required fields.", "Error", true);
             return;
         }
+        const parsedCommission = isNaN(
+            parseFloat(agencyEditData.commission_percentage)
+        )
+            ? 0
+            : parseFloat(agencyEditData.commission_percentage);
+
         if (useApiData) {
             try {
                 const res = await apiService.put(
@@ -353,6 +467,7 @@ export default function SuperAdminManageUsers({ navigation }) {
                         org_name: agencyEditData.name,
                         phone_number: agencyEditData.phone_number,
                         org_address: agencyEditData.address,
+                        commission_percentage: parsedCommission,
                     }
                 );
                 if (res && res.success) {
@@ -375,7 +490,12 @@ export default function SuperAdminManageUsers({ navigation }) {
                 toast.error("Failed to update agency via API", "Error", true);
             }
         } else {
-            dispatch(updateAgency(agencyEditData));
+            dispatch(
+                updateAgency({
+                    ...agencyEditData,
+                    commission_percentage: parsedCommission,
+                })
+            );
             toast.success(
                 "Agency profile updated successfully!",
                 "Success",
@@ -384,7 +504,11 @@ export default function SuperAdminManageUsers({ navigation }) {
             setEditAgencyVisible(false);
 
             if (selectedAgency && selectedAgency.id === agencyEditData.id) {
-                setSelectedAgency((prev) => ({ ...prev, ...agencyEditData }));
+                setSelectedAgency((prev) => ({
+                    ...prev,
+                    ...agencyEditData,
+                    commission_percentage: parsedCommission,
+                }));
             }
         }
     };
@@ -731,13 +855,6 @@ export default function SuperAdminManageUsers({ navigation }) {
         setRoleModalVisible(true);
     };
 
-    const handleTabChange = (selectedTab) => {
-        setTab(selectedTab);
-        setSearchQuery("");
-        setSelectedRoleFilter("all");
-        setSelectedAgency(null);
-    };
-
     return (
         <View className="flex-1 bg-slate-50">
             {/* Search Input Bar */}
@@ -777,30 +894,62 @@ export default function SuperAdminManageUsers({ navigation }) {
                 />
             )}
 
-            {/* Tab Segment Selector */}
-            <View className="px-4 py-3 bg-white">
-                <SegmentedButtons
-                    value={tab}
-                    onValueChange={handleTabChange}
-                    buttons={[
+            {/* Tab Selector Bar */}
+            <View className="bg-white py-2.5 border-b border-slate-100">
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ paddingHorizontal: 16 }}
+                >
+                    {[
                         {
-                            value: "requests",
-                            label: `Requests (${activeRequests.length})`,
-                            showSelectedCheck: true,
+                            key: "requests",
+                            label: `Registrations (${activeRequests.length})`,
+                            icon: "account-clock",
                         },
                         {
-                            value: "active",
+                            key: "active",
                             label: `Agencies (${activeAgencies.length})`,
-                            showSelectedCheck: true,
+                            icon: "domain",
                         },
                         {
-                            value: "wallet",
-                            label: `Wallet (${walletRequests.length})`,
-                            showSelectedCheck: true,
+                            key: "user_wallets",
+                            label: `User Deposits (${userWalletRequests.length})`,
+                            icon: "wallet-plus",
                         },
-                    ]}
-                    theme={{ colors: { primary: "#4338ca" } }}
-                />
+                        {
+                            key: "agency_withdrawals",
+                            label: `Agency Withdrawals (${agencyWithdrawalRequests.length})`,
+                            icon: "cash-minus",
+                        },
+                        { key: "history", label: "History", icon: "history" },
+                    ].map((t) => {
+                        const isSelected = tab === t.key;
+                        return (
+                            <Chip
+                                key={t.key}
+                                selected={isSelected}
+                                icon={t.icon}
+                                onPress={() => handleTabChange(t.key)}
+                                className="mr-2 h-9"
+                                style={{
+                                    backgroundColor: isSelected
+                                        ? "#4338ca"
+                                        : "#f1f5f9",
+                                    borderColor: isSelected
+                                        ? "#4338ca"
+                                        : "#cbd5e1",
+                                }}
+                                textStyle={{
+                                    color: isSelected ? "#ffffff" : "#334155",
+                                    fontWeight: isSelected ? "700" : "600",
+                                }}
+                            >
+                                {t.label}
+                            </Chip>
+                        );
+                    })}
+                </ScrollView>
             </View>
 
             {/* Role Filter Pills (Drill-down view) */}
@@ -814,41 +963,54 @@ export default function SuperAdminManageUsers({ navigation }) {
                         <Chip
                             selected={selectedRoleFilter === "all"}
                             onPress={() => setSelectedRoleFilter("all")}
-                            className="mr-2 h-9 items-center justify-center rounded-full"
-                            selectedColor={
-                                selectedRoleFilter === "all"
-                                    ? "#fff"
-                                    : "#64748b"
-                            }
+                            className="mr-2 h-9"
                             style={{
                                 backgroundColor:
                                     selectedRoleFilter === "all"
                                         ? "#4338ca"
                                         : "#f1f5f9",
+                                borderColor:
+                                    selectedRoleFilter === "all"
+                                        ? "#4338ca"
+                                        : "#cbd5e1",
+                            }}
+                            textStyle={{
+                                color:
+                                    selectedRoleFilter === "all"
+                                        ? "#ffffff"
+                                        : "#334155",
+                                fontWeight:
+                                    selectedRoleFilter === "all"
+                                        ? "700"
+                                        : "600",
                             }}
                         >
                             All Roles
                         </Chip>
                         {Object.keys(ROLES).map((roleKey) => {
                             const roleValue = ROLES[roleKey];
+                            const isRoleSel = selectedRoleFilter === roleValue;
                             return (
                                 <Chip
                                     key={roleValue}
-                                    selected={selectedRoleFilter === roleValue}
+                                    selected={isRoleSel}
                                     onPress={() =>
                                         setSelectedRoleFilter(roleValue)
                                     }
-                                    className="mr-2 h-9 items-center justify-center rounded-full"
-                                    selectedColor={
-                                        selectedRoleFilter === roleValue
-                                            ? "#fff"
-                                            : "#64748b"
-                                    }
+                                    className="mr-2 h-9"
                                     style={{
-                                        backgroundColor:
-                                            selectedRoleFilter === roleValue
-                                                ? "#4338ca"
-                                                : "#f1f5f9",
+                                        backgroundColor: isRoleSel
+                                            ? "#4338ca"
+                                            : "#f1f5f9",
+                                        borderColor: isRoleSel
+                                            ? "#4338ca"
+                                            : "#cbd5e1",
+                                    }}
+                                    textStyle={{
+                                        color: isRoleSel
+                                            ? "#ffffff"
+                                            : "#334155",
+                                        fontWeight: isRoleSel ? "700" : "600",
                                     }}
                                 >
                                     {ROLE_DISPLAY_NAMES[roleValue]}
@@ -893,12 +1055,26 @@ export default function SuperAdminManageUsers({ navigation }) {
                     onReject={handleReject}
                     onPressItem={handleOpenRequestDetails}
                 />
-            ) : tab === "wallet" ? (
+            ) : tab === "user_wallets" ? (
                 <WalletRequestsTab
-                    requests={walletRequests}
+                    requests={userWalletRequests}
                     onApprove={handleApproveWallet}
                     onReject={handleRejectWallet}
                     onPressItem={handleOpenWalletDetails}
+                />
+            ) : tab === "agency_withdrawals" ? (
+                <WalletRequestsTab
+                    requests={agencyWithdrawalRequests}
+                    onApprove={handleApproveWallet}
+                    onReject={handleRejectWallet}
+                    onPressItem={handleOpenWalletDetails}
+                />
+            ) : tab === "history" ? (
+                <AdminTransactionHistoryTab
+                    transactions={adminHistory}
+                    agencies={activeAgencies}
+                    selectedAgencyId={selectedAgencyFilterId}
+                    onSelectAgencyId={setSelectedAgencyFilterId}
                 />
             ) : currentSelectedAgency ? (
                 <EmployeeRosterList
@@ -920,6 +1096,7 @@ export default function SuperAdminManageUsers({ navigation }) {
                         setSelectedAgency(item);
                         setSearchQuery("");
                     }}
+                    onEditAgency={openEditAgency}
                 />
             )}
 
@@ -984,6 +1161,17 @@ export default function SuperAdminManageUsers({ navigation }) {
                     request={selectedWalletRequest}
                     onApprove={handleApproveWallet}
                     onReject={handleRejectWallet}
+                />
+
+                <WithdrawalActionModal
+                    visible={withdrawalModalVisible}
+                    onDismiss={() => {
+                        setWithdrawalModalVisible(false);
+                        setSelectedWithdrawalRequest(null);
+                    }}
+                    request={selectedWithdrawalRequest}
+                    actionType={withdrawalActionType}
+                    onSubmit={handleConfirmWithdrawalSubmit}
                 />
             </Portal>
         </View>
