@@ -128,7 +128,7 @@ export default function AddRuleModal({
                     <Chip
                         selected={form.timeUnit === "minutes"}
                         onPress={() => updateForm("timeUnit", "minutes")}
-                        compact
+                        isCompact={true}
                         showSelectedOverlay
                     >
                         Mins
@@ -136,7 +136,7 @@ export default function AddRuleModal({
                     <Chip
                         selected={form.timeUnit === "hours"}
                         onPress={() => updateForm("timeUnit", "hours")}
-                        compact
+                        isCompact={true}
                         showSelectedOverlay
                     >
                         Hours

@@ -50,6 +50,25 @@ export default function AgenciesList({ agencies, onPressAgency, onEditAgency }) 
                                     <Badge className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-xs">
                                         {parseFloat(item.commission_percentage || 0).toFixed(1)}% Comm.
                                     </Badge>
+                                    <Badge
+                                        className={
+                                            Boolean(
+                                                item.require_booking_approval !== undefined
+                                                    ? item.require_booking_approval
+                                                    : item.requireBookingApproval
+                                            )
+                                                ? "bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded text-xs"
+                                                : "bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded text-xs"
+                                        }
+                                    >
+                                        {Boolean(
+                                            item.require_booking_approval !== undefined
+                                                ? item.require_booking_approval
+                                                : item.requireBookingApproval
+                                        )
+                                            ? "Approval Req."
+                                            : "Auto Approved"}
+                                    </Badge>
                                     {item.wallet_balance !== undefined && (
                                         <Text className="text-[11px] font-bold text-slate-600 mt-0.5">
                                             ₹{parseFloat(item.wallet_balance || 0).toFixed(2)}

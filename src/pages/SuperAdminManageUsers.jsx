@@ -6,9 +6,11 @@ import {
     SegmentedButtons,
     Portal,
     IconButton,
+    Surface,
 } from "react-native-paper";
 import Chip from "../components/Chip";
 import { useSelector, useDispatch } from "react-redux";
+import { MaterialDesignIcons } from "@react-native-vector-icons/material-design-icons";
 import useToast from "../hooks/useToast";
 import useRolePermissions from "../hooks/useRolePermissions";
 import { ROLES, ROLE_DISPLAY_NAMES } from "../utils/rbacConfig";
@@ -36,6 +38,9 @@ import WalletRequestsTab from "../components/manageUsers/WalletRequestsTab";
 import WalletDetailsModal from "../components/manageUsers/WalletDetailsModal";
 import WithdrawalActionModal from "../components/manageUsers/WithdrawalActionModal";
 import AdminTransactionHistoryTab from "../components/manageUsers/AdminTransactionHistoryTab";
+import WorkingHoursApprovalModal from "../components/manageUsers/WorkingHoursApprovalModal";
+import AgencySettlementsTab from "../components/manageUsers/AgencySettlementsTab";
+import ApproveSettlementModal from "../components/manageUsers/ApproveSettlementModal";
 
 export default function SuperAdminManageUsers({ route, navigation }) {
     const toast = useToast();
@@ -66,17 +71,31 @@ export default function SuperAdminManageUsers({ route, navigation }) {
     const [agencyWithdrawalRequests, setAgencyWithdrawalRequests] = useState(
         []
     );
+    const [agencySettlements, setAgencySettlements] = useState([]);
+    const [workingHoursRequests, setWorkingHoursRequests] = useState([]);
     const [adminHistory, setAdminHistory] = useState([]);
     const [selectedAgencyFilterId, setSelectedAgencyFilterId] = useState("all");
     const [apiStaff, setApiStaff] = useState([]);
     const [apiLoading, setApiLoading] = useState(false);
     const [useApiData, setUseApiData] = useState(false);
 
+    // Settlement modal states
+    const [approveSettlementModalVisible, setApproveSettlementModalVisible] = useState(false);
+    const [settlementToApprove, setSettlementToApprove] = useState(null);
+    const [rejectSettlementModalVisible, setRejectSettlementModalVisible] = useState(false);
+    const [settlementToReject, setSettlementToReject] = useState(null);
+    const [rejectionReasonInput, setRejectionReasonInput] = useState("");
+    const [submittingSettlement, setSubmittingSettlement] = useState(false);
+
     // Agency Withdrawal Modal states
     const [withdrawalModalVisible, setWithdrawalModalVisible] = useState(false);
     const [selectedWithdrawalRequest, setSelectedWithdrawalRequest] =
         useState(null);
     const [withdrawalActionType, setWithdrawalActionType] = useState("approve"); // "approve" or "reject"
+
+    // Working Hours Modal state
+    const [whModalVisible, setWhModalVisible] = useState(false);
+    const [selectedWHRequest, setSelectedWHRequest] = useState(null);
 
     // Fetch from Redux
     const reduxRequests = useSelector(
@@ -120,6 +139,29 @@ export default function SuperAdminManageUsers({ route, navigation }) {
             );
             if (agencyWithdrawRes && agencyWithdrawRes.success) {
                 setAgencyWithdrawalRequests(agencyWithdrawRes.data);
+            }
+
+            // Fetch pending agency revenue settlements
+            try {
+                const settlementsRes = await apiService.get("wallets/agency/settlements/pending");
+                if (settlementsRes && settlementsRes.success) {
+                    setAgencySettlements(settlementsRes.data || []);
+                }
+            } catch (settleErr) {
+                console.error("Error fetching pending agency settlements:", settleErr);
+            }
+
+            // Fetch pending working hours requests
+            try {
+                const whRes = await apiService.get("working-hours/pending");
+                if (whRes && whRes.success) {
+                    setWorkingHoursRequests(whRes.data || []);
+                }
+            } catch (whErr) {
+                console.error(
+                    "Error fetching pending working hours requests:",
+                    whErr
+                );
             }
 
             // Fetch admin transaction history
@@ -918,9 +960,19 @@ export default function SuperAdminManageUsers({ route, navigation }) {
                             icon: "wallet-plus",
                         },
                         {
+                            key: "agency_settlements",
+                            label: `Revenue Settlements (${agencySettlements.length})`,
+                            icon: "cash-clock",
+                        },
+                        {
                             key: "agency_withdrawals",
                             label: `Agency Withdrawals (${agencyWithdrawalRequests.length})`,
                             icon: "cash-minus",
+                        },
+                        {
+                            key: "working_hours",
+                            label: `Working Hours (${workingHoursRequests.length})`,
+                            icon: "clock-alert-outline",
                         },
                         { key: "history", label: "History", icon: "history" },
                     ].map((t) => {
@@ -1062,6 +1114,19 @@ export default function SuperAdminManageUsers({ route, navigation }) {
                     onReject={handleRejectWallet}
                     onPressItem={handleOpenWalletDetails}
                 />
+            ) : tab === "agency_settlements" ? (
+                <AgencySettlementsTab
+                    settlements={agencySettlements}
+                    onApprove={(item) => {
+                        setSettlementToApprove(item);
+                        setApproveSettlementModalVisible(true);
+                    }}
+                    onReject={(item) => {
+                        setSettlementToReject(item);
+                        setRejectionReasonInput("");
+                        setRejectSettlementModalVisible(true);
+                    }}
+                />
             ) : tab === "agency_withdrawals" ? (
                 <WalletRequestsTab
                     requests={agencyWithdrawalRequests}
@@ -1076,6 +1141,83 @@ export default function SuperAdminManageUsers({ route, navigation }) {
                     selectedAgencyId={selectedAgencyFilterId}
                     onSelectAgencyId={setSelectedAgencyFilterId}
                 />
+            ) : tab === "working_hours" ? (
+                <ScrollView
+                    className="flex-1 p-4"
+                    contentContainerStyle={{ paddingBottom: 40 }}
+                >
+                    <Text className="text-slate-700 text-base font-bold mb-3">
+                        Pending Working Hours & Schedule Requests (
+                        {workingHoursRequests.length})
+                    </Text>
+                    {workingHoursRequests.length > 0 ? (
+                        workingHoursRequests.map((item) => (
+                            <Surface
+                                key={item.id || item.orgId}
+                                elevation={1}
+                                className="bg-white rounded-2xl p-4 mb-3 border border-slate-100 flex-row items-center justify-between"
+                            >
+                                <View className="flex-row items-center flex-1 mr-2">
+                                    <View className="w-10 h-10 rounded-xl bg-blue-100 items-center justify-center mr-3">
+                                        <MaterialDesignIcons
+                                            name="clock-edit-outline"
+                                            size={22}
+                                            color="#1d4ed8"
+                                        />
+                                    </View>
+                                    <View className="flex-1">
+                                        <Text className="font-bold text-slate-800 text-sm">
+                                            {item.orgName || "Parking Agency"}
+                                        </Text>
+                                        <Text className="text-slate-500 text-xs mt-0.5">
+                                            Days:{" "}
+                                            {(
+                                                item.pendingWorkingDays || []
+                                            ).join(", ") || "Custom Schedule"}
+                                        </Text>
+                                        <Text className="text-indigo-700 text-[11px] font-semibold mt-0.5">
+                                            {item.pendingIs247
+                                                ? "24/7 Operation"
+                                                : `${
+                                                      item.pendingOpenTime ||
+                                                      "08:00"
+                                                  } - ${
+                                                      item.pendingCloseTime ||
+                                                      "20:00"
+                                                  }`}
+                                        </Text>
+                                    </View>
+                                </View>
+                                <Pressable
+                                    className="bg-indigo-700 px-3.5 py-2 rounded-xl"
+                                    onPress={() => {
+                                        setSelectedWHRequest(item);
+                                        setWhModalVisible(true);
+                                    }}
+                                >
+                                    <Text className="text-white font-bold text-xs">
+                                        Review
+                                    </Text>
+                                </Pressable>
+                            </Surface>
+                        ))
+                    ) : (
+                        <Surface
+                            elevation={1}
+                            className="bg-white rounded-2xl p-8 items-center justify-center border border-slate-100"
+                        >
+                            <MaterialDesignIcons
+                                name="clock-check-outline"
+                                size={40}
+                                color="#cbd5e1"
+                            />
+                            <Text className="text-slate-400 font-medium text-xs mt-2 text-center">
+                                No pending working hours requests requiring
+                                approval.
+                            </Text>
+                        </Surface>
+                    )}
+                </ScrollView>
             ) : currentSelectedAgency ? (
                 <EmployeeRosterList
                     employees={filteredEmployees}
@@ -1173,6 +1315,133 @@ export default function SuperAdminManageUsers({ route, navigation }) {
                     actionType={withdrawalActionType}
                     onSubmit={handleConfirmWithdrawalSubmit}
                 />
+
+                <WorkingHoursApprovalModal
+                    visible={whModalVisible}
+                    onDismiss={() => {
+                        setWhModalVisible(false);
+                        setSelectedWHRequest(null);
+                    }}
+                    request={selectedWHRequest}
+                    onClose={() => {
+                        setWhModalVisible(false);
+                        setSelectedWHRequest(null);
+                    }}
+                    onRefresh={fetchData}
+                />
+
+                <ApproveSettlementModal
+                    visible={approveSettlementModalVisible}
+                    onDismiss={() => {
+                        setApproveSettlementModalVisible(false);
+                        setSettlementToApprove(null);
+                    }}
+                    settlement={settlementToApprove}
+                    submitting={submittingSettlement}
+                    onConfirmApprove={async (transactionId, customAmount) => {
+                        setSubmittingSettlement(true);
+                        try {
+                            const res = await apiService.post(
+                                `wallets/agency/settlements/${transactionId}/approve`,
+                                { customAmount }
+                            );
+                            if (res && res.success) {
+                                toast.success("Agency settlement approved and wallet credited successfully!");
+                                setApproveSettlementModalVisible(false);
+                                setSettlementToApprove(null);
+                                fetchData();
+                            } else {
+                                toast.error(res?.message || "Failed to approve settlement", "Error", true);
+                            }
+                        } catch (err) {
+                            console.error("Error approving settlement:", err);
+                            toast.error("Error approving settlement", "Error", true);
+                        } finally {
+                            setSubmittingSettlement(false);
+                        }
+                    }}
+                />
+
+                {/* Settlement Rejection Modal */}
+                <Portal>
+                    <Modal
+                        visible={rejectSettlementModalVisible}
+                        onDismiss={() => {
+                            setRejectSettlementModalVisible(false);
+                            setSettlementToReject(null);
+                        }}
+                        contentContainerStyle={{
+                            backgroundColor: "white",
+                            padding: 20,
+                            margin: 20,
+                            borderRadius: 24,
+                        }}
+                    >
+                        <Text className="text-xl font-extrabold text-slate-800 mb-1">
+                            Reject Revenue Settlement
+                        </Text>
+                        <Text className="text-xs text-slate-500 mb-4">
+                            Specify a reason for rejecting the revenue settlement for booking #{settlementToReject?.bookingCode || ""}.
+                        </Text>
+                        <TextInput
+                            mode="outlined"
+                            label="Rejection Reason"
+                            placeholder="Enter rejection reason"
+                            value={rejectionReasonInput}
+                            onChangeText={setRejectionReasonInput}
+                            multiline
+                            numberOfLines={3}
+                            activeOutlineColor="#dc2626"
+                            outlineColor="#cbd5e1"
+                            className="bg-white mb-5"
+                        />
+                        <View className="flex-row gap-3">
+                            <Button
+                                mode="outlined"
+                                onPress={() => setRejectSettlementModalVisible(false)}
+                                disabled={submittingSettlement}
+                                className="flex-1 rounded-xl border-slate-200"
+                                textColor="#64748b"
+                                labelStyle={{ fontWeight: "bold" }}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                mode="contained"
+                                onPress={async () => {
+                                    if (!settlementToReject) return;
+                                    setSubmittingSettlement(true);
+                                    try {
+                                        const res = await apiService.post(
+                                            `wallets/agency/settlements/${settlementToReject.id}/reject`,
+                                            { rejectionReason: rejectionReasonInput }
+                                        );
+                                        if (res && res.success) {
+                                            toast.success("Revenue settlement rejected");
+                                            setRejectSettlementModalVisible(false);
+                                            setSettlementToReject(null);
+                                            fetchData();
+                                        } else {
+                                            toast.error(res?.message || "Failed to reject settlement", "Error", true);
+                                        }
+                                    } catch (err) {
+                                        console.error("Error rejecting settlement:", err);
+                                        toast.error("Error rejecting settlement", "Error", true);
+                                    } finally {
+                                        setSubmittingSettlement(false);
+                                    }
+                                }}
+                                loading={submittingSettlement}
+                                disabled={submittingSettlement}
+                                buttonColor="#dc2626"
+                                className="flex-1 rounded-xl"
+                                labelStyle={{ fontWeight: "bold", color: "white" }}
+                            >
+                                Reject Settlement
+                            </Button>
+                        </View>
+                    </Modal>
+                </Portal>
             </Portal>
         </View>
     );

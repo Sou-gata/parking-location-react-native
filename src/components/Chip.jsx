@@ -134,11 +134,13 @@ function Chip({
     selectedColor,
     showSelectedOverlay = false,
     compact = false,
+    isCompact,
     icon,
     disabled = false,
     onClose,
     avatar,
 }) {
+    const activeCompact = isCompact !== undefined ? Boolean(isCompact) : Boolean(compact);
     const flattenedStyle = StyleSheet.flatten(style) || {};
     const flattenedTextStyle = StyleSheet.flatten(textStyle) || {};
 
@@ -196,7 +198,7 @@ function Chip({
             disabled={disabled || !onPress}
             activeOpacity={0.75}
             className={`self-start flex-row items-center justify-center rounded-full ${
-                compact ? "px-2 py-1 min-h-[24px]" : "px-2 py-1.5 min-h-[28px]"
+                activeCompact ? "px-2 py-1 min-h-[24px]" : "px-2 py-1.5 min-h-[28px]"
             }`}
             style={[
                 otherStyles,
@@ -211,7 +213,7 @@ function Chip({
                 <View className="mr-1 items-center justify-center">
                     <Icon
                         source="check"
-                        size={compact ? 12 : 14}
+                        size={activeCompact ? 12 : 14}
                         color={finalTextColor}
                     />
                 </View>
@@ -228,7 +230,7 @@ function Chip({
                     {typeof icon === "string" ? (
                         <Icon
                             source={icon}
-                            size={compact ? 12 : 14}
+                            size={activeCompact ? 12 : 14}
                             color={finalTextColor}
                         />
                     ) : (
@@ -239,7 +241,7 @@ function Chip({
 
             <Text
                 className={`font-medium text-center ${
-                    compact ? "text-[10.5px]" : "text-xs"
+                    activeCompact ? "text-[10.5px]" : "text-xs"
                 }`}
                 style={[textStyle, { color: finalTextColor }]}
             >
@@ -254,7 +256,7 @@ function Chip({
                 >
                     <Icon
                         source="close-circle"
-                        size={compact ? 14 : 16}
+                        size={activeCompact ? 14 : 16}
                         color={finalTextColor}
                     />
                 </TouchableOpacity>
@@ -262,7 +264,5 @@ function Chip({
         </TouchableOpacity>
     );
 }
-
-cssInterop(Chip, { className: "style" });
 
 export default Chip;

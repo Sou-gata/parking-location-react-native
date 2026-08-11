@@ -6010,6 +6010,11 @@ react-is@^19.1.0, react-is@^19.2.3:
   resolved "https://registry.yarnpkg.com/react-is/-/react-is-19.2.7.tgz#57668ee86a78574a542b0a539455212b2c086df2"
   integrity sha512-kZFnouyVv7eP/Phmrlo9FK+zcAdriZJvzxXHF1Sl1P377WSGe2G/JxVolhTrB/jeV47lKImhNUsijjHAAbcl/A==
 
+react-native-compressor@^2.0.3:
+  version "2.0.3"
+  resolved "https://registry.yarnpkg.com/react-native-compressor/-/react-native-compressor-2.0.3.tgz#cc7fe16ee617d11698be9b65590c568023567b58"
+  integrity sha512-T+wEEFpPkS4ewd4LLRmxBOro2e5TztDy2lmsC+8ThwzSnIguR98fHUEay3UYOKOKDB+zuFWRq7DO4JWjqKqWNg==
+
 react-native-css-interop@0.2.5:
   version "0.2.5"
   resolved "https://registry.yarnpkg.com/react-native-css-interop/-/react-native-css-interop-0.2.5.tgz#fd98be6719c17d0c4bcd35ffecc598475c103306"
@@ -6022,10 +6027,27 @@ react-native-css-interop@0.2.5:
     lightningcss "~1.27.0"
     semver "^7.6.3"
 
+react-native-image-crop-picker@^0.51.1:
+  version "0.51.1"
+  resolved "https://registry.yarnpkg.com/react-native-image-crop-picker/-/react-native-image-crop-picker-0.51.1.tgz#1e42865454030c5194e693a9e7691bf5afe460f5"
+  integrity sha512-GIFRyXJgv1dPceKd/hraK9q9V38v45rSg2ONR6RiSePcOJemkHpc/PMU86pq6lWPilDYHSxbZmea2pNMk85ayw==
+
+react-native-image-pan-zoom@^2.1.12:
+  version "2.1.12"
+  resolved "https://registry.yarnpkg.com/react-native-image-pan-zoom/-/react-native-image-pan-zoom-2.1.12.tgz#eb98bf56fb5610379bdbfdb63219cc1baca98fd2"
+  integrity sha512-BF66XeP6dzuANsPmmFsJshM2Jyh/Mo1t8FsGc1L9Q9/sVP8MJULDabB1hms+eAoqgtyhMr5BuXV3E1hJ5U5H6Q==
+
 react-native-image-picker@^8.2.1:
   version "8.2.1"
   resolved "https://registry.yarnpkg.com/react-native-image-picker/-/react-native-image-picker-8.2.1.tgz#1ac7826563cbaa5d5298d9f2acc53c69805e5393"
   integrity sha512-FBeGYJGFDjMdGCcyubDJgBAPCQ4L1D3hwLXyUU91jY9ahOZMTbluceVvRmrEKqnDPFJ0gF1NVhJ0nr1nROFLdg==
+
+react-native-image-zoom-viewer@^3.0.1:
+  version "3.0.1"
+  resolved "https://registry.yarnpkg.com/react-native-image-zoom-viewer/-/react-native-image-zoom-viewer-3.0.1.tgz#a2bd5fb3bda15e0686ce88fcde8576726495d7fb"
+  integrity sha512-la6s5DNSuq4GCRLsi5CZ29FPjgTpdCuGIRdO5T9rUrAtxrlpBPhhSnHrbmPVxsdtOUvxHacTh2Gfa9+RraMZQA==
+  dependencies:
+    react-native-image-pan-zoom "^2.1.12"
 
 react-native-is-edge-to-edge@^1.3.1:
   version "1.3.1"
@@ -6036,6 +6058,11 @@ react-native-keychain@^10.0.0:
   version "10.0.0"
   resolved "https://registry.yarnpkg.com/react-native-keychain/-/react-native-keychain-10.0.0.tgz#1de6f54d27b2376deaac4d51883c066f53b7be7b"
   integrity sha512-YzPKSAnSzGEJ12IK6CctNLU79T1W15WDrElRQ+1/FsOazGX9ucFPTQwgYe8Dy8jiSEDJKM4wkVa3g4lD2Z+Pnw==
+
+react-native-nitro-modules@^0.36.1:
+  version "0.36.1"
+  resolved "https://registry.yarnpkg.com/react-native-nitro-modules/-/react-native-nitro-modules-0.36.1.tgz#f697d96f772ce17930f15b81ad4b1e42550569ef"
+  integrity sha512-kBv/VvKqAmkXAvP1DxJMC9b/fRhh7JdSO4EUnPP46hJjrIFeFR8AwKm8mYaKZEuF014M/TVdv2vomVUW0umsQQ==
 
 react-native-paper@^5.15.0:
   version "5.15.3"

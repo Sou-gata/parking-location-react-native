@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { View, FlatList, Pressable } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { View, FlatList, Pressable, ActivityIndicator } from "react-native";
 import {
     Text,
     Card,
@@ -12,16 +12,23 @@ import {
     Modal,
 } from "react-native-paper";
 import Chip from "../components/Chip";
+import RatingModal from "../components/RatingModal";
+import ComplaintModal from "../components/ComplaintModal";
+import RefundBookingModal from "../components/RefundBookingModal";
 import { useSelector, useDispatch } from "react-redux";
 import {
     checkInBooking,
     checkOutBooking,
     addBooking,
+    cancelBooking,
     setBookings,
     setAgencies,
 } from "../store/slices/parkingSlice";
 import useToast from "../hooks/useToast";
+import useRolePermissions from "../hooks/useRolePermissions";
+import { PERMISSIONS } from "../utils/rbacConfig";
 import apiService from "../utils/apiService";
+import { debounce } from "../utils/helperFunctions";
 
 const VEHICLE_TYPE_LABELS = {
     twoWheeler: "Two-Wheeler",
@@ -86,62 +93,415 @@ const mapAgencyFromApi = (a) => {
             a.pickup_rate !== undefined
                 ? parseFloat(a.pickup_rate)
                 : a.pickup_rate,
-        ev_rate:
-            a.ev_rate !== undefined ? parseFloat(a.ev_rate) : a.ev_rate,
+        ev_rate: a.ev_rate !== undefined ? parseFloat(a.ev_rate) : a.ev_rate,
     };
 };
 
 export default function CheckInOut() {
     const dispatch = useDispatch();
     const toast = useToast();
-    const currentUser = useSelector((state) => state.user.user);
+    const { user: currentUser, hasPermission } = useRolePermissions();
     const bookings = useSelector((state) => state.parking.bookings);
     const agencies = useSelector((state) => state.parking.agencies);
     const [loading, setLoading] = useState(false);
+
+    const userAgencyId =
+        currentUser?.agencyId ||
+        currentUser?.org_id ||
+        currentUser?.orgId ||
+        currentUser?.id;
 
     // Get staff's agency
     const myAgency =
         agencies.find(
             (a) =>
-                a.id === currentUser?.agencyId || a.owner === currentUser?.name
+                String(a.id) === String(userAgencyId) ||
+                a.owner === currentUser?.name ||
+                a.owner === currentUser?.username
         ) || agencies[0]; // fallback to first agency for super admin testing
 
     // Filter bookings belonging to this agency
     const myAgencyBookings = bookings.filter(
-        (b) => b.agencyId === myAgency?.id
+        (b) =>
+            String(b.agencyId) === String(myAgency?.id) ||
+            String(b.agencyId) === String(userAgencyId)
     );
 
-    // Search and tab states
-    const [searchQuery, setSearchQuery] = useState("");
     const [tab, setTab] = useState("checked_in"); // checked_in (Parked), booked (Reserved), completed
 
-    // Checkout state (selectedBooking serves as the open/close state for checkout modal)
-    const [selectedBooking, setSelectedBooking] = useState(null);
+    const [searchState, setSearchState] = useState({
+        query: "",
+        debouncedQuery: "",
+    });
+    const { query: searchQuery, debouncedQuery: debouncedSearchQuery } =
+        searchState;
 
-    // Walk-in form state (null means modal is closed, object means modal is open)
-    const [walkinForm, setWalkinForm] = useState(null);
+    const [completedState, setCompletedState] = useState({
+        list: [],
+        page: 1,
+        hasMore: true,
+        loading: false,
+        loadingMore: false,
+        totalCount: 0,
+    });
+    const {
+        list: completedList,
+        page: completedPage,
+        hasMore: completedHasMore,
+        loading: completedLoading,
+        loadingMore: completedLoadingMore,
+        totalCount: totalCompletedCount,
+    } = completedState;
 
-    // OTP verification state
+    // Modals / Action states
+    const [selectedBooking, setSelectedBooking] = useState(null); // Checkout modal
+    const [walkinForm, setWalkinForm] = useState(null); // Walk-in modal
     const [otpState, setOtpState] = useState({
+        // OTP modal
         targetBooking: null,
         input: "",
     });
 
+    // Approval / Rejection state
+    const [selectedPendingIds, setSelectedPendingIds] = useState([]);
+    const [rejectionModalState, setRejectionModalState] = useState({
+        visible: false,
+        targetIds: [],
+        reason: "",
+        submitting: false,
+    });
+
+    const handleBatchApprovalStatus = async (
+        bookingIds,
+        action,
+        rejectionReason = ""
+    ) => {
+        try {
+            const res = await apiService.post("bookings/approval-status", {
+                bookingIds,
+                action,
+                rejectionReason,
+            });
+            if (res && res.success) {
+                toast.success(
+                    res.message ||
+                        `Booking(s) ${
+                            action === "approve" ? "approved" : "rejected"
+                        } successfully!`,
+                    "Success",
+                    true
+                );
+                setSelectedPendingIds([]);
+                setRejectionModalState({
+                    visible: false,
+                    targetIds: [],
+                    reason: "",
+                    submitting: false,
+                });
+                fetchAgenciesAndBookings();
+                return true;
+            } else {
+                toast.error(
+                    res?.message || `Failed to ${action} bookings`,
+                    "Error",
+                    true
+                );
+                return false;
+            }
+        } catch (error) {
+            console.error(`Error updating approval status:`, error);
+            toast.error(
+                error.response?.data?.message || `Failed to ${action} bookings`,
+                "Error",
+                true
+            );
+            return false;
+        }
+    };
+
+    const openRejectionModal = (ids) => {
+        setRejectionModalState({
+            visible: true,
+            targetIds: ids,
+            reason: "",
+            submitting: false,
+        });
+    };
+
+    const handleConfirmRejection = async () => {
+        if (!rejectionModalState.reason || !rejectionModalState.reason.trim()) {
+            toast.error("Please enter a rejection reason", "Required", true);
+            return;
+        }
+        setRejectionModalState((prev) => ({ ...prev, submitting: true }));
+        await handleBatchApprovalStatus(
+            rejectionModalState.targetIds,
+            "reject",
+            rejectionModalState.reason.trim()
+        );
+        setRejectionModalState((prev) => ({ ...prev, submitting: false }));
+    };
+
+    // Consolidated Customer Rating state
+    const [ratingState, setRatingState] = useState({
+        visible: false,
+        targetBooking: null,
+        existingRating: null,
+        submitting: false,
+        ratingsMap: {},
+    });
+    const {
+        visible: ratingModalVisible,
+        targetBooking: targetBookingForRating,
+        existingRating: existingUserRating,
+        submitting: submittingRating,
+        ratingsMap: userRatingsMap,
+    } = ratingState;
+
+    // Consolidated Agency Complaint state
+    const [agencyComplaintState, setAgencyComplaintState] = useState({
+        visible: false,
+        targetBooking: null,
+        submitting: false,
+        complainedBookingIds: [],
+    });
+
+    // Refund Modal State
+    const [refundModalState, setRefundModalState] = useState({
+        visible: false,
+        targetBooking: null,
+    });
+
+    // Force Cancel Modal State
+    const [forceCancelModalState, setForceCancelModalState] = useState({
+        visible: false,
+        targetBooking: null,
+        reason: "",
+        submitting: false,
+    });
+
+    const handleOpenForceCancelModal = (booking) => {
+        setForceCancelModalState({
+            visible: true,
+            targetBooking: booking,
+            reason: "",
+            submitting: false,
+        });
+    };
+
+    const handleConfirmForceCancel = async () => {
+        const { targetBooking, reason } = forceCancelModalState;
+        if (!targetBooking) return;
+
+        setForceCancelModalState((prev) => ({ ...prev, submitting: true }));
+        try {
+            const res = await apiService.post("bookings/force-cancel", {
+                bookingCode:
+                    targetBooking.bookingCode || targetBooking.booking_code,
+                reason: reason.trim() || "Cancelled by agency",
+            });
+
+            if (res && res.success) {
+                dispatch(
+                    cancelBooking(
+                        targetBooking.bookingCode || targetBooking.booking_code
+                    )
+                );
+                toast.success(
+                    res.message ||
+                        `Booking ${targetBooking.bookingCode} force cancelled successfully.`,
+                    "Force Cancelled",
+                    true
+                );
+                setForceCancelModalState({
+                    visible: false,
+                    targetBooking: null,
+                    reason: "",
+                    submitting: false,
+                });
+                fetchAgenciesAndBookings();
+            } else {
+                toast.error(
+                    res?.message || "Force cancellation failed.",
+                    "Error",
+                    true
+                );
+                setForceCancelModalState((prev) => ({
+                    ...prev,
+                    submitting: false,
+                }));
+            }
+        } catch (error) {
+            console.error("Force Cancel Error:", error);
+            const errMsg =
+                error.response?.data?.message ||
+                error.message ||
+                "Failed to force cancel booking.";
+            toast.error(errMsg, "Error", true);
+            setForceCancelModalState((prev) => ({
+                ...prev,
+                submitting: false,
+            }));
+        }
+    };
+
+    const handleOpenLodgeUserComplaint = (booking) => {
+        if (!booking.userId) {
+            toast.error(
+                "Cannot lodge complaint against walk-in/guest customer without a registered user account.",
+                "Info",
+                true
+            );
+            return;
+        }
+        setAgencyComplaintState((prev) => ({
+            ...prev,
+            targetBooking: booking,
+            visible: true,
+        }));
+    };
+
+    const handleSubmitUserComplaint = async ({ subject, description }) => {
+        const booking = agencyComplaintState.targetBooking;
+        if (!booking) return;
+        setAgencyComplaintState((prev) => ({ ...prev, submitting: true }));
+        try {
+            const res = await apiService.post("complaints", {
+                bookingId: booking.id || booking.booking_id,
+                subject,
+                description,
+                complainantType: "agency_to_user",
+            });
+            if (res && res.success) {
+                toast.success(
+                    "Complaint against user submitted successfully",
+                    "Complaint Submitted",
+                    true
+                );
+                setAgencyComplaintState((prev) => ({
+                    ...prev,
+                    visible: false,
+                    submitting: false,
+                    complainedBookingIds: [
+                        ...prev.complainedBookingIds,
+                        booking.id || booking.booking_id,
+                    ],
+                }));
+            } else {
+                toast.error(
+                    res?.message || "Failed to submit complaint",
+                    "Error",
+                    true
+                );
+                setAgencyComplaintState((prev) => ({
+                    ...prev,
+                    submitting: false,
+                }));
+            }
+        } catch (error) {
+            console.error("Error submitting agency complaint:", error);
+            const msg =
+                error.response?.data?.message || "Failed to submit complaint";
+            toast.error(msg, "Error", true);
+            setAgencyComplaintState((prev) => ({ ...prev, submitting: false }));
+        }
+    };
+
+    const handleOpenRateCustomer = async (booking) => {
+        if (!booking.userId) {
+            toast.error(
+                "Cannot rate walk-in / guest customer without a registered account.",
+                "Info",
+                true
+            );
+            return;
+        }
+        setRatingState((prev) => ({
+            ...prev,
+            targetBooking: booking,
+            existingRating: prev.ratingsMap[booking.id] || null,
+            visible: true,
+        }));
+        try {
+            const res = await apiService.get(`ratings/booking/${booking.id}`);
+            if (res && res.success && res.data?.agencyToUserRating) {
+                const ratingData = res.data.agencyToUserRating;
+                setRatingState((prev) => ({
+                    ...prev,
+                    existingRating: ratingData,
+                    ratingsMap: {
+                        ...prev.ratingsMap,
+                        [booking.id]: ratingData,
+                    },
+                }));
+            }
+        } catch (e) {
+            console.error("Error fetching agency-to-user rating:", e);
+        }
+    };
+
+    const handleSubmitCustomerRating = async ({ rating, review }) => {
+        if (!targetBookingForRating) return;
+        setRatingState((prev) => ({ ...prev, submitting: true }));
+        try {
+            const res = await apiService.post("ratings", {
+                bookingId: targetBookingForRating.id,
+                agencyId: targetBookingForRating.agencyId,
+                rating,
+                review,
+                ratingType: "agency_to_user",
+            });
+            if (res && res.success) {
+                toast.success("Customer rating submitted!", "Success", true);
+                setRatingState((prev) => ({
+                    ...prev,
+                    visible: false,
+                    submitting: false,
+                    ratingsMap: {
+                        ...prev.ratingsMap,
+                        [targetBookingForRating.id]: res.data,
+                    },
+                }));
+            } else {
+                toast.error(
+                    res?.message || "Failed to submit rating",
+                    "Error",
+                    true
+                );
+                setRatingState((prev) => ({ ...prev, submitting: false }));
+            }
+        } catch (error) {
+            console.error("Error submitting customer rating:", error);
+            const msg =
+                error.response?.data?.message || "Failed to submit rating";
+            toast.error(msg, "Error", true);
+            setRatingState((prev) => ({ ...prev, submitting: false }));
+        }
+    };
+
     const fetchAgenciesAndBookings = async () => {
         setLoading(true);
         try {
-            let resolvedAgencyId = currentUser?.agencyId;
+            const currentAgencyId =
+                currentUser?.agencyId ||
+                currentUser?.org_id ||
+                currentUser?.orgId ||
+                currentUser?.id;
+            let resolvedAgencyId = currentAgencyId;
             let loadedAgencies = [];
 
-            if (currentUser?.role === "super_admin") {
+            if (hasPermission(PERMISSIONS.MANAGE_AGENCIES)) {
                 const agenciesRes = await apiService.get("agencies");
                 if (agenciesRes && agenciesRes.success) {
                     loadedAgencies = agenciesRes.data.map(mapAgencyFromApi);
                     dispatch(setAgencies(loadedAgencies));
-                    resolvedAgencyId = resolvedAgencyId || loadedAgencies[0]?.id;
+                    resolvedAgencyId =
+                        resolvedAgencyId || loadedAgencies[0]?.id;
                 }
-            } else if (currentUser?.agencyId) {
-                const agencyRes = await apiService.get(`agencies/${currentUser.agencyId}`);
+            } else if (currentAgencyId) {
+                const agencyRes = await apiService.get(
+                    `agencies/${currentAgencyId}`
+                );
                 if (agencyRes && agencyRes.success) {
                     loadedAgencies = [mapAgencyFromApi(agencyRes.data)];
                     dispatch(setAgencies(loadedAgencies));
@@ -149,7 +509,9 @@ export default function CheckInOut() {
             }
 
             if (resolvedAgencyId) {
-                const bookingsRes = await apiService.get(`bookings/agency/${resolvedAgencyId}`);
+                const bookingsRes = await apiService.get(
+                    `bookings/agency/${resolvedAgencyId}`
+                );
                 if (bookingsRes && bookingsRes.success) {
                     dispatch(setBookings(bookingsRes.data));
                 }
@@ -163,7 +525,138 @@ export default function CheckInOut() {
 
     useEffect(() => {
         fetchAgenciesAndBookings();
-    }, [currentUser?.agencyId, currentUser?.role]);
+    }, [
+        currentUser?.agencyId,
+        currentUser?.org_id,
+        currentUser?.orgId,
+        currentUser?.id,
+        currentUser?.role,
+    ]);
+
+    // Backend completed bookings fetcher (pagination & search)
+    const fetchCompletedBookings = useCallback(
+        async ({ page = 1, search = searchQuery, isLoadMore = false } = {}) => {
+            const agencyId = myAgency?.id;
+            if (!agencyId) return;
+
+            if (isLoadMore) {
+                setCompletedState((prev) => ({ ...prev, loadingMore: true }));
+            } else {
+                setCompletedState((prev) => ({ ...prev, loading: true }));
+            }
+
+            try {
+                const queryParams = new URLSearchParams({
+                    status: "completed",
+                    page: String(page),
+                    limit: "10",
+                });
+                if (search && search.trim()) {
+                    queryParams.append("search", search.trim());
+                }
+
+                const res = await apiService.get(
+                    `bookings/agency/${agencyId}?${queryParams.toString()}`
+                );
+
+                if (res && res.success) {
+                    const items =
+                        res.data?.items ||
+                        (Array.isArray(res.data) ? res.data : []);
+                    const pagination = res.data?.pagination || {};
+
+                    setCompletedState((prev) => {
+                        const existingIds = new Set(
+                            prev.list.map((i) => String(i.id))
+                        );
+                        const newUniqueItems = items.filter(
+                            (i) => !existingIds.has(String(i.id))
+                        );
+                        return {
+                            ...prev,
+                            list: isLoadMore
+                                ? [...prev.list, ...newUniqueItems]
+                                : items,
+                            page,
+                            hasMore: pagination.hasMore ?? items.length === 10,
+                            totalCount:
+                                pagination.totalCount !== undefined
+                                    ? pagination.totalCount
+                                    : prev.totalCount,
+                            loading: false,
+                            loadingMore: false,
+                        };
+                    });
+                } else {
+                    setCompletedState((prev) => ({
+                        ...prev,
+                        loading: false,
+                        loadingMore: false,
+                    }));
+                }
+            } catch (err) {
+                console.error("Error fetching completed bookings:", err);
+                setCompletedState((prev) => ({
+                    ...prev,
+                    loading: false,
+                    loadingMore: false,
+                }));
+            }
+        },
+        [myAgency?.id]
+    );
+
+    // Debounced search setter using HOF debounce from helperFunctions.js (800ms pause)
+    const debouncedSetSearch = useCallback(
+        debounce((val) => {
+            setSearchState((prev) => ({ ...prev, debouncedQuery: val }));
+        }, 800),
+        []
+    );
+
+    const handleSearchChange = (text) => {
+        setSearchState((prev) => ({ ...prev, query: text }));
+        debouncedSetSearch(text);
+    };
+
+    // Instant search submit on Enter / Search keyboard press
+    const handleSearchSubmit = () => {
+        if (debouncedSetSearch.cancel) debouncedSetSearch.cancel();
+        setSearchState((prev) => ({ ...prev, debouncedQuery: prev.query }));
+        if (tab === "completed") {
+            fetchCompletedBookings({
+                page: 1,
+                search: searchQuery,
+                isLoadMore: false,
+            });
+        }
+    };
+
+    // Trigger backend search and pagination when tab or debouncedSearchQuery changes
+    useEffect(() => {
+        if (tab === "completed") {
+            fetchCompletedBookings({
+                page: 1,
+                search: debouncedSearchQuery,
+                isLoadMore: false,
+            });
+        }
+    }, [tab, debouncedSearchQuery, fetchCompletedBookings]);
+
+    const handleLoadMoreCompleted = () => {
+        if (
+            tab === "completed" &&
+            !completedLoadingMore &&
+            !completedLoading &&
+            completedHasMore
+        ) {
+            fetchCompletedBookings({
+                page: completedPage + 1,
+                search: debouncedSearchQuery,
+                isLoadMore: true,
+            });
+        }
+    };
 
     // Checkout calculated variables (derived dynamically)
     let actualDuration = 0;
@@ -206,9 +699,12 @@ export default function CheckInOut() {
         );
     };
 
-    const filteredBookings = myAgencyBookings
-        .filter((b) => b.status === tab)
-        .filter(handleSearch);
+    const filteredBookings =
+        tab === "completed"
+            ? completedList
+            : myAgencyBookings
+                  .filter((b) => b.status === tab)
+                  .filter(handleSearch);
 
     const handleCheckIn = async (code, otp = null) => {
         try {
@@ -218,7 +714,11 @@ export default function CheckInOut() {
             });
             if (res && res.success) {
                 dispatch(checkInBooking(code));
-                toast.success(res.message || `Check-in successful for ${code}!`, "Checked In", true);
+                toast.success(
+                    res.message || `Check-in successful for ${code}!`,
+                    "Checked In",
+                    true
+                );
                 return true;
             } else {
                 toast.error(res?.message || "Check-in failed.", "Error", true);
@@ -226,7 +726,10 @@ export default function CheckInOut() {
             }
         } catch (error) {
             console.error("Check-in Error:", error);
-            const errMsg = error.response?.data?.message || error.message || "Failed to check in. Network error.";
+            const errMsg =
+                error.response?.data?.message ||
+                error.message ||
+                "Failed to check in. Network error.";
             toast.error(errMsg, "Error", true);
             return false;
         }
@@ -250,7 +753,10 @@ export default function CheckInOut() {
             return;
         }
 
-        const success = await handleCheckIn(otpState.targetBooking.bookingCode, otpState.input);
+        const success = await handleCheckIn(
+            otpState.targetBooking.bookingCode,
+            otpState.input
+        );
         if (success) {
             setOtpState({
                 targetBooking: null,
@@ -286,7 +792,9 @@ export default function CheckInOut() {
                 );
                 toast.success(
                     res.message ||
-                        `Checked out successfully! Bill: ₹${finalBill.toFixed(2)}`,
+                        `Checked out successfully! Bill: ₹${finalBill.toFixed(
+                            2
+                        )}`,
                     "Checkout Complete",
                     true
                 );
@@ -417,22 +925,46 @@ export default function CheckInOut() {
                 <TextInput
                     placeholder="Code, Vehicle, Name..."
                     value={searchQuery}
-                    onChangeText={setSearchQuery}
+                    onChangeText={handleSearchChange}
+                    onSubmitEditing={handleSearchSubmit}
+                    returnKeyType="search"
                     mode="outlined"
                     dense
                     outlineColor="#e2e8f0"
                     activeOutlineColor="#4338ca"
-                    left={<TextInput.Icon icon="magnify" />}
+                    left={
+                        <TextInput.Icon
+                            icon="magnify"
+                            onPress={handleSearchSubmit}
+                        />
+                    }
+                    right={
+                        searchQuery ? (
+                            <TextInput.Icon
+                                icon="close-circle"
+                                onPress={() => {
+                                    if (debouncedSetSearch.cancel)
+                                        debouncedSetSearch.cancel();
+                                    setSearchState({
+                                        query: "",
+                                        debouncedQuery: "",
+                                    });
+                                }}
+                            />
+                        ) : null
+                    }
                     style={{ flex: 1, backgroundColor: "white", height: 42 }}
                 />
                 <Button
                     mode="contained"
-                    onPress={() => setWalkinForm({
-                        name: "",
-                        phone: "",
-                        vehicleNum: "",
-                        vehicleType: "car",
-                    })}
+                    onPress={() =>
+                        setWalkinForm({
+                            name: "",
+                            phone: "",
+                            vehicleNum: "",
+                            vehicleType: "car",
+                        })
+                    }
                     buttonColor="#4338ca"
                     className="h-10 justify-center rounded-lg"
                     icon="plus"
@@ -449,6 +981,16 @@ export default function CheckInOut() {
                     onValueChange={setTab}
                     buttons={[
                         {
+                            value: "pending_approval",
+                            label: `Approvals (${
+                                myAgencyBookings.filter(
+                                    (b) =>
+                                        b.status === "pending_approval" ||
+                                        b.status === "pending"
+                                ).length
+                            })`,
+                        },
+                        {
                             value: "checked_in",
                             label: `Parked (${activeBookings.length})`,
                         },
@@ -462,28 +1004,197 @@ export default function CheckInOut() {
                         },
                         {
                             value: "completed",
-                            label: `Completed (${completedBookings.length})`,
+                            label: `Completed (${
+                                totalCompletedCount || completedBookings.length
+                            })`,
                         },
                     ]}
                     theme={{ colors: { primary: "#4338ca" } }}
                 />
             </View>
 
+            {/* Bulk Action Header for Pending Approvals */}
+            {tab === "pending_approval" && (
+                <View className="px-4 py-2 bg-indigo-50/80 flex-row items-center justify-between border-b border-indigo-100 mb-2">
+                    <Pressable
+                        onPress={() => {
+                            const pendingIds = myAgencyBookings
+                                .filter(
+                                    (b) =>
+                                        b.status === "pending_approval" ||
+                                        b.status === "pending"
+                                )
+                                .map((b) => b.id);
+                            if (
+                                selectedPendingIds.length === pendingIds.length
+                            ) {
+                                setSelectedPendingIds([]);
+                            } else {
+                                setSelectedPendingIds(pendingIds);
+                            }
+                        }}
+                        className="flex-row items-center py-1"
+                    >
+                        <Avatar.Icon
+                            size={26}
+                            icon={
+                                selectedPendingIds.length > 0 &&
+                                selectedPendingIds.length ===
+                                    myAgencyBookings.filter(
+                                        (b) =>
+                                            b.status === "pending_approval" ||
+                                            b.status === "pending"
+                                    ).length
+                                    ? "checkbox-marked"
+                                    : "checkbox-blank-outline"
+                            }
+                            style={{ backgroundColor: "transparent" }}
+                            color="#4338ca"
+                        />
+                        <Text className="text-xs font-bold text-indigo-900 ml-1">
+                            Select All (
+                            {
+                                myAgencyBookings.filter(
+                                    (b) =>
+                                        b.status === "pending_approval" ||
+                                        b.status === "pending"
+                                ).length
+                            }
+                            )
+                        </Text>
+                    </Pressable>
+
+                    {selectedPendingIds.length > 0 && (
+                        <View className="flex-row gap-2">
+                            <Button
+                                compact
+                                mode="contained"
+                                buttonColor="#16a34a"
+                                onPress={() =>
+                                    handleBatchApprovalStatus(
+                                        selectedPendingIds,
+                                        "approve"
+                                    )
+                                }
+                                labelStyle={{
+                                    fontSize: 11,
+                                    fontWeight: "700",
+                                    color: "white",
+                                }}
+                            >
+                                Approve ({selectedPendingIds.length})
+                            </Button>
+                            <Button
+                                compact
+                                mode="contained"
+                                buttonColor="#dc2626"
+                                onPress={() =>
+                                    openRejectionModal(selectedPendingIds)
+                                }
+                                labelStyle={{
+                                    fontSize: 11,
+                                    fontWeight: "700",
+                                    color: "white",
+                                }}
+                            >
+                                Reject ({selectedPendingIds.length})
+                            </Button>
+                        </View>
+                    )}
+                </View>
+            )}
+
             {/* Bookings List */}
             <FlatList
                 data={filteredBookings}
-                keyExtractor={(item) => item.id}
+                keyExtractor={(item) => String(item.id)}
                 contentContainerStyle={{
                     paddingHorizontal: 16,
                     paddingBottom: 40,
                 }}
-                refreshing={loading}
-                onRefresh={fetchAgenciesAndBookings}
+                refreshing={tab === "completed" ? completedLoading : loading}
+                onRefresh={() => {
+                    if (tab === "completed") {
+                        fetchCompletedBookings({
+                            page: 1,
+                            search: searchQuery,
+                            isLoadMore: false,
+                        });
+                    } else {
+                        fetchAgenciesAndBookings();
+                    }
+                }}
+                onEndReached={handleLoadMoreCompleted}
+                onEndReachedThreshold={0.4}
+                ListFooterComponent={
+                    tab === "completed" && completedLoadingMore ? (
+                        <View className="py-4 items-center flex-row justify-center gap-2">
+                            <ActivityIndicator size="small" color="#4338ca" />
+                            <Text className="text-xs text-slate-500 font-semibold">
+                                Loading more completed vehicles...
+                            </Text>
+                        </View>
+                    ) : null
+                }
                 renderItem={({ item }) => (
                     <Card className="mb-4 bg-white border border-slate-100 rounded-xl elevation-1">
                         <Card.Content className="pb-3">
                             <View className="flex-row items-center justify-between">
                                 <View className="flex-row items-center flex-1 pr-2">
+                                    {tab === "pending_approval" && (
+                                        <Pressable
+                                            onPress={() => {
+                                                if (
+                                                    selectedPendingIds.includes(
+                                                        item.id
+                                                    )
+                                                ) {
+                                                    setSelectedPendingIds(
+                                                        (prev) =>
+                                                            prev.filter(
+                                                                (id) =>
+                                                                    id !==
+                                                                    item.id
+                                                            )
+                                                    );
+                                                } else {
+                                                    setSelectedPendingIds(
+                                                        (prev) => [
+                                                            ...prev,
+                                                            item.id,
+                                                        ]
+                                                    );
+                                                }
+                                            }}
+                                            className="mr-2"
+                                        >
+                                            <Avatar.Icon
+                                                size={28}
+                                                icon={
+                                                    selectedPendingIds.includes(
+                                                        item.id
+                                                    )
+                                                        ? "checkbox-marked"
+                                                        : "checkbox-blank-outline"
+                                                }
+                                                style={{
+                                                    backgroundColor:
+                                                        selectedPendingIds.includes(
+                                                            item.id
+                                                        )
+                                                            ? "#4338ca"
+                                                            : "#f1f5f9",
+                                                }}
+                                                color={
+                                                    selectedPendingIds.includes(
+                                                        item.id
+                                                    )
+                                                        ? "#ffffff"
+                                                        : "#64748b"
+                                                }
+                                            />
+                                        </Pressable>
+                                    )}
                                     <Avatar.Icon
                                         size={40}
                                         icon={
@@ -510,7 +1221,7 @@ export default function CheckInOut() {
                                     </View>
                                 </View>
                                 <Chip
-                                    compact
+                                    isCompact={true}
                                     textStyle={{
                                         fontSize: 10,
                                         fontWeight: "bold",
@@ -539,19 +1250,24 @@ export default function CheckInOut() {
                                     <Text className="font-semibold">Rate:</Text>{" "}
                                     ₹{item.hourlyRate}/hr
                                 </Text>
-                                {item.status === "booked" ? (
+                                {item.status === "pending_approval" ||
+                                item.status === "booked" ? (
                                     <>
                                         <Text className="text-sm text-slate-600">
                                             <Text className="font-semibold">
                                                 Reserved For:
                                             </Text>{" "}
-                                            {formatDateTime(item.bookingStartTime)}
+                                            {formatDateTime(
+                                                item.bookingStartTime
+                                            )}
                                         </Text>
                                         <Text className="text-sm text-slate-600">
                                             <Text className="font-semibold">
                                                 Booking Time:
                                             </Text>{" "}
-                                            {formatTime(item.bookingStartTime)} - {formatTime(item.bookingEndTime)} ({item.bookedDuration} Hrs)
+                                            {formatTime(item.bookingStartTime)}{" "}
+                                            - {formatTime(item.bookingEndTime)}{" "}
+                                            ({item.bookedDuration} Hrs)
                                         </Text>
                                     </>
                                 ) : (
@@ -586,38 +1302,241 @@ export default function CheckInOut() {
 
                         {item.status !== "completed" && (
                             <Card.Actions className="border-t border-slate-50 px-4 py-2 bg-slate-50/50 rounded-b-xl flex-row gap-2">
+                                {(item.status === "pending_approval" ||
+                                    item.status === "pending") && (
+                                    <View className="flex-row gap-2 flex-1">
+                                        <Button
+                                            mode="contained"
+                                            onPress={() =>
+                                                handleBatchApprovalStatus(
+                                                    [item.id],
+                                                    "approve"
+                                                )
+                                            }
+                                            buttonColor="#16a34a"
+                                            className="flex-1 rounded-lg"
+                                            labelStyle={{
+                                                color: "white",
+                                                fontWeight: "700",
+                                            }}
+                                        >
+                                            Approve
+                                        </Button>
+                                        <Button
+                                            mode="outlined"
+                                            onPress={() =>
+                                                openRejectionModal([item.id])
+                                            }
+                                            textColor="#dc2626"
+                                            style={{ borderColor: "#fca5a5" }}
+                                            className="flex-1 rounded-lg"
+                                            labelStyle={{ fontWeight: "700" }}
+                                        >
+                                            Reject
+                                        </Button>
+                                    </View>
+                                )}
                                 {item.status === "booked" && (
-                                    <Button
-                                        mode="contained"
-                                        onPress={() =>
-                                            triggerCheckIn(item)
-                                        }
-                                        buttonColor="#16a34a"
-                                        className="flex-1 rounded-lg"
-                                        labelStyle={{
-                                            color: "white",
-                                            fontWeight: "700",
-                                        }}
-                                    >
-                                        Check In
-                                    </Button>
+                                    <View className="flex-row gap-2 flex-1">
+                                        <Button
+                                            mode="contained"
+                                            onPress={() => triggerCheckIn(item)}
+                                            buttonColor="#16a34a"
+                                            className="flex-1 rounded-lg"
+                                            labelStyle={{
+                                                color: "white",
+                                                fontWeight: "700",
+                                            }}
+                                        >
+                                            Check In
+                                        </Button>
+                                        <Button
+                                            mode="outlined"
+                                            onPress={() =>
+                                                handleOpenForceCancelModal(item)
+                                            }
+                                            textColor="#dc2626"
+                                            style={{ borderColor: "#fca5a5" }}
+                                            className="rounded-lg"
+                                            labelStyle={{ fontWeight: "700" }}
+                                        >
+                                            Force Cancel
+                                        </Button>
+                                    </View>
                                 )}
                                 {item.status === "checked_in" && (
-                                    <Button
-                                        mode="contained"
-                                        onPress={() => openCheckoutModal(item)}
-                                        buttonColor="#dc2626"
-                                        className="flex-1 rounded-lg"
-                                        labelStyle={{
-                                            color: "white",
-                                            fontWeight: "700",
-                                        }}
-                                    >
-                                        Checkout & Collect Bill
-                                    </Button>
+                                    <View className="flex-row gap-2 flex-1">
+                                        <Button
+                                            mode="contained"
+                                            onPress={() =>
+                                                openCheckoutModal(item)
+                                            }
+                                            buttonColor="#dc2626"
+                                            className="flex-1 rounded-lg"
+                                            labelStyle={{
+                                                color: "white",
+                                                fontWeight: "700",
+                                            }}
+                                        >
+                                            Checkout & Collect Bill
+                                        </Button>
+                                        <Button
+                                            mode="outlined"
+                                            onPress={() =>
+                                                handleOpenForceCancelModal(item)
+                                            }
+                                            textColor="#dc2626"
+                                            style={{ borderColor: "#fca5a5" }}
+                                            className="rounded-lg"
+                                            labelStyle={{ fontWeight: "700" }}
+                                        >
+                                            Force Cancel
+                                        </Button>
+                                    </View>
                                 )}
                             </Card.Actions>
                         )}
+
+                        {item.status === "completed" &&
+                            Boolean(item.userId) && (
+                                <Card.Actions className="border-t border-slate-50 px-4 py-2 bg-slate-50/50 rounded-b-xl flex-col gap-2">
+                                    {userRatingsMap[item.id] ? (
+                                        <Button
+                                            mode="contained-tonal"
+                                            icon="star"
+                                            textColor="#d97706"
+                                            buttonColor="#fef3c7"
+                                            onPress={() =>
+                                                handleOpenRateCustomer(item)
+                                            }
+                                            style={{ width: "100%" }}
+                                            className="rounded-lg"
+                                            labelStyle={{ fontWeight: "700" }}
+                                        >
+                                            {`Customer Rated ${
+                                                userRatingsMap[item.id].rating
+                                            }/5 ★`}
+                                        </Button>
+                                    ) : (
+                                        <Button
+                                            mode="contained-tonal"
+                                            icon="star-outline"
+                                            textColor="#4338ca"
+                                            buttonColor="#e0e7ff"
+                                            onPress={() =>
+                                                handleOpenRateCustomer(item)
+                                            }
+                                            style={{ width: "100%" }}
+                                            className="rounded-lg"
+                                            labelStyle={{ fontWeight: "700" }}
+                                        >
+                                            Rate Customer
+                                        </Button>
+                                    )}
+
+                                    {agencyComplaintState.complainedBookingIds.includes(
+                                        item.id || item.booking_id
+                                    ) ? (
+                                        <Button
+                                            mode="contained-tonal"
+                                            icon="alert-circle"
+                                            textColor="#991b1b"
+                                            buttonColor="#fee2e2"
+                                            disabled
+                                            style={{ width: "100%" }}
+                                            className="rounded-lg"
+                                            labelStyle={{ fontWeight: "700" }}
+                                        >
+                                            Complaint Logged Against User
+                                        </Button>
+                                    ) : (
+                                        <Button
+                                            mode="outlined"
+                                            icon="alert-circle-outline"
+                                            textColor="#ef4444"
+                                            style={{
+                                                borderColor: "#fca5a5",
+                                                width: "100%",
+                                            }}
+                                            onPress={() =>
+                                                handleOpenLodgeUserComplaint(
+                                                    item
+                                                )
+                                            }
+                                            className="rounded-lg"
+                                            labelStyle={{ fontWeight: "700" }}
+                                        >
+                                            Lodge Complaint Against User
+                                        </Button>
+                                    )}
+
+                                    {(() => {
+                                        const isRefunded =
+                                            item.paymentStatus === "refunded" ||
+                                            parseFloat(item.refundAmount || 0) >
+                                                0;
+                                        const hasDeduction =
+                                            parseFloat(
+                                                item.totalBill ||
+                                                    item.total_bill ||
+                                                    0
+                                            ) > 0 ||
+                                            item.paymentStatus === "paid";
+
+                                        if (isRefunded) {
+                                            return (
+                                                <Button
+                                                    mode="contained-tonal"
+                                                    icon="cash-refund"
+                                                    textColor="#047857"
+                                                    buttonColor="#d1fae5"
+                                                    disabled
+                                                    style={{ width: "100%" }}
+                                                    className="rounded-lg"
+                                                    labelStyle={{
+                                                        fontWeight: "700",
+                                                    }}
+                                                >
+                                                    {`✓ Refunded (₹${parseFloat(
+                                                        item.refundAmount ||
+                                                            item.totalBill ||
+                                                            0
+                                                    ).toFixed(2)})`}
+                                                </Button>
+                                            );
+                                        }
+
+                                        if (hasDeduction) {
+                                            return (
+                                                <Button
+                                                    mode="outlined"
+                                                    icon="cash-refund"
+                                                    textColor="#059669"
+                                                    style={{
+                                                        borderColor: "#a7f3d0",
+                                                        width: "100%",
+                                                    }}
+                                                    onPress={() =>
+                                                        setRefundModalState({
+                                                            visible: true,
+                                                            targetBooking: item,
+                                                        })
+                                                    }
+                                                    className="rounded-lg"
+                                                    labelStyle={{
+                                                        fontWeight: "700",
+                                                    }}
+                                                >
+                                                    Issue Refund to Customer
+                                                    Wallet
+                                                </Button>
+                                            );
+                                        }
+
+                                        return null;
+                                    })()}
+                                </Card.Actions>
+                            )}
                     </Card>
                 )}
                 ListEmptyComponent={
@@ -657,7 +1576,9 @@ export default function CheckInOut() {
                     <TextInput
                         label="Vehicle Registration Number *"
                         value={walkinForm?.vehicleNum || ""}
-                        onChangeText={(val) => updateWalkinForm("vehicleNum", val)}
+                        onChangeText={(val) =>
+                            updateWalkinForm("vehicleNum", val)
+                        }
                         mode="outlined"
                         dense
                         autoCapitalize="characters"
@@ -696,7 +1617,9 @@ export default function CheckInOut() {
                         {Object.keys(VEHICLE_TYPE_LABELS).map((key) => (
                             <Pressable
                                 key={key}
-                                onPress={() => updateWalkinForm("vehicleType", key)}
+                                onPress={() =>
+                                    updateWalkinForm("vehicleType", key)
+                                }
                                 className={`flex-row items-center px-3 py-1.5 rounded-full border ${
                                     walkinForm?.vehicleType === key
                                         ? "bg-indigo-50 border-indigo-600"
@@ -860,13 +1783,16 @@ export default function CheckInOut() {
                         Verify Entry OTP
                     </Text>
                     <Text className="text-sm text-slate-500 mb-4">
-                        Please ask the customer for the 6-digit verification OTP visible on their booking details.
+                        Please ask the customer for the 6-digit verification OTP
+                        visible on their booking details.
                     </Text>
 
                     <TextInput
                         label="Enter 6-Digit OTP *"
                         value={otpState.input}
-                        onChangeText={(val) => setOtpState(prev => ({ ...prev, input: val }))}
+                        onChangeText={(val) =>
+                            setOtpState((prev) => ({ ...prev, input: val }))
+                        }
                         mode="outlined"
                         dense
                         keyboardType="numeric"
@@ -902,9 +1828,195 @@ export default function CheckInOut() {
                         </Button>
                     </View>
                 </Modal>
+
+                {/* 4. Force Cancel Modal */}
+                <Modal
+                    visible={forceCancelModalState.visible}
+                    onDismiss={() =>
+                        !forceCancelModalState.submitting &&
+                        setForceCancelModalState({
+                            visible: false,
+                            targetBooking: null,
+                            reason: "",
+                            submitting: false,
+                        })
+                    }
+                    className="bg-white p-6 m-5 rounded-2xl max-w-[420px] self-center w-[88%]"
+                >
+                    <Text className="text-lg font-bold text-rose-700 mb-1">
+                        Force Cancel Booking
+                    </Text>
+                    <Text className="text-xs text-slate-500 mb-3">
+                        Are you sure you want to force cancel booking{" "}
+                        <Text className="font-mono font-bold text-slate-800">
+                            {forceCancelModalState.targetBooking?.bookingCode}
+                        </Text>
+                        ? No money will be deducted from the user's account.
+                    </Text>
+
+                    <TextInput
+                        label="Cancellation Reason (Optional)"
+                        value={forceCancelModalState.reason}
+                        onChangeText={(val) =>
+                            setForceCancelModalState((prev) => ({
+                                ...prev,
+                                reason: val,
+                            }))
+                        }
+                        mode="outlined"
+                        dense
+                        placeholder="e.g. Space unavailable, emergency maintenance"
+                        className="bg-white mb-4"
+                        outlineColor="#e2e8f0"
+                        activeOutlineColor="#e11d48"
+                    />
+
+                    <View className="flex-row gap-2 mt-2">
+                        <Button
+                            mode="outlined"
+                            onPress={() =>
+                                setForceCancelModalState({
+                                    visible: false,
+                                    targetBooking: null,
+                                    reason: "",
+                                    submitting: false,
+                                })
+                            }
+                            disabled={forceCancelModalState.submitting}
+                            className="flex-1 rounded-lg"
+                            textColor="#64748b"
+                            style={{ borderColor: "#cbd5e1" }}
+                        >
+                            Back
+                        </Button>
+                        <Button
+                            mode="contained"
+                            onPress={handleConfirmForceCancel}
+                            loading={forceCancelModalState.submitting}
+                            disabled={forceCancelModalState.submitting}
+                            className="flex-1 rounded-lg"
+                            buttonColor="#dc2626"
+                            textColor="white"
+                        >
+                            Confirm Force Cancel
+                        </Button>
+                    </View>
+                </Modal>
+
+                {/* 5. Approval Rejection Reason Modal */}
+                <Modal
+                    visible={rejectionModalState.visible}
+                    onDismiss={() =>
+                        !rejectionModalState.submitting &&
+                        setRejectionModalState({
+                            visible: false,
+                            targetIds: [],
+                            reason: "",
+                            submitting: false,
+                        })
+                    }
+                    className="bg-white p-6 m-5 rounded-2xl max-w-[440px] self-center w-[90%]"
+                >
+                    <Text className="text-lg font-bold text-rose-700 mb-1">
+                        Reject Booking Request
+                    </Text>
+                    <Text className="text-xs text-slate-500 mb-4">
+                        Please specify a reason for rejecting{" "}
+                        {rejectionModalState.targetIds.length} request(s). The
+                        reserved balance will be released immediately to the
+                        user.
+                    </Text>
+
+                    <TextInput
+                        label="Rejection Reason *"
+                        value={rejectionModalState.reason}
+                        onChangeText={(val) =>
+                            setRejectionModalState((prev) => ({
+                                ...prev,
+                                reason: val,
+                            }))
+                        }
+                        mode="outlined"
+                        dense
+                        placeholder="e.g. Parking space unavailable, invalid vehicle details"
+                        className="bg-white mb-4"
+                        outlineColor="#e2e8f0"
+                        activeOutlineColor="#dc2626"
+                    />
+
+                    <View className="flex-row gap-2 mt-2">
+                        <Button
+                            mode="outlined"
+                            onPress={() =>
+                                setRejectionModalState({
+                                    visible: false,
+                                    targetIds: [],
+                                    reason: "",
+                                    submitting: false,
+                                })
+                            }
+                            disabled={rejectionModalState.submitting}
+                            className="flex-1 rounded-lg"
+                            textColor="#64748b"
+                            style={{ borderColor: "#cbd5e1" }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            mode="contained"
+                            onPress={handleConfirmRejection}
+                            loading={rejectionModalState.submitting}
+                            disabled={rejectionModalState.submitting}
+                            className="flex-1 rounded-lg"
+                            buttonColor="#dc2626"
+                            textColor="white"
+                        >
+                            Reject Booking
+                        </Button>
+                    </View>
+                </Modal>
             </Portal>
+
+            <RatingModal
+                visible={ratingModalVisible}
+                onClose={() =>
+                    setRatingState((prev) => ({ ...prev, visible: false }))
+                }
+                onSubmit={handleSubmitCustomerRating}
+                title="Rate Customer"
+                subtitle={`Customer: ${
+                    targetBookingForRating?.userName || "User"
+                } (${targetBookingForRating?.vehicleNumber || ""})`}
+                existingRating={existingUserRating}
+                loading={submittingRating}
+            />
+
+            <ComplaintModal
+                visible={agencyComplaintState.visible}
+                onClose={() =>
+                    setAgencyComplaintState((prev) => ({
+                        ...prev,
+                        visible: false,
+                    }))
+                }
+                onSubmit={handleSubmitUserComplaint}
+                title="Lodge Complaint Against User"
+                subtitle={`Customer: ${
+                    agencyComplaintState.targetBooking?.userName || "User"
+                } (${agencyComplaintState.targetBooking?.vehicleNumber || ""})`}
+                loading={agencyComplaintState.submitting}
+            />
+
+            <RefundBookingModal
+                visible={refundModalState.visible}
+                onClose={() =>
+                    setRefundModalState({ visible: false, targetBooking: null })
+                }
+                booking={refundModalState.targetBooking}
+                onRefundSuccess={(updatedBooking) => {
+                    fetchAgenciesAndBookings();
+                }}
+            />
         </View>
     );
 }
-
-

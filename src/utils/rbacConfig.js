@@ -21,30 +21,49 @@ export const PERMISSIONS = {
     MANAGE_LOCATIONS: "manage_locations", // Add/edit/remove parking lots
     MANAGE_USERS: "manage_users", // Add/edit/remove roles, approve agencies/employees
     MANAGE_BOOKINGS: "manage_bookings", // Check-in/out, handle parking slots
+    MANAGE_AGENCIES: "manage_agencies", // Super Admin agency management
+    VIEW_WALLET: "view_wallet", // View wallet balance, deposits, or earnings
+    MANAGE_COMPLAINTS: "manage_complaints", // Review and resolve customer complaints
+    MANAGE_SETTINGS: "manage_settings", // System configuration and settings
+    WITHDRAW_EARNINGS: "withdraw_earnings", // Request agency cash payouts
+    MANAGE_POLICY: "manage_policy", // Configure cancellation policies
 };
 
 // Define the Role-to-Permissions Matrix
 export const ROLE_PERMISSIONS = {
-    // Super Admin has full system privileges
+    // Super Admin Privileges: Location Management, Agency Management, System Settings, Complaints, Policy
     [ROLES.SUPER_ADMIN]: [
-        PERMISSIONS.VIEW_MAP,
-        PERMISSIONS.BOOK_PARKING,
         PERMISSIONS.MANAGE_LOCATIONS,
+        PERMISSIONS.MANAGE_AGENCIES,
         PERMISSIONS.MANAGE_USERS,
-        PERMISSIONS.MANAGE_BOOKINGS,
+        PERMISSIONS.VIEW_WALLET,
+        PERMISSIONS.MANAGE_COMPLAINTS,
+        PERMISSIONS.MANAGE_SETTINGS,
+        PERMISSIONS.MANAGE_POLICY,
     ],
 
-    // Agency Admin manages their organization's lots, users, and checkins
+    // Agency Admin manages their organization's lots, users, checkins, complaints, and payouts
     [ROLES.AGENCY_ADMIN]: [
         PERMISSIONS.VIEW_MAP,
         PERMISSIONS.MANAGE_LOCATIONS,
         PERMISSIONS.MANAGE_USERS,
         PERMISSIONS.MANAGE_BOOKINGS,
+        PERMISSIONS.VIEW_WALLET,
+        PERMISSIONS.MANAGE_COMPLAINTS,
+        PERMISSIONS.WITHDRAW_EARNINGS,
     ],
 
     // Agency User handles day-to-day slot checkin, checkout, and parking management
-    [ROLES.AGENCY_USER]: [PERMISSIONS.VIEW_MAP, PERMISSIONS.MANAGE_BOOKINGS],
+    [ROLES.AGENCY_USER]: [
+        PERMISSIONS.VIEW_MAP,
+        PERMISSIONS.MANAGE_BOOKINGS,
+        PERMISSIONS.VIEW_WALLET,
+    ],
 
-    // Regular User registers on the app, views map, and books slots
-    [ROLES.USER]: [PERMISSIONS.VIEW_MAP, PERMISSIONS.BOOK_PARKING],
+    // Regular User registers on the app, views map, books slots, and manages personal wallet
+    [ROLES.USER]: [
+        PERMISSIONS.VIEW_MAP,
+        PERMISSIONS.BOOK_PARKING,
+        PERMISSIONS.VIEW_WALLET,
+    ],
 };

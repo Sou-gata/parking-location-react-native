@@ -13,12 +13,12 @@ import useToast from "../../hooks/useToast";
 import apiService from "../../utils/apiService";
 import AddRuleModal from "./AddRuleModal";
 import useRolePermissions from "../../hooks/useRolePermissions";
-import { ROLES } from "../../utils/rbacConfig";
+import { PERMISSIONS } from "../../utils/rbacConfig";
 
 export default function PolicyTab({ currentAgency, onRefresh }) {
     const toast = useToast();
-    const { role } = useRolePermissions();
-    const isSuperAdmin = role === ROLES.SUPER_ADMIN;
+    const { hasPermission } = useRolePermissions();
+    const isSuperAdmin = hasPermission(PERMISSIONS.MANAGE_POLICY);
 
     const [localRules, setLocalRules] = useState([]);
     const [policyModalVisible, setPolicyModalVisible] = useState(false);
@@ -115,7 +115,8 @@ export default function PolicyTab({ currentAgency, onRefresh }) {
                                 Cancellation Rules
                             </Text>
                             <Text className="text-xs text-slate-400 mt-0.5">
-                                Rules are evaluated in order of time before booking start.
+                                Rules are evaluated in order of time before
+                                booking start.
                             </Text>
                         </View>
                         {isSuperAdmin && (
@@ -147,7 +148,7 @@ export default function PolicyTab({ currentAgency, onRefresh }) {
                         <Text className="text-sm text-slate-400 text-center mt-1">
                             {isSuperAdmin
                                 ? 'Customers can cancel their bookings for free at any time. Click "Add Rule" to configure cancellation constraints.'
-                                : 'Customers can cancel their bookings for free at any time. There is no cancellation policy configured.'}
+                                : "Customers can cancel their bookings for free at any time. There is no cancellation policy configured."}
                         </Text>
                     </View>
                 }
@@ -177,18 +178,22 @@ export default function PolicyTab({ currentAgency, onRefresh }) {
                                                 fontWeight: "bold",
                                             }}
                                             style={{
-                                                backgroundColor: item.allowCancellation
-                                                    ? "#22c55e"
-                                                    : "#ef4444",
+                                                backgroundColor:
+                                                    item.allowCancellation
+                                                        ? "#22c55e"
+                                                        : "#ef4444",
                                             }}
-                                            compact
+                                            isCompact={true}
                                         >
-                                            {item.allowCancellation ? "Allowed" : "Blocked"}
+                                            {item.allowCancellation
+                                                ? "Allowed"
+                                                : "Blocked"}
                                         </Chip>
                                         {item.allowCancellation && (
                                             <Text className="text-xs font-semibold text-slate-500">
                                                 Fee:{" "}
-                                                {item.chargeType === "percentage"
+                                                {item.chargeType ===
+                                                "percentage"
                                                     ? `${item.chargeValue}%`
                                                     : `₹${item.chargeValue}`}
                                             </Text>
@@ -218,7 +223,9 @@ export default function PolicyTab({ currentAgency, onRefresh }) {
                     <Button
                         mode="outlined"
                         onPress={() =>
-                            setLocalRules(currentAgency.cancellationPolicy || [])
+                            setLocalRules(
+                                currentAgency.cancellationPolicy || []
+                            )
                         }
                         style={{ flex: 1, borderColor: "#cbd5e1" }}
                         textColor="#64748b"

@@ -101,6 +101,8 @@ const mapAgencyFromApi = (a) => {
         id: a.org_id || a.id,
         name: a.org_name || a.name,
         address: a.org_address || a.address,
+        rating: a.averageRating !== undefined ? a.averageRating : (a.rating !== undefined ? a.rating : 0),
+        ratingCount: a.ratingCount !== undefined ? a.ratingCount : (a.totalCount || 0),
         twoWheeler_capacity:
             a.two_wheeler_capacity !== undefined
                 ? a.two_wheeler_capacity
@@ -717,7 +719,8 @@ const HomeMap = () => {
                         availableSpots:
                             (freshLocation.car_capacity || 10) +
                             Math.floor(Math.random() * 5),
-                        rating: "4.8",
+                        rating: freshLocation.averageRating ?? freshLocation.rating ?? 0,
+                        ratingCount: freshLocation.ratingCount ?? 0,
                         distance: initialDistance,
                     },
                 });
@@ -911,6 +914,116 @@ const HomeMap = () => {
         }
 
         const agency = parkingState.selectedLocation;
+
+        // Perform real-time pre-booking check for Working Hours & Holidays
+        try {
+            const whRes = await apiService.get(`working-hours/agency/${agency.id}`);
+            if (whRes && whRes.success && whRes.data) {
+                const wh = whRes.data;
+                const bStart = startTime;
+                const endTimeStr = `${bookingState.toDate}T${bookingState.toTime}`;
+                const bEnd = new Date(endTimeStr);
+
+                // 1. Check Vacations
+                if (wh.specialVacations && Array.isArray(wh.specialVacations)) {
+                    for (const v of wh.specialVacations) {
+                        if (v.startDate && v.endDate) {
+                            const vStart = new Date(`${v.startDate}T00:00:00`);
+                            const vEnd = new Date(`${v.endDate}T23:59:59`);
+                            if (
+                                (bStart >= vStart && bStart <= vEnd) ||
+                                (bEnd >= vStart && bEnd <= vEnd) ||
+                                (bStart <= vStart && bEnd >= vEnd)
+                            ) {
+                                toast.error(
+                                    `Parking location is closed for holiday '${v.title || "Vacation"}' (${v.startDate} to ${v.endDate}).`,
+                                    "Location Closed",
+                                    true
+                                );
+                                return;
+                            }
+                        }
+                    }
+                }
+
+                // 2. Check Working Days & Hours per weekday
+                const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+                const startDay = daysOfWeek[bStart.getDay()];
+                const endDay = daysOfWeek[bEnd.getDay()];
+
+                let dailySchedules = wh.dailySchedules;
+                if (!dailySchedules || typeof dailySchedules !== "object") {
+                    const ALL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+                    dailySchedules = {};
+                    ALL_DAYS.forEach((day) => {
+                        dailySchedules[day] = {
+                            isOpen: Array.isArray(wh.workingDays) ? wh.workingDays.includes(day) : true,
+                            is247: Boolean(wh.is247),
+                            openTime: wh.openTime || "08:00",
+                            closeTime: wh.closeTime || "20:00",
+                        };
+                    });
+                }
+
+                const startDaySched = dailySchedules[startDay];
+                const endDaySched = dailySchedules[endDay];
+
+                if (!startDaySched || startDaySched.isOpen === false) {
+                    toast.error(`Parking location is closed on ${startDay}s.`, "Location Closed", true);
+                    return;
+                }
+                if (!endDaySched || endDaySched.isOpen === false) {
+                    toast.error(`Parking location is closed on ${endDay}s.`, "Location Closed", true);
+                    return;
+                }
+
+                const parseTimeVal = (tStr) => {
+                    const [h, m] = (tStr || "00:00").split(":").map(Number);
+                    return h + (m || 0) / 60;
+                };
+
+                const startVal = bStart.getHours() + bStart.getMinutes() / 60;
+                const endVal = bEnd.getHours() + bEnd.getMinutes() / 60;
+                const isDifferentDay = bStart.toDateString() !== bEnd.toDateString();
+
+                if (!startDaySched.is247) {
+                    const dayOpenVal = parseTimeVal(startDaySched.openTime || "08:00");
+                    const dayCloseVal = parseTimeVal(startDaySched.closeTime || "20:00");
+
+                    if (dayCloseVal > dayOpenVal) {
+                        if (startVal < dayOpenVal || startVal > dayCloseVal) {
+                            toast.error(
+                                `Parking location is closed at start time on ${startDay}. Operating hours are ${startDaySched.openTime} to ${startDaySched.closeTime}.`,
+                                "Location Closed",
+                                true
+                            );
+                            return;
+                        }
+                        if (!isDifferentDay && endVal > dayCloseVal) {
+                            toast.error(
+                                `Parking location is closed before end time on ${startDay}. Operating hours are ${startDaySched.openTime} to ${startDaySched.closeTime}.`,
+                                "Location Closed",
+                                true
+                            );
+                            return;
+                        }
+                    } else if (dayCloseVal < dayOpenVal) {
+                        const isStartOpen = startVal >= dayOpenVal || startVal <= dayCloseVal;
+                        if (!isStartOpen) {
+                            toast.error(
+                                `Parking location is closed at start time on ${startDay}. Operating hours are ${startDaySched.openTime} to ${startDaySched.closeTime}.`,
+                                "Location Closed",
+                                true
+                            );
+                            return;
+                        }
+                    }
+                }
+            }
+        } catch (checkErr) {
+            console.error("Working hours pre-check error:", checkErr);
+        }
+
         const hourlyRate =
             agency[`${bookingState.vehicleType}_rate`] ||
             VEHICLE_TYPE_RATES[bookingState.vehicleType] ||
@@ -970,9 +1083,12 @@ const HomeMap = () => {
                     })
                 );
 
+                const isPendingApproval = serverBooking.status === "pending_approval";
                 toast.success(
-                    `Reserved successfully! Booking Code: ${serverBooking.bookingCode}`,
-                    "Reservation Complete",
+                    isPendingApproval
+                        ? `Booking request submitted! Code: ${serverBooking.bookingCode} (Awaiting Admin Approval)`
+                        : `Reserved successfully! Booking Code: ${serverBooking.bookingCode}`,
+                    isPendingApproval ? "Request Submitted" : "Reservation Complete",
                     true
                 );
             } else {

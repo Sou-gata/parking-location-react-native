@@ -1,7 +1,9 @@
-import React from "react";
-import { View, ScrollView, Image, Text } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, ScrollView, Image, Text, TouchableOpacity } from "react-native";
 import { Modal, Divider, Button, Card, Badge, Avatar, IconButton } from "react-native-paper";
 import { imageBaseURL } from "../../utils/baseURL";
+import apiService from "../../utils/apiService";
+import MediaViewerModal from "../MediaViewerModal";
 
 export default function AgencyDetailsModal({
     visible,
@@ -9,6 +11,40 @@ export default function AgencyDetailsModal({
     agency,
 }) {
     if (!agency) return null;
+
+    const [mediaItems, setMediaItems] = useState([]);
+    const [viewerState, setViewerState] = useState({
+        visible: false,
+        media: null,
+    });
+
+    useEffect(() => {
+        if (visible && agency?.id) {
+            apiService
+                .get(`agencies/${agency.id}/media`)
+                .then((res) => {
+                    if (res && res.success) {
+                        setMediaItems(res.data || []);
+                    }
+                })
+                .catch((e) => console.error("Error fetching agency media:", e));
+        }
+    }, [visible, agency?.id]);
+
+    const handleMediaStatus = async (mediaId, newStatus) => {
+        try {
+            await apiService.patch(`agencies/media/${mediaId}/status`, {
+                status: newStatus,
+            });
+            setMediaItems((prev) =>
+                prev.map((item) =>
+                    item.media_id === mediaId ? { ...item, status: newStatus } : item
+                )
+            );
+        } catch (error) {
+            console.error("Error updating media status:", error);
+        }
+    };
 
     // Helper to clean path and construct full URL
     const getImageUrl = (path) => {
@@ -87,8 +123,42 @@ export default function AgencyDetailsModal({
                                 ₹{parseFloat(agency.wallet_balance || 0).toFixed(2)}
                             </Text>
                         </View>
+                        <View className="h-8 w-[1px] bg-emerald-200" />
+                        <View className="items-center">
+                            <Text className="text-xs font-semibold text-slate-500 uppercase">Approval Mode</Text>
+                            <Text className="text-xs font-bold text-amber-800 mt-1">
+                                {Boolean(
+                                    agency.require_booking_approval !== undefined
+                                        ? agency.require_booking_approval
+                                        : agency.requireBookingApproval
+                                )
+                                    ? "Manual Approval"
+                                    : "Auto Approved"}
+                            </Text>
+                        </View>
                     </Card.Content>
                 </Card>
+
+                {/* Compliance & Clearances Grid */}
+                <Text className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-2">
+                    Compliance & Clearances
+                </Text>
+                <View className="flex-row flex-wrap justify-between mb-4 gap-y-2">
+                    {[
+                        { label: "CCTV Available", val: agency.cctv_available },
+                        { label: "Trade License", val: agency.trade_license },
+                        { label: "Zoning Clearance", val: agency.zoning_clearance },
+                        { label: "Shops & Est. License", val: agency.shops_establishment_license },
+                        { label: "GST Registration", val: agency.gst_registration },
+                    ].map((comp, i) => (
+                        <View key={i} className="w-[48%] p-2 bg-slate-50 rounded-lg border border-slate-100 flex-row items-center justify-between">
+                            <Text className="text-xs text-slate-600 font-semibold flex-1 mr-1">{comp.label}</Text>
+                            <Badge className={comp.val ? "bg-emerald-100 text-emerald-800 font-bold" : "bg-slate-200 text-slate-600"}>
+                                {comp.val ? "YES" : "NO"}
+                            </Badge>
+                        </View>
+                    ))}
+                </View>
 
                 {/* Email, Address, Landmark, Coordinates */}
                 <Card className="mb-4 bg-slate-50 border border-slate-100 rounded-xl" elevation={0}>
@@ -107,7 +177,7 @@ export default function AgencyDetailsModal({
                         </Text>
                         <Text className="text-sm text-slate-600">
                             <Text className="font-semibold text-slate-700">Coordinates: </Text>
-                            {`${agency.latitude || 0}, ${agency.longitude || 0}`}
+                            {agency.latitude || 0}, {agency.longitude || 0}
                         </Text>
                     </Card.Content>
                 </Card>
@@ -148,23 +218,19 @@ export default function AgencyDetailsModal({
                 </Text>
                 <View className="flex-row flex-wrap justify-between mb-4">
                     {[
-                        { label: "2 Wheeler", rate: agency.two_wheeler_rate },
-                        { label: "3 Wheeler", rate: agency.three_wheeler_rate },
-                        { label: "Car", rate: agency.car_rate },
-                        { label: "SUV", rate: agency.suv_rate },
-                        { label: "Van", rate: agency.van_rate },
-                        { label: "Pickup", rate: agency.pickup_rate },
-                        { label: "EV", rate: agency.ev_rate },
-                    ].map((rt, i) => (
-                        <View
-                            key={i}
-                            className="w-[30%] bg-emerald-50/50 p-2 rounded-lg items-center mb-2 border border-emerald-100/50"
-                        >
-                            <Text className="text-xs text-slate-500 font-semibold text-center">{rt.label}</Text>
-                            <Text className="text-base font-bold text-emerald-800 mt-0.5">₹{rt.rate || 0}</Text>
+                        { label: "2W", val: agency.two_wheeler_rate },
+                        { label: "3W", val: agency.three_wheeler_rate },
+                        { label: "Car", val: agency.car_rate },
+                        { label: "SUV", val: agency.suv_rate },
+                        { label: "Van", val: agency.van_rate },
+                        { label: "Pickup", val: agency.pickup_rate },
+                        { label: "EV", val: agency.ev_rate },
+                    ].map((rate, i) => (
+                        <View key={i} className="w-[13%] bg-emerald-50/70 p-1.5 rounded-lg items-center border border-emerald-100">
+                            <Text className="text-[10px] text-slate-500 font-semibold">{rate.label}</Text>
+                            <Text className="text-xs font-bold text-emerald-800 mt-0.5">₹{rate.val || 0}</Text>
                         </View>
                     ))}
-                    <View className="w-[30%]" />
                 </View>
 
                 {/* 4. Aadhaar Card Photo */}
@@ -208,6 +274,95 @@ export default function AgencyDetailsModal({
                         </Text>
                     </View>
                 )}
+
+                {/* 6. Organization Photos & Videos Gallery (Super Admin Approvals) */}
+                <Text className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-2">
+                    Organization Media ({mediaItems.length})
+                </Text>
+                {mediaItems.length > 0 ? (
+                    <View className="mb-6 flex-row flex-wrap justify-between gap-y-3">
+                        {mediaItems.map((m) => {
+                            const mediaUrl = getImageUrl(m.pending_file_path || m.file_path);
+                            const isApproved = m.status === "approved";
+                            const isRejected = m.status === "rejected";
+
+                            return (
+                                <View
+                                    key={m.media_id}
+                                    className="w-[48%] border border-slate-200 rounded-xl overflow-hidden bg-slate-50 p-2"
+                                >
+                                    <TouchableOpacity
+                                        activeOpacity={0.85}
+                                        onPress={() =>
+                                            setViewerState({
+                                                visible: true,
+                                                media: {
+                                                    uri: mediaUrl,
+                                                    type: m.file_type,
+                                                    title: `Media (${m.status})`,
+                                                },
+                                            })
+                                        }
+                                        className="relative w-full h-32 rounded-lg overflow-hidden bg-slate-200 items-center justify-center mb-2"
+                                    >
+                                        {m.file_type === "photo" ? (
+                                            <Image
+                                                source={{ uri: mediaUrl }}
+                                                className="w-full h-full"
+                                                resizeMode="cover"
+                                            />
+                                        ) : (
+                                            <View className="items-center justify-center w-full h-full bg-slate-900/90">
+                                                <IconButton icon="play-circle" iconColor="#ffffff" size={36} />
+                                                <Text className="text-white text-xs font-bold">Video</Text>
+                                            </View>
+                                        )}
+                                        <Badge
+                                            className={`absolute top-2 left-2 ${
+                                                isApproved
+                                                    ? "bg-green-600 text-white"
+                                                    : isRejected
+                                                    ? "bg-red-600 text-white"
+                                                    : "bg-amber-500 text-white"
+                                            }`}
+                                        >
+                                            {m.status.toUpperCase()}
+                                        </Badge>
+                                    </TouchableOpacity>
+
+                                    <View className="flex-row justify-between gap-1">
+                                        <Button
+                                            mode={isApproved ? "contained" : "outlined"}
+                                            buttonColor={isApproved ? "#16a34a" : undefined}
+                                            textColor={isApproved ? "#ffffff" : "#16a34a"}
+                                            className="flex-1 rounded-lg"
+                                            compact
+                                            onPress={() => handleMediaStatus(m.media_id, "approved")}
+                                        >
+                                            Approve
+                                        </Button>
+                                        <Button
+                                            mode={isRejected ? "contained" : "outlined"}
+                                            buttonColor={isRejected ? "#dc2626" : undefined}
+                                            textColor={isRejected ? "#ffffff" : "#dc2626"}
+                                            className="flex-1 rounded-lg"
+                                            compact
+                                            onPress={() => handleMediaStatus(m.media_id, "rejected")}
+                                        >
+                                            Reject
+                                        </Button>
+                                    </View>
+                                </View>
+                            );
+                        })}
+                    </View>
+                ) : (
+                    <View className="mb-6 p-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 items-center justify-center">
+                        <Text className="text-xs text-slate-400 text-center font-semibold">
+                            No photos or videos uploaded
+                        </Text>
+                    </View>
+                )}
             </ScrollView>
 
             <Divider className="my-3 bg-slate-100" />
@@ -225,6 +380,12 @@ export default function AgencyDetailsModal({
                     Close
                 </Button>
             </View>
+
+            <MediaViewerModal
+                visible={viewerState.visible}
+                onDismiss={() => setViewerState({ visible: false, media: null })}
+                media={viewerState.media}
+            />
         </Modal>
     );
 }

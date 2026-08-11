@@ -10,6 +10,10 @@ import {
     Checkbox,
     Switch,
     Divider,
+    Badge,
+    Portal,
+    Modal,
+    RadioButton,
 } from "react-native-paper";
 import {
     BackHandler,
@@ -17,8 +21,13 @@ import {
     StyleSheet,
     TouchableOpacity,
     View,
+    Image,
 } from "react-native";
-import { launchImageLibrary } from "react-native-image-picker";
+import ImageCropPicker from "react-native-image-crop-picker";
+import {
+    Image as ImageCompressor,
+    Video as VideoCompressor,
+} from "react-native-compressor";
 import { setConnected } from "@maplibre/maplibre-react-native";
 import { MaterialDesignIcons } from "@react-native-vector-icons/material-design-icons";
 import { pick, isCancel } from "@react-native-documents/picker";
@@ -27,8 +36,9 @@ import { registerAgencyRequest } from "../store/slices/parkingSlice";
 
 import SignupMap from "../components/SignupMap";
 import apiService from "../utils/apiService";
-import useToast from "../hooks/useToast";
 import { fileToBase64 } from "../utils/helperFunctions";
+import MediaViewerModal from "../components/MediaViewerModal";
+import useToast from "../hooks/useToast";
 
 const VEHICLE_TYPES = [
     {
@@ -53,6 +63,11 @@ setConnected(true);
 const Signup = ({ navigation }) => {
     const toast = useToast();
     const dispatch = useDispatch();
+
+    const [acceptedTerms, setAcceptedTerms] = useState(false);
+    const [termsModalVisible, setTermsModalVisible] = useState(false);
+    const [termsContent, setTermsContent] = useState("");
+
     useEffect(() => {
         const backAction = () => {
             navigation.goBack();
@@ -64,6 +79,20 @@ const Signup = ({ navigation }) => {
         );
         return () => backHandler.remove();
     }, [navigation]);
+
+    useEffect(() => {
+        const fetchTerms = async () => {
+            try {
+                const res = await apiService.get("config/agency");
+                if (res && res.success && res.data) {
+                    setTermsContent(res.data.content);
+                }
+            } catch (err) {
+                console.error("Error loading agency terms:", err);
+            }
+        };
+        fetchTerms();
+    }, []);
 
     const [inputs, setInputs] = useState({
         name: "",
@@ -77,6 +106,12 @@ const Signup = ({ navigation }) => {
         photo: null,
         document: null, // Address Proof Document
         aadhaarCard: null, // Aadhaar Card Document
+        orgMedia: [], // Optional up to 10 photos/videos
+        cctvAvailable: "no",
+        tradeLicense: "no",
+        zoningClearance: "no",
+        shopsEstablishmentLicense: "no",
+        gstRegistration: "no",
         latitude: null,
         longitude: null,
         loading: false,
@@ -90,14 +125,146 @@ const Signup = ({ navigation }) => {
         }, {}),
     });
 
+    const [viewerState, setViewerState] = useState({
+        visible: false,
+        media: null,
+    });
+
     const handleSelectImage = async () => {
-        const result = await launchImageLibrary({
-            mediaType: "photo",
-            quality: 0.8,
-        });
-        if (!result.didCancel && !result.errorCode) {
-            setInputs({ ...inputs, photo: result.assets[0] });
+        try {
+            const croppedImage = await ImageCropPicker.openPicker({
+                width: 500,
+                height: 500,
+                cropping: true,
+                cropperCircleOverlay: false,
+                mediaType: "photo",
+                compressImageQuality: 0.9,
+            });
+
+            if (croppedImage && croppedImage.path) {
+                const compressedUri = await ImageCompressor.compress(
+                    croppedImage.path,
+                    {
+                        compressionMethod: "auto",
+                        quality: 0.8,
+                    }
+                );
+
+                setInputs((prev) => ({
+                    ...prev,
+                    photo: {
+                        uri: compressedUri,
+                        mime: croppedImage.mime,
+                        width: croppedImage.width,
+                        height: croppedImage.height,
+                    },
+                }));
+            }
+        } catch (error) {
+            if (error?.code !== "E_PICKER_CANCELLED") {
+                console.error("Image Picker Error:", error);
+                toast.error("Failed to select/crop image.", "Error", true);
+            }
         }
+    };
+
+    const handleSelectOrgMedia = async () => {
+        if (inputs.orgMedia.length >= 10) {
+            toast.error(
+                "Maximum limit of 10 photos/videos reached.",
+                "Limit Reached",
+                true
+            );
+            return;
+        }
+
+        try {
+            const mediaResult = await ImageCropPicker.openPicker({
+                mediaType: "any",
+                compressImageQuality: 0.9,
+            });
+
+            if (mediaResult && mediaResult.path) {
+                const isVideo =
+                    mediaResult.mime?.startsWith("video") ||
+                    /\.(mp4|mov|avi|mkv|webm)$/i.test(mediaResult.path);
+
+                if (isVideo) {
+                    let durationSec = 0;
+                    if (mediaResult.duration) {
+                        durationSec = mediaResult.duration / 1000;
+                    } else {
+                        try {
+                            const meta = await VideoCompressor.getVideoMetaData(
+                                mediaResult.path
+                            );
+                            durationSec = meta.duration;
+                        } catch (e) {}
+                    }
+
+                    if (durationSec > 45) {
+                        toast.error(
+                            "Video duration must not exceed 45 seconds.",
+                            "Video Too Long",
+                            true
+                        );
+                        return;
+                    }
+
+                    toast.info("Compressing video...", "Please Wait", true);
+                    const compressedUri = await VideoCompressor.compress(
+                        mediaResult.path,
+                        { compressionMethod: "auto" }
+                    );
+
+                    setInputs((prev) => ({
+                        ...prev,
+                        orgMedia: [
+                            ...prev.orgMedia,
+                            {
+                                uri: compressedUri,
+                                type: "video",
+                                mime: mediaResult.mime || "video/mp4",
+                                name: `org_video_${Date.now()}.mp4`,
+                            },
+                        ],
+                    }));
+                } else {
+                    const compressedUri = await ImageCompressor.compress(
+                        mediaResult.path,
+                        {
+                            compressionMethod: "auto",
+                            quality: 0.8,
+                        }
+                    );
+
+                    setInputs((prev) => ({
+                        ...prev,
+                        orgMedia: [
+                            ...prev.orgMedia,
+                            {
+                                uri: compressedUri,
+                                type: "photo",
+                                mime: mediaResult.mime || "image/jpeg",
+                                name: `org_photo_${Date.now()}.jpg`,
+                            },
+                        ],
+                    }));
+                }
+            }
+        } catch (error) {
+            if (error?.code !== "E_PICKER_CANCELLED") {
+                console.error("Media Picker Error:", error);
+                toast.error("Failed to pick/compress media.", "Error", true);
+            }
+        }
+    };
+
+    const handleRemoveOrgMedia = (index) => {
+        setInputs((prev) => ({
+            ...prev,
+            orgMedia: prev.orgMedia.filter((_, i) => i !== index),
+        }));
     };
 
     const handleDocumentPick = async () => {
@@ -161,9 +328,19 @@ const Signup = ({ navigation }) => {
             return;
         }
 
+        if (!acceptedTerms) {
+            toast.error(
+                "Please read and accept the Partner Agency Terms & Conditions before submitting registration.",
+                "Validation Error",
+                true
+            );
+            return;
+        }
+
         setInputs((prev) => ({ ...prev, loading: true }));
 
         try {
+            /* Standard JSON + Base64 Upload Process (Commented Out)
             let photoBase64 = null;
             let documentBase64 = null;
             let aadhaarBase64 = null;
@@ -215,6 +392,142 @@ const Signup = ({ navigation }) => {
             await apiService.post("users/orgregister", registrationData);
 
             dispatch(registerAgencyRequest(registrationData));
+            */
+
+            // FormData Upload Process
+            const formData = new FormData();
+            formData.append("org_name", inputs.name);
+            formData.append("username", inputs.username);
+            formData.append("email", inputs.email);
+            formData.append("phone_number", inputs.phoneNumber);
+            formData.append("password", inputs.password);
+            formData.append("org_address", inputs.address || "");
+            formData.append("landmark", inputs.landmark || "");
+            formData.append("latitude", String(Number(inputs.latitude || 0)));
+            formData.append("longitude", String(Number(inputs.longitude || 0)));
+
+            if (inputs.photo && inputs.photo.uri) {
+                const photoBase64 = await fileToBase64(inputs.photo.uri);
+                if (photoBase64) {
+                    formData.append("profile_photo", photoBase64);
+                } else {
+                    formData.append("profile_photo", {
+                        uri: inputs.photo.uri,
+                        name: "profile_photo.jpg",
+                        type: inputs.photo.mime || "image/jpeg",
+                    });
+                }
+            }
+
+            if (inputs.document && inputs.document.uri) {
+                const docBase64 = await fileToBase64(inputs.document.uri);
+                if (docBase64) {
+                    formData.append("verification_document", docBase64);
+                } else {
+                    formData.append("verification_document", {
+                        uri: inputs.document.uri,
+                        name: inputs.document.name || "document.pdf",
+                        type: inputs.document.type || "application/pdf",
+                    });
+                }
+            }
+
+            if (inputs.aadhaarCard && inputs.aadhaarCard.uri) {
+                const aadhaarBase64 = await fileToBase64(
+                    inputs.aadhaarCard.uri
+                );
+                if (aadhaarBase64) {
+                    formData.append("aadhaar_card", aadhaarBase64);
+                } else {
+                    formData.append("aadhaar_card", {
+                        uri: inputs.aadhaarCard.uri,
+                        name: inputs.aadhaarCard.name || "aadhaar.pdf",
+                        type: inputs.aadhaarCard.type || "application/pdf",
+                    });
+                }
+            }
+
+            // Append optional orgMedia items (photos & videos up to 10)
+            if (inputs.orgMedia && inputs.orgMedia.length > 0) {
+                for (let i = 0; i < inputs.orgMedia.length; i++) {
+                    const item = inputs.orgMedia[i];
+                    const b64 = await fileToBase64(item.uri);
+                    if (b64) {
+                        formData.append("org_media", b64);
+                    } else {
+                        formData.append("org_media", {
+                            uri: item.uri,
+                            name:
+                                item.name ||
+                                `media_${i}.${
+                                    item.type === "video" ? "mp4" : "jpg"
+                                }`,
+                            type:
+                                item.mime ||
+                                (item.type === "video"
+                                    ? "video/mp4"
+                                    : "image/jpeg"),
+                        });
+                    }
+                }
+            }
+
+            // Add vehicle capacities
+            VEHICLE_TYPES.forEach((type) => {
+                const v = inputs.vehicles[type.id];
+                const snakeId = type.id.replace(
+                    /[A-Z]/g,
+                    (l) => `_${l.toLowerCase()}`
+                );
+                formData.append(
+                    `${snakeId}_capacity`,
+                    String(Number(v.capacity || 0))
+                );
+                if (type.id === "ev") {
+                    formData.append(
+                        "ev_charging_support",
+                        v.chargingSupport ? "true" : "false"
+                    );
+                }
+            });
+
+            // Append compliance & clearance details
+            formData.append(
+                "cctv_available",
+                inputs.cctvAvailable === "yes" ? "true" : "false"
+            );
+            formData.append(
+                "trade_license",
+                inputs.tradeLicense === "yes" ? "true" : "false"
+            );
+            formData.append(
+                "zoning_clearance",
+                inputs.zoningClearance === "yes" ? "true" : "false"
+            );
+            formData.append(
+                "shops_establishment_license",
+                inputs.shopsEstablishmentLicense === "yes" ? "true" : "false"
+            );
+            formData.append(
+                "gst_registration",
+                inputs.gstRegistration === "yes" ? "true" : "false"
+            );
+
+            await apiService.post("users/orgregister", formData);
+
+            dispatch(
+                registerAgencyRequest({
+                    org_name: inputs.name,
+                    username: inputs.username,
+                    email: inputs.email,
+                    phone_number: inputs.phoneNumber,
+                    password: inputs.password,
+                    org_address: inputs.address || "",
+                    landmark: inputs.landmark || "",
+                    latitude: Number(inputs.latitude || 0),
+                    longitude: Number(inputs.longitude || 0),
+                })
+            );
 
             toast.success("Registration Successful!", "Success", true);
             navigation.replace("Login");
@@ -603,6 +916,111 @@ const Signup = ({ navigation }) => {
                         </Card.Content>
                     </Card>
 
+                    {/* Organization Media Photos & Videos (Optional) */}
+                    <Card style={styles.card}>
+                        <Card.Content className="gap-4">
+                            <View className="flex-row justify-between items-center">
+                                <View>
+                                    <Text
+                                        style={{ fontWeight: "bold" }}
+                                        className="text-lg text-gray-800"
+                                    >
+                                        Organization Photos & Videos
+                                    </Text>
+                                    <Text className="text-gray-500 text-xs">
+                                        Optional (Up to 10 items, videos max
+                                        45s)
+                                    </Text>
+                                </View>
+                                <Badge className="bg-indigo-100 text-indigo-800 font-bold px-2">
+                                    {inputs.orgMedia.length}/10
+                                </Badge>
+                            </View>
+
+                            <TouchableOpacity
+                                onPress={handleSelectOrgMedia}
+                                activeOpacity={0.7}
+                                style={styles.uploadArea}
+                                className="items-center justify-center py-5 bg-indigo-50/50 border-dashed border-2 border-indigo-200 rounded-xl"
+                            >
+                                <View className="items-center gap-2">
+                                    <MaterialDesignIcons
+                                        name="file-video-outline"
+                                        size={28}
+                                        color="#4338ca"
+                                    />
+                                    <Text className="text-indigo-900 font-bold text-xs text-center">
+                                        + Add Photo or Video
+                                    </Text>
+                                    <Text className="text-gray-400 text-[10px]">
+                                        Images & Videos will be compressed
+                                        automatically
+                                    </Text>
+                                </View>
+                            </TouchableOpacity>
+
+                            {inputs.orgMedia.length > 0 && (
+                                <View className="flex-row flex-wrap gap-2 mt-2">
+                                    {inputs.orgMedia.map((m, idx) => (
+                                        <View
+                                            key={idx}
+                                            className="relative w-24 h-24 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 items-center justify-center"
+                                        >
+                                            <TouchableOpacity
+                                                activeOpacity={0.8}
+                                                className="w-full h-full justify-center items-center"
+                                                onPress={() =>
+                                                    setViewerState({
+                                                        visible: true,
+                                                        media: {
+                                                            uri: m.uri,
+                                                            type: m.type,
+                                                            title: `Media ${
+                                                                idx + 1
+                                                            } (${m.type})`,
+                                                        },
+                                                    })
+                                                }
+                                            >
+                                                {m.type === "photo" ? (
+                                                    <Image
+                                                        source={{ uri: m.uri }}
+                                                        className="w-full h-full"
+                                                        resizeMode="cover"
+                                                    />
+                                                ) : (
+                                                    <View className="items-center justify-center p-2 bg-slate-900/80 w-full h-full">
+                                                        <MaterialDesignIcons
+                                                            name="play-circle-outline"
+                                                            size={32}
+                                                            color="#ffffff"
+                                                        />
+                                                        <Text className="text-white text-[10px] font-bold mt-1">
+                                                            Video
+                                                        </Text>
+                                                    </View>
+                                                )}
+                                            </TouchableOpacity>
+
+                                            <TouchableOpacity
+                                                onPress={() =>
+                                                    handleRemoveOrgMedia(idx)
+                                                }
+                                                className="absolute top-1 right-1 bg-red-600/90 rounded-full p-1 z-10"
+                                            >
+                                                <MaterialDesignIcons
+                                                    name="close"
+                                                    size={14}
+                                                    color="#ffffff"
+                                                />
+                                            </TouchableOpacity>
+                                        </View>
+                                    ))}
+                                </View>
+                            )}
+                        </Card.Content>
+                    </Card>
+
                     <Card style={styles.card}>
                         <Card.Content className="p-0">
                             <View className="px-4 pt-4 pb-2">
@@ -785,6 +1203,144 @@ const Signup = ({ navigation }) => {
                             </List.AccordionGroup>
                         </Card.Content>
                     </Card>
+
+                    {/* Compliance & Clearances Card */}
+                    <Card className="mb-4 bg-white rounded-2xl shadow-sm border border-slate-200">
+                        <Card.Title
+                            title="Compliance & Clearances"
+                            subtitle="Mandatory facility details & license declarations"
+                            titleStyle={{ fontWeight: "bold", fontSize: 18 }}
+                            left={(props) => (
+                                <Avatar.Icon
+                                    {...props}
+                                    icon="file-certificate-outline"
+                                    style={{ backgroundColor: "#e0e7ff" }}
+                                    color="#4338ca"
+                                />
+                            )}
+                        />
+                        <Card.Content className="gap-4">
+                            {[
+                                {
+                                    key: "cctvAvailable",
+                                    label: "CCTV Available",
+                                    subtitle: "Is CCTV surveillance active at facility?",
+                                    icon: "cctv",
+                                },
+                                {
+                                    key: "tradeLicense",
+                                    label: "Trade License",
+                                    subtitle: "Valid Trade License issued by local authority",
+                                    icon: "text-box-check-outline",
+                                },
+                                {
+                                    key: "zoningClearance",
+                                    label: "Zoning & Land Use Clearance",
+                                    subtitle: "Commercial / Parking zoning clearance approved",
+                                    icon: "map-check-outline",
+                                },
+                                {
+                                    key: "shopsEstablishmentLicense",
+                                    label: "Shops & Establishments License",
+                                    subtitle: "Registered under Shops & Establishments Act",
+                                    icon: "store-check-outline",
+                                },
+                                {
+                                    key: "gstRegistration",
+                                    label: "GST Registration",
+                                    subtitle: "Valid Goods and Services Tax identification",
+                                    icon: "cash-check",
+                                },
+                            ].map((item, idx, arr) => (
+                                <View key={item.key}>
+                                    <View className="flex-row items-center justify-between py-1">
+                                        <View className="flex-1 mr-2">
+                                            <Text className="font-semibold text-slate-800 text-sm">
+                                                {item.label}
+                                            </Text>
+                                            <Text className="text-xs text-slate-500 mt-0.5">
+                                                {item.subtitle}
+                                            </Text>
+                                        </View>
+                                        <RadioButton.Group
+                                            onValueChange={(val) =>
+                                                setInputs((prev) => ({
+                                                    ...prev,
+                                                    [item.key]: val,
+                                                }))
+                                            }
+                                            value={inputs[item.key]}
+                                        >
+                                            <View className="flex-row items-center gap-2">
+                                                <TouchableOpacity
+                                                    className="flex-row items-center"
+                                                    onPress={() =>
+                                                        setInputs((prev) => ({
+                                                            ...prev,
+                                                            [item.key]: "yes",
+                                                        }))
+                                                    }
+                                                    activeOpacity={0.7}
+                                                >
+                                                    <RadioButton
+                                                        value="yes"
+                                                        color="#4338ca"
+                                                        uncheckedColor="#cbd5e1"
+                                                    />
+                                                    <Text className="text-xs font-bold text-slate-700">
+                                                        Yes
+                                                    </Text>
+                                                </TouchableOpacity>
+
+                                                <TouchableOpacity
+                                                    className="flex-row items-center"
+                                                    onPress={() =>
+                                                        setInputs((prev) => ({
+                                                            ...prev,
+                                                            [item.key]: "no",
+                                                        }))
+                                                    }
+                                                    activeOpacity={0.7}
+                                                >
+                                                    <RadioButton
+                                                        value="no"
+                                                        color="#4338ca"
+                                                        uncheckedColor="#cbd5e1"
+                                                    />
+                                                    <Text className="text-xs font-bold text-slate-700">
+                                                        No
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        </RadioButton.Group>
+                                    </View>
+                                    {idx < arr.length - 1 && (
+                                        <Divider className="my-2 bg-slate-100" />
+                                    )}
+                                </View>
+                            ))}
+                        </Card.Content>
+                    </Card>
+                    {/* Terms & Conditions Checkbox Row */}
+                    <View className="flex-row items-center bg-white p-3 rounded-2xl border border-slate-200 mt-2 mb-1">
+                        <Checkbox
+                            status={acceptedTerms ? "checked" : "unchecked"}
+                            onPress={() => setAcceptedTerms(!acceptedTerms)}
+                            color="#b45309"
+                        />
+                        <View className="flex-1 ml-1 flex-row flex-wrap items-center">
+                            <Text className="text-slate-700 text-xs font-semibold">
+                                I agree to the{" "}
+                            </Text>
+                            <TouchableOpacity
+                                onPress={() => setTermsModalVisible(true)}
+                            >
+                                <Text className="text-amber-800 font-bold text-xs underline">
+                                    Partner Terms & Conditions
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
                     <Button
                         mode="contained"
                         onPress={handleSignup}
@@ -811,6 +1367,66 @@ const Signup = ({ navigation }) => {
                     </View>
                 </View>
             </ScrollView>
+
+            {/* Terms and Conditions Dialog Modal */}
+            <Portal>
+                <Modal
+                    visible={termsModalVisible}
+                    onDismiss={() => setTermsModalVisible(false)}
+                    contentContainerStyle={{
+                        backgroundColor: "white",
+                        padding: 22,
+                        margin: 20,
+                        borderRadius: 24,
+                        maxHeight: "80%",
+                    }}
+                >
+                    <View className="flex-row justify-between items-center mb-3 pb-2 border-b border-slate-200">
+                        <Text className="text-slate-800 text-lg font-bold">
+                            Partner Agency Terms & Conditions
+                        </Text>
+                        <TouchableOpacity
+                            onPress={() => setTermsModalVisible(false)}
+                            className="p-1 rounded-full bg-slate-100"
+                        >
+                            <MaterialDesignIcons
+                                name="close"
+                                size={20}
+                                color="#475569"
+                            />
+                        </TouchableOpacity>
+                    </View>
+
+                    <ScrollView className="mb-4">
+                        <Text className="text-slate-700 text-xs leading-5">
+                            {termsContent ||
+                                "Loading Partner Terms and Conditions..."}
+                        </Text>
+                    </ScrollView>
+
+                    <View className="flex-row justify-end">
+                        <Button
+                            mode="contained"
+                            onPress={() => {
+                                setAcceptedTerms(true);
+                                setTermsModalVisible(false);
+                            }}
+                            buttonColor="#b45309"
+                            className="rounded-xl"
+                        >
+                            I Accept Terms
+                        </Button>
+                    </View>
+                </Modal>
+            </Portal>
+
+            <MediaViewerModal
+                visible={viewerState.visible}
+                onDismiss={() =>
+                    setViewerState({ visible: false, media: null })
+                }
+                media={viewerState.media}
+            />
         </View>
     );
 };

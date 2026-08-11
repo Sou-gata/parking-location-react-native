@@ -9,7 +9,7 @@ import {
     ScrollView,
 } from "react-native";
 import { useSelector, useDispatch } from "react-redux";
-import { logoutAndClearToken, updateUser } from "../store/slices/userSlice";
+import { logoutAndClearToken } from "../store/slices/userSlice";
 import {
     Drawer,
     IconButton,
@@ -24,15 +24,14 @@ import AgencyAdminDashboard from "./AgencyAdminDashboard";
 import SuperAdminDashboard from "./SuperAdminDashboard";
 import useRolePermissions from "../hooks/useRolePermissions";
 import { ROLES, PERMISSIONS, ROLE_DISPLAY_NAMES } from "../utils/rbacConfig";
-import PermissionGuard from "../components/PermissionGuard";
 
 const { width } = Dimensions.get("window");
 const DRAWER_WIDTH = width * 0.75;
 
 const Home = ({ navigation }) => {
     const dispatch = useDispatch();
-    const { role } = useRolePermissions();
-    const user = useSelector((state) => state.user.user);
+    const { user, role, hasPermission, hasAnyPermission } =
+        useRolePermissions();
     const [activeView, setActiveView] = useState("dashboard"); // 'dashboard' or 'map'
     const [drawerOpen, setDrawerOpen] = useState(false);
     const drawerAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
@@ -74,19 +73,15 @@ const Home = ({ navigation }) => {
         dispatch(logoutAndClearToken());
     };
 
-    const handleRoleSwitch = (newRole) => {
-        dispatch(updateUser({ role: newRole }));
-    };
-
     const renderRoleDashboard = () => {
-        if (role === ROLES.SUPER_ADMIN) {
+        if (hasPermission(PERMISSIONS.MANAGE_AGENCIES)) {
             return (
                 <SuperAdminDashboard
                     navigation={navigation}
                     onOpenMap={() => setActiveView("map")}
                 />
             );
-        } else if (role === ROLES.AGENCY_ADMIN || role === ROLES.AGENCY_USER) {
+        } else if (hasPermission(PERMISSIONS.MANAGE_BOOKINGS)) {
             return (
                 <AgencyAdminDashboard
                     navigation={navigation}
@@ -125,7 +120,11 @@ const Home = ({ navigation }) => {
                 </Text>
 
                 <IconButton
-                    icon={activeView === "dashboard" ? "map-marker" : "view-dashboard"}
+                    icon={
+                        activeView === "dashboard"
+                            ? "map-marker"
+                            : "view-dashboard"
+                    }
                     iconColor="white"
                     size={24}
                     onPress={() =>
@@ -170,7 +169,7 @@ const Home = ({ navigation }) => {
             >
                 <Surface elevation={5} className="flex-1 bg-white pt-14">
                     {/* User profile header */}
-                    <View className="px-5 flex-row items-center mb-3">
+                    <View className="px-5 flex-row items-center mb-4">
                         <Avatar.Text
                             size={56}
                             label={
@@ -194,49 +193,19 @@ const Home = ({ navigation }) => {
                         </View>
                     </View>
 
-                    {/* Interactive Role Switcher for Testing */}
-                    <View className="px-5 mb-4 mt-2">
-                        <Text className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-                            Simulate Role (Testing)
-                        </Text>
-                        <ScrollView
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                            className="flex-row py-1"
-                        >
-                            {Object.values(ROLES).map((r) => (
-                                <Pressable
-                                    key={r}
-                                    onPress={() => handleRoleSwitch(r)}
-                                    className={`px-3 py-1.5 rounded-full border mr-2 items-center justify-center ${
-                                        role === r
-                                            ? "bg-indigo-600 border-indigo-600"
-                                            : "bg-slate-100 border-slate-200"
-                                    }`}
-                                >
-                                    <Text
-                                        className={`text-xs font-bold ${
-                                            role === r
-                                                ? "text-white"
-                                                : "text-slate-600"
-                                        }`}
-                                    >
-                                        {ROLE_DISPLAY_NAMES[r]}
-                                    </Text>
-                                </Pressable>
-                            ))}
-                        </ScrollView>
-                    </View>
-
                     <Divider className="mx-4 mb-2 bg-gray-200" />
 
-                    {/* Navigation Menu */}
+                    {/* Navigation Menu Organized into Categorized Sections */}
                     <View className="flex-1">
                         <ScrollView
                             className="flex-1"
                             showsVerticalScrollIndicator={false}
                         >
-                            <Drawer.Section showDivider={false}>
+                            {/* SECTION 1: MAIN NAVIGATION */}
+                            <Drawer.Section
+                                title="Navigation"
+                                showDivider={false}
+                            >
                                 <Drawer.Item
                                     icon="view-dashboard"
                                     label="Dashboard"
@@ -246,28 +215,36 @@ const Home = ({ navigation }) => {
                                         toggleDrawer(false);
                                     }}
                                 />
-                                <Drawer.Item
-                                    icon="map-search"
-                                    label="Map View"
-                                    active={activeView === "map"}
-                                    onPress={() => {
-                                        setActiveView("map");
-                                        toggleDrawer(false);
-                                    }}
-                                />
+
+                                {hasPermission(PERMISSIONS.VIEW_MAP) && (
+                                    <Drawer.Item
+                                        icon="map-search"
+                                        label="Map View"
+                                        active={activeView === "map"}
+                                        onPress={() => {
+                                            setActiveView("map");
+                                            toggleDrawer(false);
+                                        }}
+                                    />
+                                )}
+                            </Drawer.Section>
+
+                            {/* SECTION 2: MY ACCOUNT & SERVICES */}
+                            <Divider className="my-1 mx-4 bg-slate-100" />
+                            <Drawer.Section
+                                title="My Account"
+                                showDivider={false}
+                            >
                                 <Drawer.Item
                                     icon="account"
-                                    label="Profile"
+                                    label="My Profile"
                                     onPress={() => {
                                         toggleDrawer(false);
                                         navigation.navigate("Profile");
                                     }}
                                 />
 
-                                {/* Customer Feature */}
-                                <PermissionGuard
-                                    permission={PERMISSIONS.BOOK_PARKING}
-                                >
+                                {hasPermission(PERMISSIONS.BOOK_PARKING) && (
                                     <Drawer.Item
                                         icon="car"
                                         label="My Bookings"
@@ -276,16 +253,15 @@ const Home = ({ navigation }) => {
                                             navigation.navigate("MyBookings");
                                         }}
                                     />
-                                </PermissionGuard>
-                                {(role === ROLES.USER ||
-                                    role === ROLES.SUPER_ADMIN ||
-                                    role === ROLES.AGENCY_ADMIN) && (
+                                )}
+
+                                {hasPermission(PERMISSIONS.VIEW_WALLET) && (
                                     <Drawer.Item
                                         icon="wallet"
                                         label={
-                                            role === ROLES.USER
-                                                ? "Wallet"
-                                                : "Earnings"
+                                            hasPermission(PERMISSIONS.BOOK_PARKING)
+                                                ? "Wallet & Transactions"
+                                                : "Earnings & Wallet"
                                         }
                                         onPress={() => {
                                             toggleDrawer(false);
@@ -293,71 +269,147 @@ const Home = ({ navigation }) => {
                                         }}
                                     />
                                 )}
-
-                                {/* Security Guard / Manager booking operations */}
-                                <PermissionGuard
-                                    permission={PERMISSIONS.MANAGE_BOOKINGS}
-                                >
-                                    <Drawer.Item
-                                        icon="calendar-check"
-                                        label="Check In/Out"
-                                        onPress={() => {
-                                            toggleDrawer(false);
-                                            navigation.navigate("CheckInOut");
-                                        }}
-                                    />
-                                </PermissionGuard>
-
-                                {/* Location Management */}
-                                <PermissionGuard
-                                    permission={PERMISSIONS.MANAGE_LOCATIONS}
-                                >
-                                    <Drawer.Item
-                                        icon="map-marker-multiple"
-                                        label="Manage Parking"
-                                        onPress={() => {
-                                            toggleDrawer(false);
-                                            navigation.navigate(
-                                                "ManageParking"
-                                            );
-                                        }}
-                                    />
-                                </PermissionGuard>
-
-                                {/* User Management */}
-                                <PermissionGuard
-                                    permission={PERMISSIONS.MANAGE_USERS}
-                                >
-                                    <Drawer.Item
-                                        icon="account-multiple-outline"
-                                        label={
-                                            role === ROLES.SUPER_ADMIN
-                                                ? "Manage Users"
-                                                : "Manage Staff"
-                                        }
-                                        onPress={() => {
-                                            toggleDrawer(false);
-                                            navigation.navigate("ManageUsers");
-                                        }}
-                                    />
-                                </PermissionGuard>
-
-                                {role === ROLES.SUPER_ADMIN && (
-                                    <Drawer.Item
-                                        icon="cog"
-                                        label="Settings"
-                                        onPress={() => {
-                                            toggleDrawer(false);
-                                            navigation.navigate(
-                                                "SuperAdminSettings"
-                                            );
-                                        }}
-                                    />
-                                )}
                             </Drawer.Section>
+
+                            {/* SECTION 3: PARKING OPERATIONS */}
+                            {hasAnyPermission([
+                                PERMISSIONS.MANAGE_BOOKINGS,
+                                PERMISSIONS.MANAGE_LOCATIONS,
+                            ]) && (
+                                <>
+                                    <Divider className="my-1 mx-4 bg-slate-100" />
+                                    <Drawer.Section
+                                        title="Operations"
+                                        showDivider={false}
+                                    >
+                                        {hasPermission(
+                                            PERMISSIONS.MANAGE_BOOKINGS
+                                        ) && (
+                                            <Drawer.Item
+                                                icon="calendar-check"
+                                                label="Check In / Out"
+                                                onPress={() => {
+                                                    toggleDrawer(false);
+                                                    navigation.navigate(
+                                                        "CheckInOut"
+                                                    );
+                                                }}
+                                            />
+                                        )}
+
+                                        {hasPermission(
+                                            PERMISSIONS.MANAGE_LOCATIONS
+                                        ) && (
+                                            <>
+                                                <Drawer.Item
+                                                    icon="map-marker-multiple"
+                                                    label="Manage Parking"
+                                                    onPress={() => {
+                                                        toggleDrawer(false);
+                                                        navigation.navigate(
+                                                            "ManageParking"
+                                                        );
+                                                    }}
+                                                />
+                                                <Drawer.Item
+                                                    icon="clock-outline"
+                                                    label="Working Hours"
+                                                    onPress={() => {
+                                                        toggleDrawer(false);
+                                                        navigation.navigate(
+                                                            "WorkingHours"
+                                                        );
+                                                    }}
+                                                />
+                                            </>
+                                        )}
+                                    </Drawer.Section>
+                                </>
+                            )}
+
+                            {/* SECTION 4: ADMINISTRATION & SUPPORT */}
+                            {hasAnyPermission([
+                                PERMISSIONS.MANAGE_AGENCIES,
+                                PERMISSIONS.MANAGE_USERS,
+                                PERMISSIONS.MANAGE_COMPLAINTS,
+                                PERMISSIONS.MANAGE_SETTINGS,
+                            ]) && (
+                                <>
+                                    <Divider className="my-1 mx-4 bg-slate-100" />
+                                    <Drawer.Section
+                                        title="Administration"
+                                        showDivider={false}
+                                    >
+                                        {hasPermission(
+                                            PERMISSIONS.MANAGE_AGENCIES
+                                        ) && (
+                                            <Drawer.Item
+                                                icon="office-building"
+                                                label="Manage Agencies"
+                                                onPress={() => {
+                                                    toggleDrawer(false);
+                                                    navigation.navigate(
+                                                        "ManageUsers",
+                                                        {
+                                                            initialTab:
+                                                                "agencies",
+                                                        }
+                                                    );
+                                                }}
+                                            />
+                                        )}
+
+                                        {hasPermission(
+                                            PERMISSIONS.MANAGE_USERS
+                                        ) && (
+                                            <Drawer.Item
+                                                icon="account-multiple-outline"
+                                                label="Manage Staff"
+                                                onPress={() => {
+                                                    toggleDrawer(false);
+                                                    navigation.navigate(
+                                                        "ManageUsers"
+                                                    );
+                                                }}
+                                            />
+                                        )}
+
+                                        {hasPermission(
+                                            PERMISSIONS.MANAGE_COMPLAINTS
+                                        ) && (
+                                            <Drawer.Item
+                                                icon="alert-circle-outline"
+                                                label="Customer Complaints"
+                                                onPress={() => {
+                                                    toggleDrawer(false);
+                                                    navigation.navigate(
+                                                        "ManageComplaints"
+                                                    );
+                                                }}
+                                            />
+                                        )}
+
+                                        {hasPermission(
+                                            PERMISSIONS.MANAGE_SETTINGS
+                                        ) && (
+                                            <Drawer.Item
+                                                icon="cog"
+                                                label="System Settings"
+                                                onPress={() => {
+                                                    toggleDrawer(false);
+                                                    navigation.navigate(
+                                                        "SuperAdminSettings"
+                                                    );
+                                                }}
+                                            />
+                                        )}
+                                    </Drawer.Section>
+                                </>
+                            )}
                         </ScrollView>
                     </View>
 
+                    {/* SECTION 5: SIGN OUT */}
                     <Drawer.Section className="mb-5 border-t border-gray-100 pt-2">
                         <Drawer.Item
                             icon="logout"

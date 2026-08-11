@@ -5,15 +5,14 @@ import {
     RefreshControl,
     TouchableOpacity,
     ActivityIndicator,
-    StyleSheet,
 } from "react-native";
-import { Text, Surface, Avatar, Button } from "react-native-paper";
-import { useSelector } from "react-redux";
+import { Text, Surface } from "react-native-paper";
 import { MaterialDesignIcons } from "@react-native-vector-icons/material-design-icons";
 import apiService from "../utils/apiService";
+import useRolePermissions from "../hooks/useRolePermissions";
 
 const AgencyAdminDashboard = ({ navigation, onOpenMap }) => {
-    const user = useSelector((state) => state.user.user);
+    const { user } = useRolePermissions();
 
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -30,6 +29,7 @@ const AgencyAdminDashboard = ({ navigation, onOpenMap }) => {
         activeBookings: 0,
         todayBookings: 0,
         totalBookings: 0,
+        forceCancelsCount: 0,
         staffCount: 0,
         pendingWithdrawalsCount: 0,
         recentBookings: [],
@@ -64,7 +64,10 @@ const AgencyAdminDashboard = ({ navigation, onOpenMap }) => {
 
     const calculateOccupancyPercent = () => {
         if (!stats.totalCapacity || stats.totalCapacity === 0) return 0;
-        return Math.min(100, Math.round((stats.activeBookings / stats.totalCapacity) * 100));
+        return Math.min(
+            100,
+            Math.round((stats.activeBookings / stats.totalCapacity) * 100)
+        );
     };
 
     const getStatusStyle = (status) => {
@@ -84,195 +87,439 @@ const AgencyAdminDashboard = ({ navigation, onOpenMap }) => {
 
     return (
         <ScrollView
-            style={styles.container}
-            contentContainerStyle={styles.scrollContent}
+            className="flex-1 bg-slate-50"
+            contentContainerStyle={{ paddingBottom: 40 }}
             refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#4338ca"]} />
+                <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={onRefresh}
+                    colors={["#4338ca"]}
+                />
             }
         >
             {loading && !refreshing ? (
-                <View style={styles.loadingContainer}>
+                <View className="py-12 items-center justify-center">
                     <ActivityIndicator size="large" color="#4338ca" />
-                    <Text style={styles.loadingText}>Loading Agency Statistics...</Text>
+                    <Text className="text-slate-500 mt-3 font-semibold">
+                        Loading Agency Statistics...
+                    </Text>
                 </View>
             ) : (
-                <View style={styles.body}>
+                <View className="px-4 mt-4">
                     {/* Revenue / Wallet Card */}
-                    <Surface style={styles.revenueCard} elevation={3}>
-                        <View style={styles.revenueRow}>
+                    <Surface
+                        className="bg-emerald-700 rounded-2xl p-5 mb-4"
+                        elevation={3}
+                    >
+                        <View className="flex-row items-center justify-between">
                             <View>
-                                <Text style={styles.revenueLabel}>AGENCY NET EARNINGS</Text>
-                                <Text style={styles.revenueAmount}>
+                                <Text className="text-emerald-200 text-[11px] font-bold tracking-wider">
+                                    AGENCY NET EARNINGS
+                                </Text>
+                                <Text className="text-white text-3xl font-extrabold mt-1">
                                     {formatCurrency(stats.walletBalance)}
                                 </Text>
                                 {stats.commissionPercentage > 0 && (
-                                    <Text style={styles.commissionText}>
-                                        Commission Rate: {stats.commissionPercentage}%
+                                    <Text className="text-emerald-300 text-xs mt-1">
+                                        Commission Rate:{" "}
+                                        {stats.commissionPercentage}%
                                     </Text>
                                 )}
                             </View>
                             <TouchableOpacity
-                                style={styles.withdrawBtn}
+                                className="bg-white/20 px-3.5 py-2 rounded-xl flex-row items-center border border-white/30"
                                 onPress={() => navigation.navigate("Wallet")}
                             >
-                                <MaterialDesignIcons name="cash-fast" size={18} color="#ffffff" />
-                                <Text style={styles.withdrawBtnText}>Withdraw</Text>
+                                <MaterialDesignIcons
+                                    name="cash-fast"
+                                    size={18}
+                                    color="#ffffff"
+                                />
+                                <Text className="text-white font-bold ml-1.5 text-xs">
+                                    Withdraw
+                                </Text>
                             </TouchableOpacity>
                         </View>
                     </Surface>
 
                     {/* Occupancy Card */}
-                    <Surface style={styles.occupancyCard} elevation={2}>
-                        <View style={styles.occupancyHeader}>
-                            <Text style={styles.cardHeaderTitle}>Parking Lot Occupancy</Text>
-                            <Text style={styles.occupancyCount}>
-                                {stats.activeBookings} / {stats.totalCapacity} Spots
+                    <Surface
+                        className="bg-white rounded-2xl p-4 mb-4 border border-slate-100"
+                        elevation={2}
+                    >
+                        <View className="flex-row justify-between items-center mb-2">
+                            <Text className="text-slate-800 text-sm font-bold">
+                                Parking Lot Occupancy
+                            </Text>
+                            <Text className="text-indigo-700 text-sm font-extrabold">
+                                {stats.activeBookings} / {stats.totalCapacity}{" "}
+                                Spots
                             </Text>
                         </View>
 
                         {/* Progress Bar Container */}
-                        <View style={styles.progressBarTrack}>
+                        <View className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden mb-2">
                             <View
-                                style={[
-                                    styles.progressBarFill,
-                                    { width: `${calculateOccupancyPercent()}%` },
-                                ]}
+                                className="h-full bg-indigo-700 rounded-full"
+                                style={{
+                                    width: `${calculateOccupancyPercent()}%`,
+                                }}
                             />
                         </View>
-                        <View style={styles.occupancySubRow}>
-                            <Text style={styles.occupancySubText}>
+                        <View className="flex-row justify-between items-center">
+                            <Text className="text-slate-500 text-xs font-medium">
                                 {calculateOccupancyPercent()}% Occupied
                             </Text>
-                            <Text style={styles.availableText}>
-                                {Math.max(0, stats.totalCapacity - stats.activeBookings)} Spots Available
+                            <Text className="text-emerald-600 text-xs font-semibold">
+                                {Math.max(
+                                    0,
+                                    stats.totalCapacity - stats.activeBookings
+                                )}{" "}
+                                Spots Available
                             </Text>
                         </View>
                     </Surface>
 
                     {/* Stats Grid */}
-                    <View style={styles.statsRow}>
-                        <Surface style={styles.statCard} elevation={1}>
-                            <View style={[styles.iconCircle, { backgroundColor: "#dbeafe" }]}>
-                                <MaterialDesignIcons name="calendar-today" size={22} color="#2563eb" />
+                    <View className="flex-row justify-between mb-4">
+                        <Surface
+                            className="flex-1 bg-white p-3.5 rounded-2xl items-center mx-1 border border-slate-100"
+                            elevation={1}
+                        >
+                            <View className="w-10 h-10 rounded-full justify-center items-center mb-2 bg-blue-100">
+                                <MaterialDesignIcons
+                                    name="calendar-today"
+                                    size={22}
+                                    color="#2563eb"
+                                />
                             </View>
-                            <Text style={styles.statLabel}>Today's Bookings</Text>
-                            <Text style={styles.statValue}>{stats.todayBookings}</Text>
+                            <Text className="text-slate-500 text-[11px] font-semibold text-center">
+                                Today's Bookings
+                            </Text>
+                            <Text className="text-slate-800 text-lg font-bold mt-0.5">
+                                {stats.todayBookings}
+                            </Text>
                         </Surface>
 
-                        <Surface style={styles.statCard} elevation={1}>
-                            <View style={[styles.iconCircle, { backgroundColor: "#f3e8ff" }]}>
-                                <MaterialDesignIcons name="account-group-outline" size={22} color="#7c3aed" />
+                        <Surface
+                            className="flex-1 bg-white p-3.5 rounded-2xl items-center mx-1 border border-slate-100"
+                            elevation={1}
+                        >
+                            <View className="w-10 h-10 rounded-full justify-center items-center mb-2 bg-purple-100">
+                                <MaterialDesignIcons
+                                    name="account-group-outline"
+                                    size={22}
+                                    color="#7c3aed"
+                                />
                             </View>
-                            <Text style={styles.statLabel}>Total Staff</Text>
-                            <Text style={styles.statValue}>{stats.staffCount}</Text>
+                            <Text className="text-slate-500 text-[11px] font-semibold text-center">
+                                Total Staff
+                            </Text>
+                            <Text className="text-slate-800 text-lg font-bold mt-0.5">
+                                {stats.staffCount}
+                            </Text>
                         </Surface>
 
-                        <Surface style={styles.statCard} elevation={1}>
-                            <View style={[styles.iconCircle, { backgroundColor: "#fef3c7" }]}>
-                                <MaterialDesignIcons name="history" size={22} color="#d97706" />
+                        <Surface
+                            className="flex-1 bg-white p-3.5 rounded-2xl items-center mx-1 border border-slate-100"
+                            elevation={1}
+                        >
+                            <View className="w-10 h-10 rounded-full justify-center items-center mb-2 bg-amber-100">
+                                <MaterialDesignIcons
+                                    name="history"
+                                    size={22}
+                                    color="#d97706"
+                                />
                             </View>
-                            <Text style={styles.statLabel}>Total Bookings</Text>
-                            <Text style={styles.statValue}>{stats.totalBookings}</Text>
+                            <Text className="text-slate-500 text-[11px] font-semibold text-center">
+                                Total Bookings
+                            </Text>
+                            <Text className="text-slate-800 text-lg font-bold mt-0.5">
+                                {stats.totalBookings}
+                            </Text>
+                        </Surface>
+
+                        <Surface
+                            className="flex-1 bg-white p-3.5 rounded-2xl items-center mx-1 border border-slate-100"
+                            elevation={1}
+                        >
+                            <View className="w-10 h-10 rounded-full justify-center items-center mb-2 bg-rose-100">
+                                <MaterialDesignIcons
+                                    name="cancel"
+                                    size={22}
+                                    color="#e11d48"
+                                />
+                            </View>
+                            <Text className="text-slate-500 text-[11px] font-semibold text-center">
+                                Force Cancels
+                            </Text>
+                            <Text className="text-rose-600 text-lg font-bold mt-0.5">
+                                {stats.forceCancelsCount || 0}
+                            </Text>
                         </Surface>
                     </View>
 
                     {/* Quick Management Tools */}
-                    <Text style={styles.sectionHeader}>Management Tools</Text>
-                    <View style={styles.actionGrid}>
+                    <Text className="text-slate-700 text-base font-bold mb-3">
+                        Management Tools
+                    </Text>
+                    <View className="flex-row flex-wrap justify-between mb-2">
                         <TouchableOpacity
-                            style={[styles.actionCard, { backgroundColor: "#4338ca" }]}
+                            className="w-[48%] p-3.5 rounded-2xl mb-3 flex-row items-center bg-indigo-700"
                             onPress={() => navigation.navigate("ManageParking")}
                         >
-                            <View style={[styles.actionIconBox, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
-                                <MaterialDesignIcons name="parking" size={24} color="#ffffff" />
+                            <View className="w-10 h-10 rounded-xl justify-center items-center mr-2.5 bg-white/20">
+                                <MaterialDesignIcons
+                                    name="parking"
+                                    size={24}
+                                    color="#ffffff"
+                                />
                             </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.actionCardTitleWhite}>Parking Lots</Text>
-                                <Text style={styles.actionCardSubWhite}>Rates & Slots</Text>
+                            <View className="flex-1">
+                                <Text className="text-white font-bold text-xs">
+                                    Parking Lots
+                                </Text>
+                                <Text className="text-slate-200 text-[11px]">
+                                    Rates & Slots
+                                </Text>
                             </View>
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                            style={[styles.actionCard, { backgroundColor: "#059669" }]}
+                            className="w-[48%] p-3.5 rounded-2xl mb-3 flex-row items-center bg-emerald-600"
                             onPress={() => navigation.navigate("CheckInOut")}
                         >
-                            <View style={[styles.actionIconBox, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
-                                <MaterialDesignIcons name="qrcode-scan" size={24} color="#ffffff" />
+                            <View className="w-10 h-10 rounded-xl justify-center items-center mr-2.5 bg-white/20">
+                                <MaterialDesignIcons
+                                    name="qrcode-scan"
+                                    size={24}
+                                    color="#ffffff"
+                                />
                             </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.actionCardTitleWhite}>Check In / Out</Text>
-                                <Text style={styles.actionCardSubWhite}>Verify Code</Text>
+                            <View className="flex-1">
+                                <Text className="text-white font-bold text-xs">
+                                    Check In / Out
+                                </Text>
+                                <Text className="text-slate-200 text-[11px]">
+                                    Verify Code
+                                </Text>
                             </View>
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                            style={[styles.actionCard, styles.actionCardWhite]}
+                            className="w-[48%] p-3.5 rounded-2xl mb-3 flex-row items-center bg-white border border-slate-200"
                             onPress={() => navigation.navigate("ManageUsers")}
                         >
-                            <View style={[styles.actionIconBox, { backgroundColor: "#f3e8ff" }]}>
-                                <MaterialDesignIcons name="account-supervisor-outline" size={24} color="#7c3aed" />
+                            <View className="w-10 h-10 rounded-xl justify-center items-center mr-2.5 bg-purple-100">
+                                <MaterialDesignIcons
+                                    name="account-supervisor-outline"
+                                    size={24}
+                                    color="#7c3aed"
+                                />
                             </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.actionCardTitleDark}>Manage Staff</Text>
-                                <Text style={styles.actionCardSubDark}>Guards & Accounts</Text>
+                            <View className="flex-1">
+                                <Text className="text-slate-800 font-bold text-xs">
+                                    Manage Staff
+                                </Text>
+                                <Text className="text-slate-500 text-[11px]">
+                                    Guards & Accounts
+                                </Text>
                             </View>
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                            style={[styles.actionCard, styles.actionCardWhite]}
+                            className="w-[48%] p-3.5 rounded-2xl mb-3 flex-row items-center bg-white border border-slate-200"
+                            onPress={() => navigation.navigate("WorkingHours")}
+                        >
+                            <View className="w-10 h-10 rounded-xl justify-center items-center mr-2.5 bg-blue-100">
+                                <MaterialDesignIcons
+                                    name="clock-outline"
+                                    size={24}
+                                    color="#2563eb"
+                                />
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-slate-800 font-bold text-xs">
+                                    Working Hours
+                                </Text>
+                                <Text className="text-slate-500 text-[11px]">
+                                    Days & Holidays
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            className="w-[48%] p-3.5 rounded-2xl mb-3 flex-row items-center bg-white border border-slate-200"
                             onPress={onOpenMap}
                         >
-                            <View style={[styles.actionIconBox, { backgroundColor: "#fef3c7" }]}>
-                                <MaterialDesignIcons name="map-marker" size={24} color="#d97706" />
+                            <View className="w-10 h-10 rounded-xl justify-center items-center mr-2.5 bg-amber-100">
+                                <MaterialDesignIcons
+                                    name="map-marker"
+                                    size={24}
+                                    color="#d97706"
+                                />
                             </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.actionCardTitleDark}>Agency Location</Text>
-                                <Text style={styles.actionCardSubDark}>View Map</Text>
+                            <View className="flex-1">
+                                <Text className="text-slate-800 font-bold text-xs">
+                                    Agency Location
+                                </Text>
+                                <Text className="text-slate-500 text-[11px]">
+                                    View Map
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
+
+                        {/* Pending Complaints Alert Banner */}
+                        {Boolean(stats.pendingComplaintsCount > 0) && (
+                            <TouchableOpacity
+                                className="mb-4 p-3.5 bg-rose-50 rounded-2xl border border-rose-200 flex-row items-center justify-between"
+                                onPress={() =>
+                                    navigation.navigate("ManageComplaints")
+                                }
+                            >
+                                <View className="flex-row items-center">
+                                    <View className="w-10 h-10 rounded-xl justify-center items-center mr-2.5 bg-rose-100">
+                                        <MaterialDesignIcons
+                                            name="alert-circle-outline"
+                                            size={24}
+                                            color="#e11d48"
+                                        />
+                                    </View>
+                                    <View>
+                                        <Text className="text-rose-900 font-bold text-xs">
+                                            Pending Complaints
+                                        </Text>
+                                        <Text className="text-rose-600 text-[11px]">
+                                            {stats.pendingComplaintsCount} items
+                                            require attention
+                                        </Text>
+                                    </View>
+                                </View>
+                                <MaterialDesignIcons
+                                    name="chevron-right"
+                                    size={20}
+                                    color="#e11d48"
+                                />
+                            </TouchableOpacity>
+                        )}
+
+                        <TouchableOpacity
+                            className="w-[48%] p-3.5 rounded-2xl mb-3 flex-row items-center bg-white border border-slate-200"
+                            onPress={() =>
+                                navigation.navigate("ManageComplaints")
+                            }
+                        >
+                            <View className="w-10 h-10 rounded-xl justify-center items-center mr-2.5 bg-rose-100">
+                                <MaterialDesignIcons
+                                    name="alert-circle-outline"
+                                    size={24}
+                                    color="#e11d48"
+                                />
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-slate-800 font-bold text-xs">
+                                    Complaints
+                                </Text>
+                                <Text className="text-slate-500 text-[11px]">
+                                    Review Complaints
+                                </Text>
                             </View>
                         </TouchableOpacity>
                     </View>
 
                     {/* Spot Capacities Breakdown */}
-                    <Text style={styles.sectionHeader}>Vehicle Slot Breakdown</Text>
-                    <View style={styles.capacityGrid}>
-                        <Surface style={styles.capacityCard} elevation={1}>
-                            <MaterialDesignIcons name="motorbike" size={26} color="#4338ca" />
-                            <View style={{ marginLeft: 12 }}>
-                                <Text style={styles.capacityLabel}>Two Wheeler</Text>
-                                <Text style={styles.capacityValue}>{stats.twoWheelerCapacity} Spots</Text>
+                    <Text className="text-slate-700 text-base font-bold mb-3">
+                        Vehicle Slot Breakdown
+                    </Text>
+                    <View className="flex-row flex-wrap justify-between mb-3">
+                        <Surface
+                            className="w-[48%] bg-white p-3 rounded-2xl mb-2.5 border border-slate-100 flex-row items-center"
+                            elevation={1}
+                        >
+                            <MaterialDesignIcons
+                                name="motorbike"
+                                size={26}
+                                color="#4338ca"
+                            />
+                            <View className="ml-3">
+                                <Text className="text-slate-500 text-[11px] font-medium">
+                                    Two Wheeler
+                                </Text>
+                                <Text className="text-slate-900 text-sm font-bold mt-0.5">
+                                    {stats.twoWheelerCapacity} Spots
+                                </Text>
                             </View>
                         </Surface>
 
-                        <Surface style={styles.capacityCard} elevation={1}>
-                            <MaterialDesignIcons name="car-side" size={26} color="#059669" />
-                            <View style={{ marginLeft: 12 }}>
-                                <Text style={styles.capacityLabel}>Four Wheeler</Text>
-                                <Text style={styles.capacityValue}>{stats.carCapacity} Spots</Text>
+                        <Surface
+                            className="w-[48%] bg-white p-3 rounded-2xl mb-2.5 border border-slate-100 flex-row items-center"
+                            elevation={1}
+                        >
+                            <MaterialDesignIcons
+                                name="car-side"
+                                size={26}
+                                color="#059669"
+                            />
+                            <View className="ml-3">
+                                <Text className="text-slate-500 text-[11px] font-medium">
+                                    Four Wheeler
+                                </Text>
+                                <Text className="text-slate-900 text-sm font-bold mt-0.5">
+                                    {stats.carCapacity} Spots
+                                </Text>
                             </View>
                         </Surface>
 
-                        <Surface style={styles.capacityCard} elevation={1}>
-                            <MaterialDesignIcons name="car-estate" size={26} color="#d97706" />
-                            <View style={{ marginLeft: 12 }}>
-                                <Text style={styles.capacityLabel}>SUV & Vans</Text>
-                                <Text style={styles.capacityValue}>{stats.suvCapacity} Spots</Text>
+                        <Surface
+                            className="w-[48%] bg-white p-3 rounded-2xl mb-2.5 border border-slate-100 flex-row items-center"
+                            elevation={1}
+                        >
+                            <MaterialDesignIcons
+                                name="car-estate"
+                                size={26}
+                                color="#d97706"
+                            />
+                            <View className="ml-3">
+                                <Text className="text-slate-500 text-[11px] font-medium">
+                                    SUV & Vans
+                                </Text>
+                                <Text className="text-slate-900 text-sm font-bold mt-0.5">
+                                    {stats.suvCapacity} Spots
+                                </Text>
                             </View>
                         </Surface>
 
-                        <Surface style={styles.capacityCard} elevation={1}>
-                            <MaterialDesignIcons name="ev-station" size={26} color="#2563eb" />
-                            <View style={{ marginLeft: 12 }}>
-                                <Text style={styles.capacityLabel}>EV Charging</Text>
-                                <Text style={styles.capacityValue}>{stats.evCapacity} Slots</Text>
+                        <Surface
+                            className="w-[48%] bg-white p-3 rounded-2xl mb-2.5 border border-slate-100 flex-row items-center"
+                            elevation={1}
+                        >
+                            <MaterialDesignIcons
+                                name="ev-station"
+                                size={26}
+                                color="#2563eb"
+                            />
+                            <View className="ml-3">
+                                <Text className="text-slate-500 text-[11px] font-medium">
+                                    EV Charging
+                                </Text>
+                                <Text className="text-slate-900 text-sm font-bold mt-0.5">
+                                    {stats.evCapacity} Slots
+                                </Text>
                             </View>
                         </Surface>
                     </View>
 
                     {/* Recent Agency Activity */}
-                    <View style={styles.sectionTitleRow}>
-                        <Text style={styles.sectionHeader}>Recent Agency Activity</Text>
-                        <TouchableOpacity onPress={() => navigation.navigate("CheckInOut")}>
-                            <Text style={styles.seeAllText}>Manage All</Text>
+                    <View className="flex-row justify-between items-center mt-2 mb-3">
+                        <Text className="text-slate-700 text-base font-bold">
+                            Recent Agency Activity
+                        </Text>
+                        <TouchableOpacity
+                            onPress={() => navigation.navigate("CheckInOut")}
+                        >
+                            <Text className="text-indigo-700 font-semibold text-xs">
+                                Manage All
+                            </Text>
                         </TouchableOpacity>
                     </View>
 
@@ -280,25 +527,42 @@ const AgencyAdminDashboard = ({ navigation, onOpenMap }) => {
                         stats.recentBookings.map((b) => {
                             const statusSt = getStatusStyle(b.status);
                             return (
-                                <Surface key={b.booking_id || b.booking_code} style={styles.listItem} elevation={1}>
-                                    <View style={styles.listIconBox}>
-                                        <MaterialDesignIcons name="car-key" size={22} color="#475569" />
+                                <Surface
+                                    key={b.booking_id || b.booking_code}
+                                    className="bg-white rounded-2xl p-3 mb-2.5 border border-slate-100 flex-row items-center justify-between"
+                                    elevation={1}
+                                >
+                                    <View className="w-9 h-9 rounded-xl bg-slate-100 justify-center items-center mr-3">
+                                        <MaterialDesignIcons
+                                            name="car-key"
+                                            size={22}
+                                            color="#475569"
+                                        />
                                     </View>
-                                    <View style={{ flex: 1, marginRight: 8 }}>
-                                        <Text style={styles.listItemTitle} numberOfLines={1}>
+                                    <View className="flex-1 mr-2">
+                                        <Text
+                                            className="text-slate-800 font-bold text-sm"
+                                            numberOfLines={1}
+                                        >
                                             {b.user_name || "Customer"}
                                         </Text>
-                                        <Text style={styles.listItemSub}>
-                                            Code: {b.booking_code} • {b.vehicle_type} ({b.vehicle_number})
+                                        <Text className="text-slate-500 text-xs mt-0.5">
+                                            Code: {b.booking_code} •{" "}
+                                            {b.vehicle_type} ({b.vehicle_number}
+                                            )
                                         </Text>
                                     </View>
                                     <View
-                                        style={[
-                                            styles.statusBadge,
-                                            { backgroundColor: statusSt.bg, borderColor: statusSt.border },
-                                        ]}
+                                        className="px-2.5 py-1 rounded-xl border"
+                                        style={{
+                                            backgroundColor: statusSt.bg,
+                                            borderColor: statusSt.border,
+                                        }}
                                     >
-                                        <Text style={[styles.statusBadgeText, { color: statusSt.text }]}>
+                                        <Text
+                                            className="text-[10px] font-bold"
+                                            style={{ color: statusSt.text }}
+                                        >
                                             {b.status.toUpperCase()}
                                         </Text>
                                     </View>
@@ -306,9 +570,18 @@ const AgencyAdminDashboard = ({ navigation, onOpenMap }) => {
                             );
                         })
                     ) : (
-                        <Surface style={styles.emptyCard} elevation={1}>
-                            <MaterialDesignIcons name="calendar-remove" size={36} color="#cbd5e1" />
-                            <Text style={styles.emptyText}>No agency bookings found yet</Text>
+                        <Surface
+                            className="bg-white rounded-2xl p-6 items-center justify-center border border-slate-100"
+                            elevation={1}
+                        >
+                            <MaterialDesignIcons
+                                name="calendar-remove"
+                                size={36}
+                                color="#cbd5e1"
+                            />
+                            <Text className="text-slate-400 text-xs font-medium mt-2">
+                                No agency bookings found yet
+                            </Text>
                         </Surface>
                     )}
                 </View>
@@ -316,341 +589,5 @@ const AgencyAdminDashboard = ({ navigation, onOpenMap }) => {
         </ScrollView>
     );
 };
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: "#f8fafc",
-    },
-    scrollContent: {
-        paddingBottom: 40,
-    },
-    headerBanner: {
-        backgroundColor: "#1e1b4b",
-        paddingHorizontal: 20,
-        paddingTop: 16,
-        paddingBottom: 24,
-        borderBottomLeftRadius: 24,
-        borderBottomRightRadius: 24,
-    },
-    headerRow: {
-        flexDirection: "row",
-        alignItems: "center",
-    },
-    headerTextContainer: {
-        flex: 1,
-        marginLeft: 14,
-    },
-    agencySubtitle: {
-        color: "#a5b4fc",
-        fontSize: 11,
-        fontWeight: "700",
-        letterSpacing: 1,
-    },
-    agencyTitle: {
-        color: "#ffffff",
-        fontSize: 20,
-        fontWeight: "bold",
-    },
-    refreshBtn: {
-        width: 38,
-        height: 38,
-        borderRadius: 19,
-        backgroundColor: "rgba(255, 255, 255, 0.2)",
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    loadingContainer: {
-        paddingVertical: 50,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    loadingText: {
-        color: "#64748b",
-        marginTop: 12,
-        fontWeight: "600",
-    },
-    body: {
-        paddingHorizontal: 16,
-        marginTop: 16,
-    },
-    revenueCard: {
-        backgroundColor: "#047857",
-        borderRadius: 20,
-        padding: 20,
-        marginBottom: 16,
-    },
-    revenueRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-    },
-    revenueLabel: {
-        color: "#a7f3d0",
-        fontSize: 11,
-        fontWeight: "700",
-        letterSpacing: 1,
-    },
-    revenueAmount: {
-        color: "#ffffff",
-        fontSize: 28,
-        fontWeight: "800",
-        marginTop: 4,
-    },
-    commissionText: {
-        color: "#6ee7b7",
-        fontSize: 12,
-        marginTop: 4,
-    },
-    withdrawBtn: {
-        backgroundColor: "rgba(255, 255, 255, 0.2)",
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-        borderRadius: 12,
-        flexDirection: "row",
-        alignItems: "center",
-        borderWidth: 1,
-        borderColor: "rgba(255, 255, 255, 0.3)",
-    },
-    withdrawBtnText: {
-        color: "#ffffff",
-        fontWeight: "700",
-        marginLeft: 6,
-        fontSize: 13,
-    },
-    occupancyCard: {
-        backgroundColor: "#ffffff",
-        borderRadius: 16,
-        padding: 16,
-        marginBottom: 16,
-        borderWidth: 1,
-        borderColor: "#f1f5f9",
-    },
-    occupancyHeader: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: 8,
-    },
-    cardHeaderTitle: {
-        color: "#1e293b",
-        fontSize: 14,
-        fontWeight: "bold",
-    },
-    occupancyCount: {
-        color: "#4338ca",
-        fontSize: 14,
-        fontWeight: "800",
-    },
-    progressBarTrack: {
-        width: "100%",
-        height: 10,
-        backgroundColor: "#f1f5f9",
-        borderRadius: 5,
-        overflow: "hidden",
-        marginBottom: 8,
-    },
-    progressBarFill: {
-        height: "100%",
-        backgroundColor: "#4338ca",
-        borderRadius: 5,
-    },
-    occupancySubRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-    },
-    occupancySubText: {
-        color: "#64748b",
-        fontSize: 12,
-        fontWeight: "500",
-    },
-    availableText: {
-        color: "#059669",
-        fontSize: 12,
-        fontWeight: "600",
-    },
-    statsRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        marginBottom: 16,
-    },
-    statCard: {
-        flex: 1,
-        backgroundColor: "#ffffff",
-        padding: 14,
-        borderRadius: 16,
-        alignItems: "center",
-        marginHorizontal: 4,
-        borderWidth: 1,
-        borderColor: "#f1f5f9",
-    },
-    iconCircle: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        justifyContent: "center",
-        alignItems: "center",
-        marginBottom: 8,
-    },
-    statLabel: {
-        color: "#64748b",
-        fontSize: 11,
-        fontWeight: "600",
-    },
-    statValue: {
-        color: "#1e293b",
-        fontSize: 18,
-        fontWeight: "bold",
-        marginTop: 2,
-    },
-    sectionHeader: {
-        color: "#334155",
-        fontSize: 16,
-        fontWeight: "bold",
-        marginBottom: 12,
-    },
-    sectionTitleRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginTop: 8,
-        marginBottom: 12,
-    },
-    seeAllText: {
-        color: "#4338ca",
-        fontWeight: "600",
-        fontSize: 13,
-    },
-    actionGrid: {
-        flexDirection: "row",
-        flexWrap: "wrap",
-        justifyContent: "space-between",
-        marginBottom: 8,
-    },
-    actionCard: {
-        width: "48%",
-        padding: 14,
-        borderRadius: 16,
-        marginBottom: 12,
-        flexDirection: "row",
-        alignItems: "center",
-        elevation: 1,
-    },
-    actionCardWhite: {
-        backgroundColor: "#ffffff",
-        borderWidth: 1,
-        borderColor: "#e2e8f0",
-    },
-    actionIconBox: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        justifyContent: "center",
-        alignItems: "center",
-        marginRight: 10,
-    },
-    actionCardTitleWhite: {
-        color: "#ffffff",
-        fontWeight: "bold",
-        fontSize: 13,
-    },
-    actionCardSubWhite: {
-        color: "#e2e8f0",
-        fontSize: 11,
-    },
-    actionCardTitleDark: {
-        color: "#1e293b",
-        fontWeight: "bold",
-        fontSize: 13,
-    },
-    actionCardSubDark: {
-        color: "#64748b",
-        fontSize: 11,
-    },
-    capacityGrid: {
-        flexDirection: "row",
-        flexWrap: "wrap",
-        justifyContent: "space-between",
-        marginBottom: 12,
-    },
-    capacityCard: {
-        width: "48%",
-        backgroundColor: "#ffffff",
-        padding: 12,
-        borderRadius: 16,
-        marginBottom: 10,
-        borderWidth: 1,
-        borderColor: "#f1f5f9",
-        flexDirection: "row",
-        alignItems: "center",
-    },
-    capacityLabel: {
-        color: "#64748b",
-        fontSize: 11,
-        fontWeight: "500",
-    },
-    capacityValue: {
-        color: "#0f172a",
-        fontSize: 14,
-        fontWeight: "bold",
-        marginTop: 2,
-    },
-    listItem: {
-        backgroundColor: "#ffffff",
-        borderRadius: 16,
-        padding: 12,
-        marginBottom: 10,
-        borderWidth: 1,
-        borderColor: "#f1f5f9",
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-    },
-    listIconBox: {
-        width: 38,
-        height: 38,
-        borderRadius: 12,
-        backgroundColor: "#f1f5f9",
-        justifyContent: "center",
-        alignItems: "center",
-        marginRight: 12,
-    },
-    listItemTitle: {
-        color: "#1e293b",
-        fontWeight: "bold",
-        fontSize: 14,
-    },
-    listItemSub: {
-        color: "#64748b",
-        fontSize: 12,
-        marginTop: 2,
-    },
-    statusBadge: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 12,
-        borderWidth: 1,
-    },
-    statusBadgeText: {
-        fontSize: 10,
-        fontWeight: "700",
-    },
-    emptyCard: {
-        backgroundColor: "#ffffff",
-        borderRadius: 16,
-        padding: 24,
-        alignItems: "center",
-        justifyContent: "center",
-        borderWidth: 1,
-        borderColor: "#f1f5f9",
-    },
-    emptyText: {
-        color: "#94a3b8",
-        fontSize: 13,
-        fontWeight: "500",
-        marginTop: 8,
-    },
-});
 
 export default AgencyAdminDashboard;

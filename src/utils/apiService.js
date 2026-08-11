@@ -4,7 +4,6 @@ import { store } from "../store/store";
 
 const apiClient = axios.create({
     baseURL: baseURL,
-    withCredentials: true,
     timeout: 60000,
 });
 
@@ -17,12 +16,14 @@ apiClient.interceptors.request.use(
             config.headers.Authorization = `Bearer ${token}`;
         }
 
-        // CRITICAL: Force clear Content-Type for FormData
+        // CRITICAL: Force clear Content-Type for FormData so React Native auto-generates boundary
         if (config.data && typeof config.data.append === "function") {
             delete config.headers["Content-Type"];
-            // Also ensure no default is lurking in the common headers
-            if (config.headers.common)
-                delete config.headers.common["Content-Type"];
+            delete config.headers["content-type"];
+            if (config.headers && typeof config.headers.delete === "function") {
+                config.headers.delete("Content-Type");
+                config.headers.delete("content-type");
+            }
         }
 
         return config;
@@ -79,6 +80,80 @@ class ApiService {
 
     async post(endpoint, data = {}, config = {}) {
         try {
+            if (data && typeof data.append === "function") {
+                return new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    const url = endpoint.startsWith("http")
+                        ? endpoint
+                        : `${baseURL}${endpoint}`;
+
+                    xhr.open("POST", url);
+
+                    const state = store.getState();
+                    const token = state.user?.token;
+                    if (token) {
+                        xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+                    }
+
+                    // DO NOT set Content-Type header on xhr!
+                    // React Native XHR automatically generates multipart/form-data; boundary=...
+
+                    xhr.onload = () => {
+                        try {
+                            const resData = JSON.parse(xhr.responseText);
+                            if (xhr.status >= 200 && xhr.status < 300) {
+                                resolve(resData);
+                            } else {
+                                const err = new Error(
+                                    resData.message ||
+                                        `Request failed with status ${xhr.status}`
+                                );
+                                err.response = {
+                                    status: xhr.status,
+                                    data: resData,
+                                };
+                                reject(err);
+                            }
+                        } catch (e) {
+                            if (xhr.status >= 200 && xhr.status < 300) {
+                                resolve(xhr.responseText);
+                            } else {
+                                reject(
+                                    new Error(
+                                        `Request failed with status ${xhr.status}`
+                                    )
+                                );
+                            }
+                        }
+                    };
+
+                    xhr.onerror = (e) => {
+                        console.error(
+                            "XHR Error details:",
+                            e,
+                            "status:",
+                            xhr.status,
+                            "responseText:",
+                            xhr.responseText
+                        );
+                        const errDetails = xhr.responseText
+                            ? ` (${xhr.responseText})`
+                            : "";
+                        const err = new Error(
+                            `Network Error (status: ${xhr.status || 0})${errDetails}`
+                        );
+                        err.response = { status: xhr.status, data: xhr.responseText };
+                        reject(err);
+                    };
+
+                    xhr.ontimeout = () => {
+                        reject(new Error("Request timed out"));
+                    };
+
+                    xhr.send(data);
+                });
+            }
+
             const response = await apiClient.post(endpoint, data, config);
             return response.data;
         } catch (error) {

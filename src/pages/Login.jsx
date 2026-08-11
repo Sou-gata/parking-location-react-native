@@ -21,6 +21,7 @@ import { loginSuccess } from "../store/slices/userSlice";
 import useToast from "../hooks/useToast";
 import apiService from "../utils/apiService";
 import tokenStorage from "../utils/tokenStorage";
+import AnimatedTagline from "../components/AnimatedTagline";
 
 export default function Login({ navigation }) {
     const dispatch = useDispatch();
@@ -89,9 +90,9 @@ export default function Login({ navigation }) {
                 <Surface
                     elevation={4}
                     style={styles.header}
-                    className="pt-12 pb-12 px-6 bg-primary rounded-b-3xl"
+                    className="pt-10 pb-12 px-6 bg-primary rounded-b-3xl"
                 >
-                    <Text
+                    {/* <Text
                         className="text-3xl font-bold text-white mb-2 w-full text-center"
                         style={{
                             color: "white",
@@ -100,7 +101,8 @@ export default function Login({ navigation }) {
                         }}
                     >
                         Welcome Back
-                    </Text>
+                    </Text> */}
+                    <AnimatedTagline />
                 </Surface>
 
                 <ScrollView

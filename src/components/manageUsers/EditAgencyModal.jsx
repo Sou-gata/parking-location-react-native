@@ -1,6 +1,6 @@
 import React from "react";
 import { View } from "react-native";
-import { Modal, Text, TextInput, Button } from "react-native-paper";
+import { Modal, Text, TextInput, Button, Switch } from "react-native-paper";
 
 export default function EditAgencyModal({
     visible,
@@ -9,6 +9,12 @@ export default function EditAgencyModal({
     onChangeData,
     onSave,
 }) {
+    const isRequireApproval = Boolean(
+        data?.require_booking_approval !== undefined
+            ? data.require_booking_approval
+            : data?.requireBookingApproval
+    );
+
     return (
         <Modal
             visible={visible}
@@ -86,6 +92,31 @@ export default function EditAgencyModal({
                 outlineColor="#e2e8f0"
                 activeOutlineColor="#4338ca"
             />
+
+            {/* Require Booking Approval Toggle */}
+            <View className="flex-row items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl mb-4">
+                <View className="flex-1 mr-2">
+                    <Text className="text-sm font-bold text-slate-800">
+                        Require Booking Approval
+                    </Text>
+                    <Text className="text-xs text-slate-500 mt-0.5">
+                        {isRequireApproval
+                            ? "Bookings require Agency Admin approval before confirmation."
+                            : "Bookings are automatically approved immediately."}
+                    </Text>
+                </View>
+                <Switch
+                    value={isRequireApproval}
+                    onValueChange={(val) =>
+                        onChangeData({
+                            ...data,
+                            require_booking_approval: val,
+                            requireBookingApproval: val,
+                        })
+                    }
+                    color="#4338ca"
+                />
+            </View>
 
             <View className="flex-row justify-end gap-2 mt-2">
                 <Button

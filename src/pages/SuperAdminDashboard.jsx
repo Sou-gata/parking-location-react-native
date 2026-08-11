@@ -5,16 +5,14 @@ import {
     RefreshControl,
     TouchableOpacity,
     ActivityIndicator,
-    StyleSheet,
 } from "react-native";
-import { Text, Surface, Avatar } from "react-native-paper";
+import { Text, Surface } from "react-native-paper";
 import { useSelector } from "react-redux";
 import { MaterialDesignIcons } from "@react-native-vector-icons/material-design-icons";
 import apiService from "../utils/apiService";
+import useRolePermissions from "../hooks/useRolePermissions";
 
 const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
-    const user = useSelector((state) => state.user.user);
-
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [stats, setStats] = useState({
@@ -23,7 +21,9 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
         pendingAgenciesCount: 0,
         pendingTopupsCount: 0,
         pendingWithdrawalsCount: 0,
+        pendingWorkingHoursCount: 0,
         totalBookings: 0,
+        forceCancelsCount: 0,
         totalAdminRevenue: 0,
         totalVolume: 0,
         recentAgencies: [],
@@ -32,8 +32,24 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
     const fetchDashboardStats = useCallback(async () => {
         try {
             const response = await apiService.get("users/dashboard-stats");
+            let whCount = 0;
+            try {
+                const whRes = await apiService.get("working-hours/pending");
+                if (whRes?.success && Array.isArray(whRes.data)) {
+                    whCount = whRes.data.length;
+                }
+            } catch (whErr) {
+                console.error(
+                    "Error fetching pending working hours count:",
+                    whErr
+                );
+            }
+
             if (response?.data) {
-                setStats(response.data);
+                setStats({
+                    ...response.data,
+                    pendingWorkingHoursCount: whCount,
+                });
             }
         } catch (error) {
             console.error("Error fetching super admin dashboard stats:", error);
@@ -71,8 +87,8 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
 
     return (
         <ScrollView
-            style={styles.container}
-            contentContainerStyle={styles.scrollContent}
+            className="flex-1 bg-slate-50"
+            contentContainerStyle={{ paddingBottom: 40 }}
             refreshControl={
                 <RefreshControl
                     refreshing={refreshing}
@@ -82,31 +98,34 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
             }
         >
             {loading && !refreshing ? (
-                <View style={styles.loadingContainer}>
+                <View className="py-12 items-center justify-center">
                     <ActivityIndicator size="large" color="#4338ca" />
-                    <Text style={styles.loadingText}>
+                    <Text className="text-slate-500 mt-3 font-semibold">
                         Loading Platform Statistics...
                     </Text>
                 </View>
             ) : (
-                <View style={styles.body}>
+                <View className="px-4 mt-4">
                     {/* Revenue Hero Card */}
-                    <Surface style={styles.revenueCard} elevation={3}>
-                        <View style={styles.revenueRow}>
+                    <Surface
+                        className="bg-indigo-900 rounded-2xl p-5 mb-4"
+                        elevation={3}
+                    >
+                        <View className="flex-row items-center justify-between">
                             <View>
-                                <Text style={styles.revenueLabel}>
+                                <Text className="text-indigo-200 text-[11px] font-bold tracking-wider">
                                     PLATFORM COMMISSION REVENUE
                                 </Text>
-                                <Text style={styles.revenueAmount}>
+                                <Text className="text-white text-3xl font-extrabold mt-1">
                                     {formatCurrency(stats.totalAdminRevenue)}
                                 </Text>
-                                <Text style={styles.volumeText}>
+                                <Text className="text-indigo-300 text-xs mt-1">
                                     Total Volume:{" "}
                                     {formatCurrency(stats.totalVolume)}
                                 </Text>
                             </View>
                             <TouchableOpacity
-                                style={styles.reportsBtn}
+                                className="bg-white/20 px-3.5 py-2 rounded-xl flex-row items-center border border-white/30"
                                 onPress={() =>
                                     navigation.navigate("ManageUsers", {
                                         initialTab: "history",
@@ -118,69 +137,126 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                                     size={18}
                                     color="#ffffff"
                                 />
-                                <Text style={styles.reportsBtnText}>
+                                <Text className="text-white font-bold ml-1.5 text-xs">
                                     Reports
                                 </Text>
                             </TouchableOpacity>
                         </View>
-                    </Surface>
-
-                    {/* Attention Required Section */}
+                    </Surface>                    {/* Attention Required Cards */}
                     {(stats.pendingAgenciesCount > 0 ||
                         stats.pendingTopupsCount > 0 ||
-                        stats.pendingWithdrawalsCount > 0) && (
-                        <View style={styles.attentionSection}>
-                            <Text style={styles.sectionHeader}>
+                        stats.pendingWithdrawalsCount > 0 ||
+                        stats.pendingSettlementsCount > 0 ||
+                        stats.pendingWorkingHoursCount > 0) && (
+                        <View className="mb-4">
+                            <Text className="text-slate-700 text-base font-bold mb-3">
                                 Attention Required
                             </Text>
 
+                            {stats.pendingSettlementsCount > 0 && (
+                                <TouchableOpacity
+                                    className="rounded-2xl p-3.5 mb-2.5 flex-row items-center justify-between border bg-purple-50 border-purple-200"
+                                    onPress={() =>
+                                        navigation.navigate("ManageUsers", {
+                                            initialTab: "agency_settlements",
+                                        })
+                                    }
+                                >
+                                    <View className="flex-row items-center flex-1 mr-2.5">
+                                        <View className="w-9.5 h-9.5 rounded-xl justify-center items-center mr-3 bg-purple-200">
+                                            <MaterialDesignIcons
+                                                name="cash-clock"
+                                                size={20}
+                                                color="#6b21a8"
+                                            />
+                                        </View>
+                                        <View className="flex-1">
+                                            <Text className="font-bold text-xs text-purple-950">
+                                                {stats.pendingSettlementsCount}{" "}
+                                                Pending Revenue Settlement
+                                                {stats.pendingSettlementsCount > 1
+                                                    ? "s"
+                                                    : ""}
+                                            </Text>
+                                            <Text className="text-[11px] mt-0.5 text-purple-800">
+                                                Approve parking owner earnings & custom split
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <MaterialDesignIcons
+                                        name="chevron-right"
+                                        size={20}
+                                        color="#6b21a8"
+                                    />
+                                </TouchableOpacity>
+                            )}
+
+                            {stats.pendingWorkingHoursCount > 0 && (
+                                <TouchableOpacity
+                                    className="rounded-2xl p-3.5 mb-2.5 flex-row items-center justify-between border bg-blue-50 border-blue-200"
+                                    onPress={() =>
+                                        navigation.navigate("ManageUsers", {
+                                            initialTab: "working_hours",
+                                        })
+                                    }
+                                >
+                                    <View className="flex-row items-center flex-1 mr-2.5">
+                                        <View className="w-9.5 h-9.5 rounded-xl justify-center items-center mr-3 bg-blue-200">
+                                            <MaterialDesignIcons
+                                                name="clock-alert-outline"
+                                                size={20}
+                                                color="#1d4ed8"
+                                            />
+                                        </View>
+                                        <View className="flex-1">
+                                            <Text className="font-bold text-xs text-blue-950">
+                                                {stats.pendingWorkingHoursCount}{" "}
+                                                Pending Working Hours Change
+                                                {stats.pendingWorkingHoursCount >
+                                                1
+                                                    ? "s"
+                                                    : ""}
+                                            </Text>
+                                            <Text className="text-[11px] mt-0.5 text-blue-800">
+                                                Review operating hours & holiday
+                                                schedule updates
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <MaterialDesignIcons
+                                        name="chevron-right"
+                                        size={20}
+                                        color="#1d4ed8"
+                                    />
+                                </TouchableOpacity>
+                            )}
+
                             {stats.pendingAgenciesCount > 0 && (
                                 <TouchableOpacity
-                                    style={[
-                                        styles.alertBanner,
-                                        {
-                                            backgroundColor: "#fffbeb",
-                                            borderColor: "#fde68a",
-                                        },
-                                    ]}
+                                    className="rounded-2xl p-3.5 mb-2.5 flex-row items-center justify-between border bg-amber-50 border-amber-200"
                                     onPress={() =>
                                         navigation.navigate("ManageUsers", {
                                             initialTab: "requests",
                                         })
                                     }
                                 >
-                                    <View style={styles.alertLeft}>
-                                        <View
-                                            style={[
-                                                styles.alertIconBox,
-                                                { backgroundColor: "#fef3c7" },
-                                            ]}
-                                        >
+                                    <View className="flex-row items-center flex-1 mr-2.5">
+                                        <View className="w-9.5 h-9.5 rounded-xl justify-center items-center mr-3 bg-amber-100">
                                             <MaterialDesignIcons
                                                 name="office-building"
                                                 size={20}
                                                 color="#b45309"
                                             />
                                         </View>
-                                        <View style={{ flex: 1 }}>
-                                            <Text
-                                                style={[
-                                                    styles.alertTitle,
-                                                    { color: "#78350f" },
-                                                ]}
-                                            >
+                                        <View className="flex-1">
+                                            <Text className="font-bold text-xs text-amber-900">
                                                 {stats.pendingAgenciesCount}{" "}
                                                 Pending Agency Registration
                                                 {stats.pendingAgenciesCount > 1
                                                     ? "s"
                                                     : ""}
                                             </Text>
-                                            <Text
-                                                style={[
-                                                    styles.alertSub,
-                                                    { color: "#92400e" },
-                                                ]}
-                                            >
+                                            <Text className="text-[11px] mt-0.5 text-amber-800">
                                                 Review verification documents &
                                                 approve
                                             </Text>
@@ -196,51 +272,30 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
 
                             {stats.pendingTopupsCount > 0 && (
                                 <TouchableOpacity
-                                    style={[
-                                        styles.alertBanner,
-                                        {
-                                            backgroundColor: "#e0e7ff",
-                                            borderColor: "#c7d2fe",
-                                        },
-                                    ]}
+                                    className="rounded-2xl p-3.5 mb-2.5 flex-row items-center justify-between border bg-indigo-50 border-indigo-200"
                                     onPress={() =>
                                         navigation.navigate("ManageUsers", {
                                             initialTab: "user_wallets",
                                         })
                                     }
                                 >
-                                    <View style={styles.alertLeft}>
-                                        <View
-                                            style={[
-                                                styles.alertIconBox,
-                                                { backgroundColor: "#c7d2fe" },
-                                            ]}
-                                        >
+                                    <View className="flex-row items-center flex-1 mr-2.5">
+                                        <View className="w-9.5 h-9.5 rounded-xl justify-center items-center mr-3 bg-indigo-200">
                                             <MaterialDesignIcons
                                                 name="wallet-plus-outline"
                                                 size={20}
                                                 color="#4338ca"
                                             />
                                         </View>
-                                        <View style={{ flex: 1 }}>
-                                            <Text
-                                                style={[
-                                                    styles.alertTitle,
-                                                    { color: "#312e81" },
-                                                ]}
-                                            >
+                                        <View className="flex-1">
+                                            <Text className="font-bold text-xs text-indigo-950">
                                                 {stats.pendingTopupsCount}{" "}
                                                 Pending Wallet Topup
                                                 {stats.pendingTopupsCount > 1
                                                     ? "s"
                                                     : ""}
                                             </Text>
-                                            <Text
-                                                style={[
-                                                    styles.alertSub,
-                                                    { color: "#3730a3" },
-                                                ]}
-                                            >
+                                            <Text className="text-[11px] mt-0.5 text-indigo-900">
                                                 Verify payment reference &
                                                 approve balance
                                             </Text>
@@ -256,39 +311,23 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
 
                             {stats.pendingWithdrawalsCount > 0 && (
                                 <TouchableOpacity
-                                    style={[
-                                        styles.alertBanner,
-                                        {
-                                            backgroundColor: "#ecfdf5",
-                                            borderColor: "#a7f3d0",
-                                        },
-                                    ]}
+                                    className="rounded-2xl p-3.5 mb-2.5 flex-row items-center justify-between border bg-emerald-50 border-emerald-200"
                                     onPress={() =>
                                         navigation.navigate("ManageUsers", {
                                             initialTab: "agency_withdrawals",
                                         })
                                     }
                                 >
-                                    <View style={styles.alertLeft}>
-                                        <View
-                                            style={[
-                                                styles.alertIconBox,
-                                                { backgroundColor: "#a7f3d0" },
-                                            ]}
-                                        >
+                                    <View className="flex-row items-center flex-1 mr-2.5">
+                                        <View className="w-9.5 h-9.5 rounded-xl justify-center items-center mr-3 bg-emerald-200">
                                             <MaterialDesignIcons
                                                 name="cash-refund"
                                                 size={20}
                                                 color="#047857"
                                             />
                                         </View>
-                                        <View style={{ flex: 1 }}>
-                                            <Text
-                                                style={[
-                                                    styles.alertTitle,
-                                                    { color: "#064e3b" },
-                                                ]}
-                                            >
+                                        <View className="flex-1">
+                                            <Text className="font-bold text-xs text-emerald-950">
                                                 {stats.pendingWithdrawalsCount}{" "}
                                                 Pending Agency Withdrawal
                                                 {stats.pendingWithdrawalsCount >
@@ -296,12 +335,7 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                                                     ? "s"
                                                     : ""}
                                             </Text>
-                                            <Text
-                                                style={[
-                                                    styles.alertSub,
-                                                    { color: "#047857" },
-                                                ]}
-                                            >
+                                            <Text className="text-[11px] mt-0.5 text-emerald-700">
                                                 Process agency payout requests
                                             </Text>
                                         </View>
@@ -317,230 +351,240 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                     )}
 
                     {/* Master Overview Grid */}
-                    <Text style={styles.sectionHeader}>Platform Overview</Text>
-                    <View style={styles.overviewGrid}>
-                        <Surface style={styles.overviewCard} elevation={1}>
-                            <View
-                                style={[
-                                    styles.iconCircle,
-                                    { backgroundColor: "#e0e7ff" },
-                                ]}
-                            >
+                    <Text className="text-slate-700 text-base font-bold mb-3">
+                        Platform Overview
+                    </Text>
+                    <View className="flex-row flex-wrap justify-between mb-2">
+                        <Surface
+                            className="w-[48%] bg-white p-3.5 rounded-2xl mb-3 items-center border border-slate-100"
+                            elevation={1}
+                        >
+                            <View className="w-10 h-10 rounded-full justify-center items-center mb-2 bg-indigo-100">
                                 <MaterialDesignIcons
                                     name="account-group"
                                     size={22}
                                     color="#4338ca"
                                 />
                             </View>
-                            <Text style={styles.overviewLabel}>
+                            <Text className="text-slate-500 text-[11px] font-semibold">
                                 Total Customers
                             </Text>
-                            <Text style={styles.overviewValue}>
+                            <Text className="text-slate-900 text-2xl font-extrabold mt-0.5">
                                 {stats.totalUsers}
                             </Text>
                         </Surface>
 
-                        <Surface style={styles.overviewCard} elevation={1}>
-                            <View
-                                style={[
-                                    styles.iconCircle,
-                                    { backgroundColor: "#d1fae5" },
-                                ]}
-                            >
+                        <Surface
+                            className="w-[48%] bg-white p-3.5 rounded-2xl mb-3 items-center border border-slate-100"
+                            elevation={1}
+                        >
+                            <View className="w-10 h-10 rounded-full justify-center items-center mb-2 bg-emerald-100">
                                 <MaterialDesignIcons
                                     name="domain"
                                     size={22}
                                     color="#059669"
                                 />
                             </View>
-                            <Text style={styles.overviewLabel}>
+                            <Text className="text-slate-500 text-[11px] font-semibold">
                                 Partner Agencies
                             </Text>
-                            <Text style={styles.overviewValue}>
+                            <Text className="text-slate-900 text-2xl font-extrabold mt-0.5">
                                 {stats.totalAgencies}
                             </Text>
                         </Surface>
 
-                        <Surface style={styles.overviewCard} elevation={1}>
-                            <View
-                                style={[
-                                    styles.iconCircle,
-                                    { backgroundColor: "#dbeafe" },
-                                ]}
-                            >
+                        <Surface
+                            className="w-[48%] bg-white p-3.5 rounded-2xl mb-3 items-center border border-slate-100"
+                            elevation={1}
+                        >
+                            <View className="w-10 h-10 rounded-full justify-center items-center mb-2 bg-blue-100">
                                 <MaterialDesignIcons
                                     name="calendar-check"
                                     size={22}
                                     color="#2563eb"
                                 />
                             </View>
-                            <Text style={styles.overviewLabel}>
+                            <Text className="text-slate-500 text-[11px] font-semibold">
                                 Platform Bookings
                             </Text>
-                            <Text style={styles.overviewValue}>
+                            <Text className="text-slate-900 text-2xl font-extrabold mt-0.5">
                                 {stats.totalBookings}
                             </Text>
                         </Surface>
 
-                        <Surface style={styles.overviewCard} elevation={1}>
-                            <View
-                                style={[
-                                    styles.iconCircle,
-                                    { backgroundColor: "#f3e8ff" },
-                                ]}
-                            >
+                        <Surface
+                            className="w-[48%] bg-white p-3.5 rounded-2xl mb-3 items-center border border-slate-100"
+                            elevation={1}
+                        >
+                            <View className="w-10 h-10 rounded-full justify-center items-center mb-2 bg-rose-100">
+                                <MaterialDesignIcons
+                                    name="cancel"
+                                    size={22}
+                                    color="#e11d48"
+                                />
+                            </View>
+                            <Text className="text-slate-500 text-[11px] font-semibold">
+                                Force Cancels
+                            </Text>
+                            <Text className="text-rose-600 text-2xl font-extrabold mt-0.5">
+                                {stats.forceCancelsCount || 0}
+                            </Text>
+                        </Surface>
+
+                        <Surface
+                            className="w-[48%] bg-white p-3.5 rounded-2xl mb-3 items-center border border-slate-100"
+                            elevation={1}
+                        >
+                            <View className="w-10 h-10 rounded-full justify-center items-center mb-2 bg-purple-100">
                                 <MaterialDesignIcons
                                     name="shield-check-outline"
                                     size={22}
                                     color="#7c3aed"
                                 />
                             </View>
-                            <Text style={styles.overviewLabel}>
+                            <Text className="text-slate-500 text-[11px] font-semibold">
                                 System Status
                             </Text>
-                            <Text style={styles.statusOkText}>Operational</Text>
+                            <Text className="text-emerald-600 text-sm font-extrabold mt-1">
+                                Operational
+                            </Text>
                         </Surface>
                     </View>
 
                     {/* Admin Controls */}
-                    <Text style={styles.sectionHeader}>Admin Controls</Text>
-                    <View style={styles.actionGrid}>
+                    <Text className="text-slate-700 text-base font-bold mb-3">
+                        Admin Controls
+                    </Text>
+                    <View className="flex-row flex-wrap justify-between mb-2">
                         <TouchableOpacity
-                            style={[
-                                styles.actionCard,
-                                { backgroundColor: "#4338ca" },
-                            ]}
+                            className="w-[48%] p-3.5 rounded-2xl mb-3 flex-row items-center bg-indigo-700"
                             onPress={() =>
                                 navigation.navigate("ManageUsers", {
                                     initialTab: "active",
                                 })
                             }
                         >
-                            <View
-                                style={[
-                                    styles.actionIconBox,
-                                    {
-                                        backgroundColor:
-                                            "rgba(255,255,255,0.2)",
-                                    },
-                                ]}
-                            >
+                            <View className="w-10 h-10 rounded-xl justify-center items-center mr-2.5 bg-white/20">
                                 <MaterialDesignIcons
                                     name="account-cog-outline"
                                     size={24}
                                     color="#ffffff"
                                 />
                             </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.actionCardTitleWhite}>
+                            <View className="flex-1">
+                                <Text className="text-white font-bold text-xs">
                                     Manage Users
                                 </Text>
-                                <Text style={styles.actionCardSubWhite}>
+                                <Text className="text-indigo-200 text-[11px]">
                                     Agencies & Staff
                                 </Text>
                             </View>
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                            style={[
-                                styles.actionCard,
-                                { backgroundColor: "#059669" },
-                            ]}
+                            className="w-[48%] p-3.5 rounded-2xl mb-3 flex-row items-center bg-emerald-600"
                             onPress={() =>
                                 navigation.navigate("ManageUsers", {
                                     initialTab: "user_wallets",
                                 })
                             }
                         >
-                            <View
-                                style={[
-                                    styles.actionIconBox,
-                                    {
-                                        backgroundColor:
-                                            "rgba(255,255,255,0.2)",
-                                    },
-                                ]}
-                            >
+                            <View className="w-10 h-10 rounded-xl justify-center items-center mr-2.5 bg-white/20">
                                 <MaterialDesignIcons
                                     name="cash-register"
                                     size={24}
                                     color="#ffffff"
                                 />
                             </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.actionCardTitleWhite}>
+                            <View className="flex-1">
+                                <Text className="text-white font-bold text-xs">
                                     Wallet Requests
                                 </Text>
-                                <Text style={styles.actionCardSubWhite}>
+                                <Text className="text-slate-200 text-[11px]">
                                     Topups & Payouts
                                 </Text>
                             </View>
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                            style={[styles.actionCard, styles.actionCardWhite]}
+                            className="w-[48%] p-3.5 rounded-2xl mb-3 flex-row items-center bg-white border border-slate-200"
                             onPress={() =>
                                 navigation.navigate("SuperAdminSettings")
                             }
                         >
-                            <View
-                                style={[
-                                    styles.actionIconBox,
-                                    { backgroundColor: "#fef3c7" },
-                                ]}
-                            >
+                            <View className="w-10 h-10 rounded-xl justify-center items-center mr-2.5 bg-amber-100">
                                 <MaterialDesignIcons
                                     name="cog-outline"
                                     size={24}
                                     color="#d97706"
                                 />
                             </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.actionCardTitleDark}>
+                            <View className="flex-1">
+                                <Text className="text-slate-800 font-bold text-xs">
                                     System Settings
                                 </Text>
-                                <Text style={styles.actionCardSubDark}>
+                                <Text className="text-slate-500 text-[11px]">
                                     UPI & Configs
                                 </Text>
                             </View>
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                            style={[styles.actionCard, styles.actionCardWhite]}
+                            className="w-[48%] p-3.5 rounded-2xl mb-3 flex-row items-center bg-white border border-slate-200"
                             onPress={onOpenMap}
                         >
-                            <View
-                                style={[
-                                    styles.actionIconBox,
-                                    { backgroundColor: "#d1fae5" },
-                                ]}
-                            >
+                            <View className="w-10 h-10 rounded-xl justify-center items-center mr-2.5 bg-emerald-100">
                                 <MaterialDesignIcons
                                     name="map-search"
                                     size={24}
                                     color="#059669"
                                 />
                             </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.actionCardTitleDark}>
+                            <View className="flex-1">
+                                <Text className="text-slate-800 font-bold text-xs">
                                     Global Map
                                 </Text>
-                                <Text style={styles.actionCardSubDark}>
+                                <Text className="text-slate-500 text-[11px]">
                                     All Locations
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            className="w-[48%] p-3.5 rounded-2xl mb-3 flex-row items-center bg-white border border-slate-200"
+                            onPress={() =>
+                                navigation.navigate("ManageComplaints")
+                            }
+                        >
+                            <View className="w-10 h-10 rounded-xl justify-center items-center mr-2.5 bg-rose-100">
+                                <MaterialDesignIcons
+                                    name="alert-circle-outline"
+                                    size={24}
+                                    color="#e11d48"
+                                />
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-slate-800 font-bold text-xs">
+                                    All Complaints
+                                </Text>
+                                <Text className="text-slate-500 text-[11px]">
+                                    User & Agency Issues
                                 </Text>
                             </View>
                         </TouchableOpacity>
                     </View>
 
                     {/* Recent Partner Agencies */}
-                    <View style={styles.sectionTitleRow}>
-                        <Text style={styles.sectionHeader}>
+                    <View className="flex-row justify-between items-center mt-2 mb-3">
+                        <Text className="text-slate-700 text-base font-bold">
                             Recent Partner Agencies
                         </Text>
                         <TouchableOpacity
                             onPress={() => navigation.navigate("ManageUsers")}
                         >
-                            <Text style={styles.seeAllText}>View All</Text>
+                            <Text className="text-indigo-700 font-semibold text-xs">
+                                View All
+                            </Text>
                         </TouchableOpacity>
                     </View>
 
@@ -550,42 +594,38 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                             return (
                                 <Surface
                                     key={a.org_id}
-                                    style={styles.listItem}
+                                    className="bg-white rounded-2xl p-3 mb-2.5 border border-slate-100 flex-row items-center justify-between"
                                     elevation={1}
                                 >
-                                    <View style={styles.listIconBox}>
+                                    <View className="w-9 h-9 rounded-xl bg-slate-100 justify-center items-center mr-3">
                                         <MaterialDesignIcons
                                             name="office-building"
                                             size={22}
                                             color="#475569"
                                         />
                                     </View>
-                                    <View style={{ flex: 1, marginRight: 8 }}>
+                                    <View className="flex-1 mr-2">
                                         <Text
-                                            style={styles.listItemTitle}
+                                            className="text-slate-800 font-bold text-sm"
                                             numberOfLines={1}
                                         >
                                             {a.org_name}
                                         </Text>
-                                        <Text style={styles.listItemSub}>
+                                        <Text className="text-slate-500 text-xs mt-0.5">
                                             {a.email} •{" "}
                                             {a.phone_number || "N/A"}
                                         </Text>
                                     </View>
                                     <View
-                                        style={[
-                                            styles.statusBadge,
-                                            {
-                                                backgroundColor: statusSt.bg,
-                                                borderColor: statusSt.border,
-                                            },
-                                        ]}
+                                        className="px-2.5 py-1 rounded-xl border"
+                                        style={{
+                                            backgroundColor: statusSt.bg,
+                                            borderColor: statusSt.border,
+                                        }}
                                     >
                                         <Text
-                                            style={[
-                                                styles.statusBadgeText,
-                                                { color: statusSt.text },
-                                            ]}
+                                            className="text-[10px] font-bold"
+                                            style={{ color: statusSt.text }}
                                         >
                                             {a.status.toUpperCase()}
                                         </Text>
@@ -594,13 +634,16 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                             );
                         })
                     ) : (
-                        <Surface style={styles.emptyCard} elevation={1}>
+                        <Surface
+                            className="bg-white rounded-2xl p-6 items-center justify-center border border-slate-100"
+                            elevation={1}
+                        >
                             <MaterialDesignIcons
                                 name="domain-off"
                                 size={36}
                                 color="#cbd5e1"
                             />
-                            <Text style={styles.emptyText}>
+                            <Text className="text-slate-400 text-xs font-medium mt-2">
                                 No registered agencies found
                             </Text>
                         </Surface>
@@ -610,302 +653,5 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
         </ScrollView>
     );
 };
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: "#f8fafc",
-    },
-    scrollContent: {
-        paddingBottom: 40,
-    },
-    headerBanner: {
-        backgroundColor: "#4338ca",
-        paddingHorizontal: 20,
-        paddingTop: 16,
-        paddingBottom: 24,
-        borderBottomLeftRadius: 24,
-        borderBottomRightRadius: 24,
-    },
-    headerRow: {
-        flexDirection: "row",
-        alignItems: "center",
-    },
-    headerTextContainer: {
-        flex: 1,
-        marginLeft: 14,
-    },
-    adminSubtitle: {
-        color: "#c7d2fe",
-        fontSize: 11,
-        fontWeight: "700",
-        letterSpacing: 1,
-    },
-    adminTitle: {
-        color: "#ffffff",
-        fontSize: 20,
-        fontWeight: "bold",
-    },
-    refreshBtn: {
-        width: 38,
-        height: 38,
-        borderRadius: 19,
-        backgroundColor: "rgba(255, 255, 255, 0.2)",
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    loadingContainer: {
-        paddingVertical: 50,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    loadingText: {
-        color: "#64748b",
-        marginTop: 12,
-        fontWeight: "600",
-    },
-    body: {
-        paddingHorizontal: 16,
-        marginTop: 16,
-    },
-    revenueCard: {
-        backgroundColor: "#3730a3",
-        borderRadius: 20,
-        padding: 20,
-        marginBottom: 16,
-    },
-    revenueRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-    },
-    revenueLabel: {
-        color: "#c7d2fe",
-        fontSize: 11,
-        fontWeight: "700",
-        letterSpacing: 1,
-    },
-    revenueAmount: {
-        color: "#ffffff",
-        fontSize: 28,
-        fontWeight: "800",
-        marginTop: 4,
-    },
-    volumeText: {
-        color: "#a5b4fc",
-        fontSize: 12,
-        marginTop: 4,
-    },
-    reportsBtn: {
-        backgroundColor: "rgba(255, 255, 255, 0.2)",
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-        borderRadius: 12,
-        flexDirection: "row",
-        alignItems: "center",
-        borderWidth: 1,
-        borderColor: "rgba(255, 255, 255, 0.3)",
-    },
-    reportsBtnText: {
-        color: "#ffffff",
-        fontWeight: "700",
-        marginLeft: 6,
-        fontSize: 13,
-    },
-    attentionSection: {
-        marginBottom: 16,
-    },
-    alertBanner: {
-        borderRadius: 16,
-        padding: 14,
-        marginBottom: 10,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        borderWidth: 1,
-    },
-    alertLeft: {
-        flexDirection: "row",
-        alignItems: "center",
-        flex: 1,
-        marginRight: 10,
-    },
-    alertIconBox: {
-        width: 38,
-        height: 38,
-        borderRadius: 12,
-        justifyContent: "center",
-        alignItems: "center",
-        marginRight: 12,
-    },
-    alertTitle: {
-        fontWeight: "bold",
-        fontSize: 13,
-    },
-    alertSub: {
-        fontSize: 11,
-        marginTop: 2,
-    },
-    overviewGrid: {
-        flexDirection: "row",
-        flexWrap: "wrap",
-        justifyContent: "space-between",
-        marginBottom: 8,
-    },
-    overviewCard: {
-        width: "48%",
-        backgroundColor: "#ffffff",
-        padding: 14,
-        borderRadius: 16,
-        marginBottom: 12,
-        alignItems: "center",
-        borderWidth: 1,
-        borderColor: "#f1f5f9",
-    },
-    iconCircle: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        justifyContent: "center",
-        alignItems: "center",
-        marginBottom: 8,
-    },
-    overviewLabel: {
-        color: "#64748b",
-        fontSize: 11,
-        fontWeight: "600",
-    },
-    overviewValue: {
-        color: "#0f172a",
-        fontSize: 22,
-        fontWeight: "800",
-        marginTop: 2,
-    },
-    statusOkText: {
-        color: "#059669",
-        fontSize: 14,
-        fontWeight: "800",
-        marginTop: 4,
-    },
-    sectionHeader: {
-        color: "#334155",
-        fontSize: 16,
-        fontWeight: "bold",
-        marginBottom: 12,
-    },
-    sectionTitleRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginTop: 8,
-        marginBottom: 12,
-    },
-    seeAllText: {
-        color: "#4338ca",
-        fontWeight: "600",
-        fontSize: 13,
-    },
-    actionGrid: {
-        flexDirection: "row",
-        flexWrap: "wrap",
-        justifyContent: "space-between",
-        marginBottom: 8,
-    },
-    actionCard: {
-        width: "48%",
-        padding: 14,
-        borderRadius: 16,
-        marginBottom: 12,
-        flexDirection: "row",
-        alignItems: "center",
-        elevation: 1,
-    },
-    actionCardWhite: {
-        backgroundColor: "#ffffff",
-        borderWidth: 1,
-        borderColor: "#e2e8f0",
-    },
-    actionIconBox: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        justifyContent: "center",
-        alignItems: "center",
-        marginRight: 10,
-    },
-    actionCardTitleWhite: {
-        color: "#ffffff",
-        fontWeight: "bold",
-        fontSize: 13,
-    },
-    actionCardSubWhite: {
-        color: "#c7d2fe",
-        fontSize: 11,
-    },
-    actionCardTitleDark: {
-        color: "#1e293b",
-        fontWeight: "bold",
-        fontSize: 13,
-    },
-    actionCardSubDark: {
-        color: "#64748b",
-        fontSize: 11,
-    },
-    listItem: {
-        backgroundColor: "#ffffff",
-        borderRadius: 16,
-        padding: 12,
-        marginBottom: 10,
-        borderWidth: 1,
-        borderColor: "#f1f5f9",
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-    },
-    listIconBox: {
-        width: 38,
-        height: 38,
-        borderRadius: 12,
-        backgroundColor: "#f1f5f9",
-        justifyContent: "center",
-        alignItems: "center",
-        marginRight: 12,
-    },
-    listItemTitle: {
-        color: "#1e293b",
-        fontWeight: "bold",
-        fontSize: 14,
-    },
-    listItemSub: {
-        color: "#64748b",
-        fontSize: 12,
-        marginTop: 2,
-    },
-    statusBadge: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 12,
-        borderWidth: 1,
-    },
-    statusBadgeText: {
-        fontSize: 10,
-        fontWeight: "700",
-    },
-    emptyCard: {
-        backgroundColor: "#ffffff",
-        borderRadius: 16,
-        padding: 24,
-        alignItems: "center",
-        justifyContent: "center",
-        borderWidth: 1,
-        borderColor: "#f1f5f9",
-    },
-    emptyText: {
-        color: "#94a3b8",
-        fontSize: 13,
-        fontWeight: "500",
-        marginTop: 8,
-    },
-});
 
 export default SuperAdminDashboard;

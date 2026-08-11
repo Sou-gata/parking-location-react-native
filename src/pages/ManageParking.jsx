@@ -9,6 +9,8 @@ import apiService from "../utils/apiService";
 import CapacitiesTab from "../components/manageParking/CapacitiesTab";
 import ParkedTab from "../components/manageParking/ParkedTab";
 import PolicyTab from "../components/manageParking/PolicyTab";
+import MediaTab from "../components/manageParking/MediaTab";
+import WorkingHoursTab from "../components/manageParking/WorkingHoursTab";
 import { STANDARD_VEHICLES } from "../components/manageParking/utils";
 
 export default function ManageParking({ navigation }) {
@@ -309,7 +311,43 @@ export default function ManageParking({ navigation }) {
                                 : "text-slate-500"
                         }`}
                     >
-                        Cancellation Policy
+                        Policy
+                    </Text>
+                </Pressable>
+                <Pressable
+                    className={`flex-1 py-3.5 items-center justify-center border-b-2 ${
+                        activeTab === "media"
+                            ? "border-indigo-600"
+                            : "border-transparent"
+                    }`}
+                    onPress={() => setActiveTab("media")}
+                >
+                    <Text
+                        className={`text-sm font-bold ${
+                            activeTab === "media"
+                                ? "text-indigo-600"
+                                : "text-slate-500"
+                        }`}
+                    >
+                        Media
+                    </Text>
+                </Pressable>
+                <Pressable
+                    className={`flex-1 py-3.5 items-center justify-center border-b-2 ${
+                        activeTab === "working_hours"
+                            ? "border-indigo-600"
+                            : "border-transparent"
+                    }`}
+                    onPress={() => setActiveTab("working_hours")}
+                >
+                    <Text
+                        className={`text-sm font-bold ${
+                            activeTab === "working_hours"
+                                ? "text-indigo-600"
+                                : "text-slate-500"
+                        }`}
+                    >
+                        Working Hours
                     </Text>
                 </Pressable>
             </View>
@@ -336,6 +374,14 @@ export default function ManageParking({ navigation }) {
                     currentAgency={currentAgency}
                     onRefresh={fetchAgenciesAndBookings}
                 />
+            )}
+
+            {activeTab === "media" && (
+                <MediaTab agencyId={currentAgency.id} />
+            )}
+
+            {activeTab === "working_hours" && (
+                <WorkingHoursTab agencyId={currentAgency.id} />
             )}
         </View>
     );

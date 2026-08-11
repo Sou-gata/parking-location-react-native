@@ -6,6 +6,9 @@ import {
     Button,
     Card,
     Surface,
+    Checkbox,
+    Portal,
+    Modal,
 } from "react-native-paper";
 import {
     BackHandler,
@@ -14,7 +17,8 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { launchImageLibrary } from "react-native-image-picker";
+import ImageCropPicker from "react-native-image-crop-picker";
+import { Image as ImageCompressor } from "react-native-compressor";
 import { setConnected } from "@maplibre/maplibre-react-native";
 import { MaterialDesignIcons } from "@react-native-vector-icons/material-design-icons";
 import { useDispatch } from "react-redux";
@@ -22,14 +26,19 @@ import { registerNormalUser } from "../store/slices/parkingSlice";
 
 import SignupMap from "../components/SignupMap";
 import apiService from "../utils/apiService";
-import useToast from "../hooks/useToast";
 import { fileToBase64 } from "../utils/helperFunctions";
+import useToast from "../hooks/useToast";
 
 setConnected(true);
 
 const UserSignup = ({ navigation }) => {
     const toast = useToast();
     const dispatch = useDispatch();
+
+    const [acceptedTerms, setAcceptedTerms] = useState(false);
+    const [termsModalVisible, setTermsModalVisible] = useState(false);
+    const [termsContent, setTermsContent] = useState("");
+
     useEffect(() => {
         const backAction = () => {
             navigation.goBack();
@@ -41,6 +50,20 @@ const UserSignup = ({ navigation }) => {
         );
         return () => backHandler.remove();
     }, [navigation]);
+
+    useEffect(() => {
+        const fetchTerms = async () => {
+            try {
+                const res = await apiService.get("config/user");
+                if (res && res.success && res.data) {
+                    setTermsContent(res.data.content);
+                }
+            } catch (err) {
+                console.error("Error loading user terms:", err);
+            }
+        };
+        fetchTerms();
+    }, []);
 
     const [inputs, setInputs] = useState({
         name: "",
@@ -58,12 +81,40 @@ const UserSignup = ({ navigation }) => {
     });
 
     const handleSelectImage = async () => {
-        const result = await launchImageLibrary({
-            mediaType: "photo",
-            quality: 0.8,
-        });
-        if (!result.didCancel && !result.errorCode) {
-            setInputs({ ...inputs, photo: result.assets[0] });
+        try {
+            const croppedImage = await ImageCropPicker.openPicker({
+                width: 500,
+                height: 500,
+                cropping: true,
+                cropperCircleOverlay: false,
+                mediaType: "photo",
+                compressImageQuality: 0.9,
+            });
+
+            if (croppedImage && croppedImage.path) {
+                const compressedUri = await ImageCompressor.compress(
+                    croppedImage.path,
+                    {
+                        compressionMethod: "auto",
+                        quality: 0.8,
+                    }
+                );
+
+                setInputs((prev) => ({
+                    ...prev,
+                    photo: {
+                        uri: compressedUri,
+                        mime: croppedImage.mime,
+                        width: croppedImage.width,
+                        height: croppedImage.height,
+                    },
+                }));
+            }
+        } catch (error) {
+            if (error?.code !== "E_PICKER_CANCELLED") {
+                console.error("Image Picker Error:", error);
+                toast.error("Failed to select/crop image.", "Error", true);
+            }
         }
     };
 
@@ -84,33 +135,63 @@ const UserSignup = ({ navigation }) => {
             return;
         }
 
+        if (!acceptedTerms) {
+            toast.error(
+                "Please read and accept the Terms & Conditions before creating an account.",
+                "Validation Error",
+                true
+            );
+            return;
+        }
+
         setInputs((prev) => ({ ...prev, loading: true }));
 
         try {
-            let photoBase64 = null;
+            // FormData Upload Process
+            const formData = new FormData();
+            formData.append("name", inputs.name);
+            formData.append("full_name", inputs.name);
+            formData.append("username", inputs.username);
+            formData.append("email", inputs.email);
+            formData.append("phone_number", inputs.phoneNumber);
+            formData.append("password", inputs.password);
+            formData.append("address", inputs.address || "");
+            formData.append("user_address", inputs.address || "");
+            formData.append("landmark", inputs.landmark || "");
+            formData.append("latitude", String(Number(inputs.latitude || 0)));
+            formData.append("longitude", String(Number(inputs.longitude || 0)));
 
             if (inputs.photo && inputs.photo.uri) {
-                photoBase64 = await fileToBase64(inputs.photo.uri);
+                const photoBase64 = await fileToBase64(inputs.photo.uri);
+                if (photoBase64) {
+                    formData.append("profile_photo", photoBase64);
+                } else {
+                    formData.append("profile_photo", {
+                        uri: inputs.photo.uri,
+                        name: "profile_photo.jpg",
+                        type: inputs.photo.mime || "image/jpeg",
+                    });
+                }
             }
 
-            const registrationData = {
-                name: inputs.name,
-                full_name: inputs.name,
-                username: inputs.username,
-                email: inputs.email,
-                phone_number: inputs.phoneNumber,
-                password: inputs.password,
-                address: inputs.address || "",
-                user_address: inputs.address || "",
-                landmark: inputs.landmark || "",
-                latitude: Number(inputs.latitude || 0),
-                longitude: Number(inputs.longitude || 0),
-                profile_photo: photoBase64,
-            };
+            await apiService.post("users/userregister", formData);
 
-            await apiService.post("users/userregister", registrationData);
-
-            dispatch(registerNormalUser(registrationData));
+            dispatch(
+                registerNormalUser({
+                    name: inputs.name,
+                    full_name: inputs.name,
+                    username: inputs.username,
+                    email: inputs.email,
+                    phone_number: inputs.phoneNumber,
+                    password: inputs.password,
+                    address: inputs.address || "",
+                    user_address: inputs.address || "",
+                    landmark: inputs.landmark || "",
+                    latitude: Number(inputs.latitude || 0),
+                    longitude: Number(inputs.longitude || 0),
+                    profile_photo: inputs.photo ? inputs.photo.uri : null,
+                })
+            );
 
             toast.success("Registration Successful!", "Success", true);
             navigation.replace("Login");
@@ -358,6 +439,27 @@ const UserSignup = ({ navigation }) => {
                         </Card.Content>
                     </Card>
 
+                    {/* Terms & Conditions Checkbox Row */}
+                    <View className="flex-row items-center bg-white p-3 rounded-2xl border border-slate-200 mt-2 mb-1">
+                        <Checkbox
+                            status={acceptedTerms ? "checked" : "unchecked"}
+                            onPress={() => setAcceptedTerms(!acceptedTerms)}
+                            color="#4338ca"
+                        />
+                        <View className="flex-1 ml-1 flex-row flex-wrap items-center">
+                            <Text className="text-slate-700 text-xs font-semibold">
+                                I agree to the{" "}
+                            </Text>
+                            <TouchableOpacity
+                                onPress={() => setTermsModalVisible(true)}
+                            >
+                                <Text className="text-indigo-700 font-bold text-xs underline">
+                                    Terms & Conditions
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
                     <Button
                         mode="contained"
                         onPress={handleSignup}
@@ -384,6 +486,57 @@ const UserSignup = ({ navigation }) => {
                     </View>
                 </View>
             </ScrollView>
+
+            {/* Terms and Conditions Dialog Modal */}
+            <Portal>
+                <Modal
+                    visible={termsModalVisible}
+                    onDismiss={() => setTermsModalVisible(false)}
+                    contentContainerStyle={{
+                        backgroundColor: "white",
+                        padding: 22,
+                        margin: 20,
+                        borderRadius: 24,
+                        maxHeight: "80%",
+                    }}
+                >
+                    <View className="flex-row justify-between items-center mb-3 pb-2 border-b border-slate-200">
+                        <Text className="text-slate-800 text-lg font-bold">
+                            Customer Terms & Conditions
+                        </Text>
+                        <TouchableOpacity
+                            onPress={() => setTermsModalVisible(false)}
+                            className="p-1 rounded-full bg-slate-100"
+                        >
+                            <MaterialDesignIcons
+                                name="close"
+                                size={20}
+                                color="#475569"
+                            />
+                        </TouchableOpacity>
+                    </View>
+
+                    <ScrollView className="mb-4">
+                        <Text className="text-slate-700 text-xs leading-5">
+                            {termsContent || "Loading Terms and Conditions..."}
+                        </Text>
+                    </ScrollView>
+
+                    <View className="flex-row justify-end">
+                        <Button
+                            mode="contained"
+                            onPress={() => {
+                                setAcceptedTerms(true);
+                                setTermsModalVisible(false);
+                            }}
+                            buttonColor="#4338ca"
+                            className="rounded-xl"
+                        >
+                            I Accept Terms
+                        </Button>
+                    </View>
+                </Modal>
+            </Portal>
         </View>
     );
 };

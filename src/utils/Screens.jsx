@@ -12,6 +12,8 @@ import ManageParking from "../pages/ManageParking";
 import Profile from "../pages/Profile";
 import Wallet from "../pages/Wallet";
 import SuperAdminSettings from "../pages/SuperAdminSettings";
+import WorkingHours from "../pages/WorkingHours";
+import ManageComplaints from "../pages/ManageComplaints";
 
 const Stack = createNativeStackNavigator();
 
@@ -32,7 +34,11 @@ const Screens = () => {
         >
             {isLoggedIn ? (
                 <>
-                    <Stack.Screen name="Home" component={Home} options={{ headerShown: false }} />
+                    <Stack.Screen
+                        name="Home"
+                        component={Home}
+                        options={{ headerShown: false }}
+                    />
                     <Stack.Screen
                         name="ManageUsers"
                         component={ManageUsers}
@@ -89,10 +95,30 @@ const Screens = () => {
                             headerBackTitle: "Back",
                         }}
                     />
+                    <Stack.Screen
+                        name="WorkingHours"
+                        component={WorkingHours}
+                        options={{
+                            title: "Working Hours",
+                            headerBackTitle: "Back",
+                        }}
+                    />
+                    <Stack.Screen
+                        name="ManageComplaints"
+                        component={ManageComplaints}
+                        options={{
+                            title: "Manage Complaints",
+                            headerBackTitle: "Back",
+                        }}
+                    />
                 </>
             ) : (
                 <>
-                    <Stack.Screen name="Login" component={Login} options={{ headerShown: false }} />
+                    <Stack.Screen
+                        name="Login"
+                        component={Login}
+                        options={{ headerShown: false }}
+                    />
                     <Stack.Screen
                         name="OrgSignup"
                         component={OrgSignup}

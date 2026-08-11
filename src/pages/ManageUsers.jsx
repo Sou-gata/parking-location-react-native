@@ -2,18 +2,18 @@ import React from "react";
 import { View } from "react-native";
 import { Text } from "react-native-paper";
 import useRolePermissions from "../hooks/useRolePermissions";
-import { ROLES } from "../utils/rbacConfig";
+import { PERMISSIONS } from "../utils/rbacConfig";
 import SuperAdminManageUsers from "./SuperAdminManageUsers";
 import AgencyAdminManageUsers from "./AgencyAdminManageUsers";
 
 export default function ManageUsers({ route, navigation }) {
-    const { role } = useRolePermissions();
+    const { hasPermission } = useRolePermissions();
 
-    if (role === ROLES.SUPER_ADMIN) {
+    if (hasPermission(PERMISSIONS.MANAGE_AGENCIES)) {
         return <SuperAdminManageUsers route={route} navigation={navigation} />;
     }
 
-    if (role === ROLES.AGENCY_ADMIN) {
+    if (hasPermission(PERMISSIONS.MANAGE_USERS)) {
         return <AgencyAdminManageUsers route={route} navigation={navigation} />;
     }
 

@@ -29,9 +29,9 @@ class MainApplication : Application(), ReactApplication {
   }
 
   override fun onCreate() {
+    OkHttpClientProvider.setOkHttpClientFactory(UnsafeOkHttpClientFactory())
     super.onCreate()
     loadReactNative(this)
-    OkHttpClientProvider.setOkHttpClientFactory(UnsafeOkHttpClientFactory())
   }
 }
 

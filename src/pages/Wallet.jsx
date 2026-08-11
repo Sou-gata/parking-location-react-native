@@ -22,18 +22,20 @@ import { useSelector, useDispatch } from "react-redux";
 import { setWalletData } from "../store/slices/userSlice";
 import useToast from "../hooks/useToast";
 import apiService from "../utils/apiService";
+import useRolePermissions from "../hooks/useRolePermissions";
+import { PERMISSIONS } from "../utils/rbacConfig";
 import { launchImageLibrary } from "react-native-image-picker";
 import { fileToBase64 } from "../utils/helperFunctions";
 
 export default function Wallet() {
     const dispatch = useDispatch();
     const toast = useToast();
+    const { hasPermission } = useRolePermissions();
     const balance = useSelector((state) => state.user.walletBalance ?? 0.0);
     const reservedBalance = useSelector((state) => state.user.reservedBalance ?? 0.0);
     const transactions = useSelector(
         (state) => state.user.walletTransactions ?? []
     );
-    const role = useSelector((state) => state.user.user?.role || "user");
 
     const [amount, setAmount] = useState("");
     const [loading, setLoading] = useState(false);
@@ -252,13 +254,13 @@ export default function Wallet() {
                     />
                 </View>
                 <Text className="text-white opacity-80 text-sm font-semibold uppercase tracking-wider mb-1">
-                    {role === "user" ? "Total Wallet Balance" : "Total Agency Earnings"}
+                    {hasPermission(PERMISSIONS.BOOK_PARKING) ? "Total Wallet Balance" : "Total Agency Earnings"}
                 </Text>
                 <Text className="text-white text-4xl font-extrabold mb-3">
                     ₹{(balance ?? 0).toFixed(2)}
                 </Text>
 
-                {role === "user" && (
+                {hasPermission(PERMISSIONS.BOOK_PARKING) && (
                     <View className="flex-row justify-between mb-3 pr-4 border-t border-indigo-500/40 pt-3">
                         <View>
                             <Text className="text-indigo-200 text-[10px] font-bold uppercase tracking-wider">
@@ -292,7 +294,7 @@ export default function Wallet() {
             </Surface>
 
             {/* Agency Admin Cash Withdrawal Card */}
-            {role === "agency_admin" && (
+            {hasPermission(PERMISSIONS.WITHDRAW_EARNINGS) && (
                 <Card className="mt-6 bg-emerald-50/50 border border-emerald-100 rounded-2xl elevation-0">
                     <Card.Content className="p-5 flex-row items-center justify-between">
                         <View className="flex-1 pr-3">
@@ -318,7 +320,7 @@ export default function Wallet() {
             )}
 
             {/* Quick Actions Card */}
-            {role === "user" && (
+            {hasPermission(PERMISSIONS.BOOK_PARKING) && (
                 <Card className="mt-6 bg-white border border-slate-100 rounded-2xl elevation-1">
                     <Card.Content className="p-5">
                         <Text className="text-base font-bold text-slate-800 mb-4">

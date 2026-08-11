@@ -1,7 +1,9 @@
-import React from "react";
-import { View, ScrollView, Image } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, ScrollView, Image, TouchableOpacity } from "react-native";
 import { Modal, Text, Divider, Button, Card, Badge, Avatar, IconButton } from "react-native-paper";
 import { imageBaseURL } from "../../utils/baseURL";
+import apiService from "../../utils/apiService";
+import MediaViewerModal from "../MediaViewerModal";
 
 export default function RequestDetailsModal({
     visible,
@@ -11,6 +13,31 @@ export default function RequestDetailsModal({
     onReject,
 }) {
     if (!request) return null;
+
+    const [mediaItems, setMediaItems] = useState(request.media || []);
+    const [viewerState, setViewerState] = useState({
+        visible: false,
+        media: null,
+    });
+
+    useEffect(() => {
+        setMediaItems(request.media || []);
+    }, [request]);
+
+    const handleMediaStatus = async (mediaId, newStatus) => {
+        try {
+            await apiService.patch(`agencies/media/${mediaId}/status`, {
+                status: newStatus,
+            });
+            setMediaItems((prev) =>
+                prev.map((item) =>
+                    item.media_id === mediaId ? { ...item, status: newStatus } : item
+                )
+            );
+        } catch (error) {
+            console.error("Error updating media status:", error);
+        }
+    };
 
     // Helper to clean path and construct full URL
     const getImageUrl = (path) => {
@@ -88,6 +115,27 @@ export default function RequestDetailsModal({
                     </Card.Content>
                 </Card>
 
+                {/* Compliance & Clearances Grid */}
+                <Text className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-2">
+                    Compliance & Clearances
+                </Text>
+                <View className="flex-row flex-wrap justify-between mb-4 gap-y-2">
+                    {[
+                        { label: "CCTV Available", val: request.cctv_available },
+                        { label: "Trade License", val: request.trade_license },
+                        { label: "Zoning Clearance", val: request.zoning_clearance },
+                        { label: "Shops & Est. License", val: request.shops_establishment_license },
+                        { label: "GST Registration", val: request.gst_registration },
+                    ].map((comp, i) => (
+                        <View key={i} className="w-[48%] p-2 bg-slate-50 rounded-lg border border-slate-100 flex-row items-center justify-between">
+                            <Text className="text-xs text-slate-600 font-semibold flex-1 mr-1">{comp.label}</Text>
+                            <Badge className={comp.val ? "bg-emerald-100 text-emerald-800 font-bold" : "bg-slate-200 text-slate-600"}>
+                                {comp.val ? "YES" : "NO"}
+                            </Badge>
+                        </View>
+                    ))}
+                </View>
+
                 {/* 2. Capacities Grid */}
                 <Text className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-2">
                     Parking Capacities
@@ -100,22 +148,13 @@ export default function RequestDetailsModal({
                         { label: "SUV", val: request.suv_capacity },
                         { label: "Van", val: request.van_capacity },
                         { label: "Pickup", val: request.pickup_capacity },
-                        { label: "EV Spots", val: request.ev_capacity },
+                        { label: "EV", val: request.ev_capacity },
                     ].map((cap, i) => (
-                        <View
-                            key={i}
-                            className="w-[30%] bg-slate-100/80 p-2 rounded-lg items-center mb-2 border border-slate-200/50"
-                        >
-                            <Text className="text-xs text-slate-500 font-semibold text-center">{cap.label}</Text>
+                        <View key={i} className="w-[31%] mb-2 p-2 bg-slate-50 rounded-lg border border-slate-100 items-center">
+                            <Text className="text-xs text-slate-500 font-medium">{cap.label}</Text>
                             <Text className="text-base font-bold text-slate-800 mt-0.5">{cap.val || 0}</Text>
                         </View>
                     ))}
-                    <View className="w-[30%] bg-indigo-50 p-2 rounded-lg items-center mb-2 border border-indigo-100">
-                        <Text className="text-[10px] text-indigo-700 font-bold text-center">EV Charging</Text>
-                        <Text className="text-sm font-bold text-indigo-900 mt-1">
-                            {request.ev_charging_support ? "YES" : "NO"}
-                        </Text>
-                    </View>
                 </View>
 
                 {/* 3. Rates Grid */}
@@ -145,7 +184,7 @@ export default function RequestDetailsModal({
 
                 {/* 4. Aadhaar Card Photo */}
                 <Text className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-2">
-                    Aadhaar Card
+                    Aadhaar Card Document
                 </Text>
                 {aadhaarPhotoUrl ? (
                     <View className="mb-4 border border-slate-200 rounded-xl overflow-hidden bg-slate-100">
@@ -181,6 +220,95 @@ export default function RequestDetailsModal({
                         <IconButton icon="file-document-alert-outline" size={32} iconColor="#94a3b8" />
                         <Text className="text-xs text-slate-400 text-center font-semibold">
                             No Address Proof document uploaded
+                        </Text>
+                    </View>
+                )}
+
+                {/* 6. Organization Photos & Videos (Super Admin Approval) */}
+                <Text className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-2">
+                    Organization Media ({mediaItems.length})
+                </Text>
+                {mediaItems.length > 0 ? (
+                    <View className="mb-6 flex-row flex-wrap justify-between gap-y-3">
+                        {mediaItems.map((m) => {
+                            const mediaUrl = getImageUrl(m.pending_file_path || m.file_path);
+                            const isApproved = m.status === "approved";
+                            const isRejected = m.status === "rejected";
+
+                            return (
+                                <View
+                                    key={m.media_id}
+                                    className="w-[48%] border border-slate-200 rounded-xl overflow-hidden bg-slate-50 p-2"
+                                >
+                                    <TouchableOpacity
+                                        activeOpacity={0.85}
+                                        onPress={() =>
+                                            setViewerState({
+                                                visible: true,
+                                                media: {
+                                                    uri: mediaUrl,
+                                                    type: m.file_type,
+                                                    title: `Media (${m.status})`,
+                                                },
+                                            })
+                                        }
+                                        className="relative w-full h-32 rounded-lg overflow-hidden bg-slate-200 items-center justify-center mb-2"
+                                    >
+                                        {m.file_type === "photo" ? (
+                                            <Image
+                                                source={{ uri: mediaUrl }}
+                                                className="w-full h-full"
+                                                resizeMode="cover"
+                                            />
+                                        ) : (
+                                            <View className="items-center justify-center w-full h-full bg-slate-900/90">
+                                                <IconButton icon="play-circle" iconColor="#ffffff" size={36} />
+                                                <Text className="text-white text-xs font-bold">Video</Text>
+                                            </View>
+                                        )}
+                                        <Badge
+                                            className={`absolute top-2 left-2 ${
+                                                isApproved
+                                                    ? "bg-green-600 text-white"
+                                                    : isRejected
+                                                    ? "bg-red-600 text-white"
+                                                    : "bg-amber-500 text-white"
+                                            }`}
+                                        >
+                                            {m.status.toUpperCase()}
+                                        </Badge>
+                                    </TouchableOpacity>
+
+                                    <View className="flex-row justify-between gap-1">
+                                        <Button
+                                            mode={isApproved ? "contained" : "outlined"}
+                                            buttonColor={isApproved ? "#16a34a" : undefined}
+                                            textColor={isApproved ? "#ffffff" : "#16a34a"}
+                                            className="flex-1 rounded-lg"
+                                            compact
+                                            onPress={() => handleMediaStatus(m.media_id, "approved")}
+                                        >
+                                            Approve
+                                        </Button>
+                                        <Button
+                                            mode={isRejected ? "contained" : "outlined"}
+                                            buttonColor={isRejected ? "#dc2626" : undefined}
+                                            textColor={isRejected ? "#ffffff" : "#dc2626"}
+                                            className="flex-1 rounded-lg"
+                                            compact
+                                            onPress={() => handleMediaStatus(m.media_id, "rejected")}
+                                        >
+                                            Reject
+                                        </Button>
+                                    </View>
+                                </View>
+                            );
+                        })}
+                    </View>
+                ) : (
+                    <View className="mb-6 p-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 items-center justify-center">
+                        <Text className="text-xs text-slate-400 text-center font-semibold">
+                            No photos or videos uploaded
                         </Text>
                     </View>
                 )}
@@ -223,6 +351,12 @@ export default function RequestDetailsModal({
                     Approve
                 </Button>
             </View>
+
+            <MediaViewerModal
+                visible={viewerState.visible}
+                onDismiss={() => setViewerState({ visible: false, media: null })}
+                media={viewerState.media}
+            />
         </Modal>
     );
 }

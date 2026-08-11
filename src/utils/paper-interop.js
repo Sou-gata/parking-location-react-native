@@ -15,11 +15,11 @@ import {
     List,
     Drawer,
     Searchbar,
-    Chip,
+    // Chip,
     Modal,
 } from "react-native-paper";
 
-cssInterop(Chip, { className: "style" });
+// cssInterop(Chip, { className: "style" });
 cssInterop(Modal, { className: "contentContainerStyle" });
 cssInterop(Searchbar, { className: "style" });
 cssInterop(Surface, { className: "style" });
