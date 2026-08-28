@@ -58,9 +58,7 @@ export default function WalletRequestsTab({
                                             </Text>
                                         </View>
                                     </View>
-                                    <Badge className={badgeClass}>
-                                        {badgeLabel}
-                                    </Badge>
+                                    <View className={badgeClass}><Text className="font-bold text-xs">{String("                                         " + (badgeLabel) + "                                     ").trim()}</Text></View>
                                 </View>
 
                                 <Divider className="my-3 bg-slate-100" />

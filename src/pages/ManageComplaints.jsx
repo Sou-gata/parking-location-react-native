@@ -23,6 +23,7 @@ import useRolePermissions from "../hooks/useRolePermissions";
 import { PERMISSIONS } from "../utils/rbacConfig";
 import RefundBookingModal from "../components/RefundBookingModal";
 import ComplaintTimelineModal from "../components/ComplaintTimelineModal";
+import SuperAdminRegisterComplaintModal from "../components/SuperAdminRegisterComplaintModal";
 
 const STATUS_COLOR_MAP = {
     pending: { bg: "#fef3c7", text: "#92400e", border: "#fde68a" },
@@ -41,6 +42,12 @@ export default function ManageComplaints({ navigation, route }) {
     const [complaints, setComplaints] = useState([]);
     const [filterStatus, setFilterStatus] = useState("all");
     const [searchQuery, setSearchQuery] = useState("");
+
+    // Register Complaint Modal state
+    const [registerModalVisible, setRegisterModalVisible] = useState(false);
+    const [registerTargetType, setRegisterTargetType] = useState("user");
+    const [registerTargetId, setRegisterTargetId] = useState(null);
+    const [registerTargetName, setRegisterTargetName] = useState("");
 
     // Refund Modal State
     const [refundModalVisible, setRefundModalVisible] = useState(false);
@@ -184,13 +191,44 @@ export default function ManageComplaints({ navigation, route }) {
     const renderComplaintCard = ({ item }) => {
         const statusStyle =
             STATUS_COLOR_MAP[item.status] || STATUS_COLOR_MAP.pending;
-        const isUserComplaint = item.complainant_type === "user_to_agency";
+        
+        let typeBadgeConfig = {
+            label: "User Complaint",
+            bg: "bg-rose-100",
+            text: "text-rose-800",
+        };
+        if (item.complainant_type === "agency_to_user") {
+            typeBadgeConfig = {
+                label: "Agency Complaint",
+                bg: "bg-indigo-100",
+                text: "text-indigo-800",
+            };
+        } else if (item.complainant_type === "admin_to_user") {
+            typeBadgeConfig = {
+                label: "Admin → User",
+                bg: "bg-amber-100",
+                text: "text-amber-800",
+            };
+        } else if (item.complainant_type === "admin_to_agency") {
+            typeBadgeConfig = {
+                label: "Admin → Agency",
+                bg: "bg-purple-100",
+                text: "text-purple-800",
+            };
+        }
+
         const dateStr = item.created_at
             ? new Date(item.created_at).toLocaleString("en-IN", {
                   dateStyle: "medium",
                   timeStyle: "short",
               })
             : "N/A";
+
+        const bookingLabel = item.booking?.booking_code
+            ? `#${item.booking.booking_code}`
+            : item.booking_id
+            ? `Booking #${item.booking_id}`
+            : "Direct Complaint";
 
         return (
             <Surface
@@ -201,26 +239,16 @@ export default function ManageComplaints({ navigation, route }) {
                 <View className="flex-row justify-between items-center mb-2.5">
                     <View className="flex-row items-center gap-2">
                         <View
-                            className={`px-2.5 py-1 rounded-lg ${
-                                isUserComplaint
-                                    ? "bg-rose-100"
-                                    : "bg-indigo-100"
-                            }`}
+                            className={`px-2.5 py-1 rounded-lg ${typeBadgeConfig.bg}`}
                         >
                             <Text
-                                className={`text-[11px] font-extrabold ${
-                                    isUserComplaint
-                                        ? "text-rose-800"
-                                        : "text-indigo-800"
-                                }`}
+                                className={`text-[11px] font-extrabold ${typeBadgeConfig.text}`}
                             >
-                                {isUserComplaint
-                                    ? "User Complaint"
-                                    : "Agency Complaint"}
+                                {typeBadgeConfig.label}
                             </Text>
                         </View>
                         <Text className="text-xs font-mono font-bold text-slate-700">
-                            #{item.booking?.booking_code || item.booking_id}
+                            {bookingLabel}
                         </Text>
                     </View>
 
@@ -349,9 +377,7 @@ export default function ManageComplaints({ navigation, route }) {
                         className="rounded-lg bg-indigo-50"
                         textColor="#4338ca"
                         onPress={() => handleOpenTimeline(item)}
-                    >
-                        Timeline ({item.steps?.length || 1})
-                    </Button>
+                    >{String("                         Timeline (" + (item.steps?.length || 1) + ")                     ")}</Button>
                     {item.status !== "under_review" && (
                         <Button
                             mode="outlined"
@@ -397,6 +423,38 @@ export default function ManageComplaints({ navigation, route }) {
 
     return (
         <View className="flex-1 bg-slate-50 p-4">
+            {Boolean(isSuperAdmin) && (
+                <View className="mb-3 flex-row justify-between items-center bg-white p-3 rounded-2xl border border-slate-200">
+                    <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: "700", color: "#1e293b" }}>
+                            Complaints Management
+                        </Text>
+                        <Text style={{ fontSize: 12, color: "#64748b" }}>
+                            Lodge complaints against users or agency owners
+                        </Text>
+                    </View>
+                    <Button
+                        mode="contained"
+                        buttonColor="#dc2626"
+                        icon={() => (
+                            <MaterialDesignIcons
+                                name="plus-circle"
+                                size={18}
+                                color="#ffffff"
+                            />
+                        )}
+                        onPress={() => {
+                            setRegisterTargetType("user");
+                            setRegisterTargetId(null);
+                            setRegisterTargetName("");
+                            setRegisterModalVisible(true);
+                        }}
+                    >
+                        Register Complaint
+                    </Button>
+                </View>
+            )}
+
             {/* Search Input */}
             <TextInput
                 label="Search Complaints (Code, Customer, Subject...)"
@@ -448,7 +506,7 @@ export default function ManageComplaints({ navigation, route }) {
                                     : "text-slate-600"
                             }`}
                         >
-                            {st.replace("_", " ").toUpperCase()}
+                            {(st.replace("_", " ") || "").toUpperCase()}
                         </Text>
                     </TouchableOpacity>
                 ))}
@@ -495,7 +553,7 @@ export default function ManageComplaints({ navigation, route }) {
             )}
 
             {/* Resolution Status Sub-Modal */}
-            {resolveModalVisible && (
+            {Boolean(resolveModalVisible) && (
                 <Portal>
                     <Modal
                         visible={resolveModalVisible}
@@ -510,7 +568,7 @@ export default function ManageComplaints({ navigation, route }) {
                     >
                         <Text className="text-base font-bold text-slate-800 mb-3">
                             Update Status to{" "}
-                            {targetStatus.replace("_", " ").toUpperCase()}
+                            {(targetStatus.replace("_", " ") || "").toUpperCase()}
                         </Text>
 
                         <TextInput
@@ -564,6 +622,16 @@ export default function ManageComplaints({ navigation, route }) {
                 complaint={activeComplaintForTimeline}
                 onComplaintUpdated={handleComplaintUpdatedInTimeline}
                 currentUserRole={isSuperAdmin ? "super_admin" : "agency_admin"}
+            />
+
+            {/* Super Admin Register Complaint Modal */}
+            <SuperAdminRegisterComplaintModal
+                visible={registerModalVisible}
+                onClose={() => setRegisterModalVisible(false)}
+                onSuccess={() => fetchComplaints()}
+                initialTargetType={registerTargetType}
+                initialTargetId={registerTargetId}
+                initialTargetName={registerTargetName}
             />
         </View>
     );

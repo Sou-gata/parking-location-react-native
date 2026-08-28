@@ -120,15 +120,16 @@ export default function ParkedTab({ currentAgency, activeBookings }) {
                                         {item.userPhone || "No Phone"}
                                     </Text>
                                 </View>
-                                <Badge
+                                <View
+                                    className="px-2 py-0.5 rounded"
                                     style={{
-                                        backgroundColor: "#cbd5e1",
-                                        color: "#475569",
+                                        backgroundColor: "#e2e8f0",
                                     }}
-                                    className="font-semibold text-xs"
                                 >
-                                    {item.bookingCode}
-                                </Badge>
+                                    <Text className="font-semibold text-xs text-slate-700">
+                                        {item.bookingCode}
+                                    </Text>
+                                </View>
                             </View>
 
                             <Divider className="my-2 bg-slate-100" />

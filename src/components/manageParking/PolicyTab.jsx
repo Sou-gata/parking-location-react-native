@@ -119,7 +119,7 @@ export default function PolicyTab({ currentAgency, onRefresh }) {
                                 booking start.
                             </Text>
                         </View>
-                        {isSuperAdmin && (
+                        {Boolean(isSuperAdmin) && (
                             <Button
                                 mode="outlined"
                                 onPress={() => setPolicyModalVisible(true)}
@@ -189,7 +189,7 @@ export default function PolicyTab({ currentAgency, onRefresh }) {
                                                 ? "Allowed"
                                                 : "Blocked"}
                                         </Chip>
-                                        {item.allowCancellation && (
+                                        {Boolean(item.allowCancellation) && (
                                             <Text className="text-xs font-semibold text-slate-500">
                                                 Fee:{" "}
                                                 {item.chargeType ===
@@ -200,7 +200,7 @@ export default function PolicyTab({ currentAgency, onRefresh }) {
                                         )}
                                     </View>
                                 </View>
-                                {isSuperAdmin && (
+                                {Boolean(isSuperAdmin) && (
                                     <IconButton
                                         icon="trash-can-outline"
                                         size={20}
@@ -215,7 +215,7 @@ export default function PolicyTab({ currentAgency, onRefresh }) {
             />
 
             {/* Bottom Save/Discard Bar */}
-            {isSuperAdmin && isPolicyModified() && (
+            {Boolean(isSuperAdmin && isPolicyModified()) && (
                 <Surface
                     elevation={4}
                     className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-100 flex-row gap-3"

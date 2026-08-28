@@ -24,22 +24,22 @@ const theme = {
 function App() {
     return (
         <ReduxProvider store={store}>
-            <PaperProvider theme={theme}>
-                <View style={{ flex: 1 }}>
-                    <SafeAreaProvider>
-                        <AuthInitializer>
-                            <NavigationContainer>
+            <NavigationContainer>
+                <PaperProvider theme={theme}>
+                    <View style={styles.container}>
+                        <SafeAreaProvider>
+                            <AuthInitializer>
                                 <StatusBar
                                     backgroundColor="#4338ca"
                                     barStyle="light-content"
                                 />
                                 <Screens />
-                            </NavigationContainer>
-                            <Toast />
-                        </AuthInitializer>
-                    </SafeAreaProvider>
-                </View>
-            </PaperProvider>
+                                <Toast />
+                            </AuthInitializer>
+                        </SafeAreaProvider>
+                    </View>
+                </PaperProvider>
+            </NavigationContainer>
         </ReduxProvider>
     );
 }

@@ -6,6 +6,7 @@ import {
     TextInput,
     Avatar,
     Modal,
+    Portal,
 } from "react-native-paper";
 import Chip from "../Chip";
 import { useDispatch } from "react-redux";
@@ -178,16 +179,20 @@ export default function EditCapacityModal({
     };
 
     return (
-        <Modal
-            visible={visible}
-            onDismiss={onDismiss}
-            contentContainerStyle={{
-                backgroundColor: "white",
-                padding: 24,
-                margin: 20,
-                borderRadius: 16,
-            }}
-        >
+        <Portal>
+            <Modal
+                visible={visible}
+                onDismiss={onDismiss}
+                contentContainerStyle={{
+                    backgroundColor: "white",
+                    padding: 24,
+                    marginHorizontal: 20,
+                    borderRadius: 16,
+                    maxWidth: 500,
+                    width: "90%",
+                    alignSelf: "center",
+                }}
+            >
             <Text className="text-lg font-bold text-slate-800 mb-4">
                 {isAddingNew ? "Add Vehicle Capacity" : "Modify Capacity"}
             </Text>
@@ -309,5 +314,6 @@ export default function EditCapacityModal({
                 </Button>
             </View>
         </Modal>
+        </Portal>
     );
 }

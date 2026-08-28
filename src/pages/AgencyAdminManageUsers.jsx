@@ -477,7 +477,7 @@ export default function AgencyAdminManageUsers({ navigation }) {
                 />
             </View>
 
-            {apiLoading && (
+            {Boolean(apiLoading) && (
                 <ActivityIndicator
                     animating={true}
                     color="#4338ca"
@@ -486,7 +486,7 @@ export default function AgencyAdminManageUsers({ navigation }) {
             )}
 
             {/* Role Filter Pills */}
-            {currentSelectedAgency && (
+            {Boolean(currentSelectedAgency) && (
                 <View className="bg-white pb-3">
                     <ScrollView
                         horizontal
@@ -542,7 +542,7 @@ export default function AgencyAdminManageUsers({ navigation }) {
             )}
 
             {/* Content List */}
-            {currentSelectedAgency && (
+            {Boolean(currentSelectedAgency) && (
                 <EmployeeRosterList
                     employees={filteredEmployees}
                     currentSelectedAgency={currentSelectedAgency}

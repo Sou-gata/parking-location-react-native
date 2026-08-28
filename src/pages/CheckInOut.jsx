@@ -15,6 +15,7 @@ import Chip from "../components/Chip";
 import RatingModal from "../components/RatingModal";
 import ComplaintModal from "../components/ComplaintModal";
 import RefundBookingModal from "../components/RefundBookingModal";
+import UserProfileModal from "../components/manageUsers/UserProfileModal";
 import { useSelector, useDispatch } from "react-redux";
 import {
     checkInBooking,
@@ -161,6 +162,9 @@ export default function CheckInOut() {
         targetBooking: null,
         input: "",
     });
+
+    // User Profile Modal state
+    const [selectedUserForModal, setSelectedUserForModal] = useState(null);
 
     // Approval / Rejection state
     const [selectedPendingIds, setSelectedPendingIds] = useState([]);
@@ -515,6 +519,25 @@ export default function CheckInOut() {
                 if (bookingsRes && bookingsRes.success) {
                     dispatch(setBookings(bookingsRes.data));
                 }
+                try {
+                    const compRes = await apiService.get("complaints/agency");
+                    if (compRes && compRes.success && Array.isArray(compRes.data)) {
+                        const agencyComplaintsMap = {};
+                        const agencyComplaintIds = [];
+                        compRes.data.forEach((c) => {
+                            if (c.complainant_type === "agency_to_user") {
+                                agencyComplaintsMap[c.booking_id] = c;
+                                agencyComplaintIds.push(c.booking_id);
+                            }
+                        });
+                        setAgencyComplaintState((prev) => ({
+                            ...prev,
+                            complainedBookingIds: agencyComplaintIds,
+                        }));
+                    }
+                } catch (ce) {
+                    console.error("Error fetching agency complaints list:", ce);
+                }
             }
         } catch (error) {
             console.error("Error fetching checkin/checkout data:", error);
@@ -835,7 +858,7 @@ export default function CheckInOut() {
             agencyId: myAgency?.id,
             agencyName: myAgency?.name,
             vehicleType: vehicleType,
-            vehicleNumber: walkinForm.vehicleNum.toUpperCase(),
+            vehicleNumber: (walkinForm.vehicleNum || "").toUpperCase(),
             status: "checked_in", // Checked in immediately
             startTime: new Date().toISOString(),
             endTime: null,
@@ -1081,9 +1104,7 @@ export default function CheckInOut() {
                                     fontWeight: "700",
                                     color: "white",
                                 }}
-                            >
-                                Approve ({selectedPendingIds.length})
-                            </Button>
+                            >{String("                                 Approve (" + (selectedPendingIds.length) + ")                             ")}</Button>
                             <Button
                                 compact
                                 mode="contained"
@@ -1096,9 +1117,7 @@ export default function CheckInOut() {
                                     fontWeight: "700",
                                     color: "white",
                                 }}
-                            >
-                                Reject ({selectedPendingIds.length})
-                            </Button>
+                            >{String("                                 Reject (" + (selectedPendingIds.length) + ")                             ")}</Button>
                         </View>
                     )}
                 </View>
@@ -1234,12 +1253,31 @@ export default function CheckInOut() {
                             <Divider className="my-3 bg-slate-100" />
 
                             <View className="gap-1.5">
-                                <Text className="text-sm text-slate-600">
-                                    <Text className="font-semibold">
-                                        Customer:
-                                    </Text>{" "}
-                                    {item.userName}
-                                </Text>
+                                <View className="flex-row items-center flex-wrap">
+                                    <Text className="text-sm text-slate-600 font-semibold">
+                                        Customer:{" "}
+                                    </Text>
+                                    <Pressable
+                                        onPress={() =>
+                                            setSelectedUserForModal({
+                                                userId: item.userId,
+                                                userName: item.userName,
+                                                userPhone: item.userPhone,
+                                            })
+                                        }
+                                        className="flex-row items-center bg-indigo-50 px-2 py-0.5 rounded-md active:opacity-70"
+                                    >
+                                        <Avatar.Icon
+                                            size={18}
+                                            icon="account-circle-outline"
+                                            style={{ backgroundColor: "transparent" }}
+                                            color="#4338ca"
+                                        />
+                                        <Text className="text-sm font-bold text-indigo-700 underline ml-1">
+                                            {item.userName || "View Profile"}
+                                        </Text>
+                                    </Pressable>
+                                </View>
                                 <Text className="text-sm text-slate-600">
                                     <Text className="font-semibold">
                                         Phone:
@@ -2016,6 +2054,14 @@ export default function CheckInOut() {
                 onRefundSuccess={(updatedBooking) => {
                     fetchAgenciesAndBookings();
                 }}
+            />
+
+            <UserProfileModal
+                visible={!!selectedUserForModal}
+                onDismiss={() => setSelectedUserForModal(null)}
+                userId={selectedUserForModal?.userId}
+                fallbackName={selectedUserForModal?.userName}
+                fallbackPhone={selectedUserForModal?.userPhone}
             />
         </View>
     );

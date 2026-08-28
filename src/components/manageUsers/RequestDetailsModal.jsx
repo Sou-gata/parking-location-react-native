@@ -49,6 +49,7 @@ export default function RequestDetailsModal({
     const profilePhotoUrl = getImageUrl(request.profile_photo_path);
     const docPhotoUrl = getImageUrl(request.verification_document_path);
     const aadhaarPhotoUrl = getImageUrl(request.aadhaar_card_path);
+    const tradeLicenseDocUrl = getImageUrl(request.trade_license_document_path);
 
     return (
         <Modal
@@ -60,9 +61,7 @@ export default function RequestDetailsModal({
                 <Text className="text-xl font-bold text-slate-800 flex-1 mr-2" numberOfLines={1}>
                     {request.name}
                 </Text>
-                <Badge className="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded text-xs">
-                    Pending
-                </Badge>
+                <View className="bg-amber-100 px-2 py-0.5 rounded"><Text className="text-amber-800 font-bold text-xs">Pending</Text></View>
             </View>
 
             <Divider className="mb-3 bg-slate-100" />
@@ -129,9 +128,7 @@ export default function RequestDetailsModal({
                     ].map((comp, i) => (
                         <View key={i} className="w-[48%] p-2 bg-slate-50 rounded-lg border border-slate-100 flex-row items-center justify-between">
                             <Text className="text-xs text-slate-600 font-semibold flex-1 mr-1">{comp.label}</Text>
-                            <Badge className={comp.val ? "bg-emerald-100 text-emerald-800 font-bold" : "bg-slate-200 text-slate-600"}>
-                                {comp.val ? "YES" : "NO"}
-                            </Badge>
+                            <View className={comp.val ? "bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded" : "bg-slate-200 text-slate-600 px-2 py-0.5 rounded"}><Text className="font-bold text-xs">{comp.val ? "YES" : "NO"}</Text></View>
                         </View>
                     ))}
                 </View>
@@ -224,6 +221,31 @@ export default function RequestDetailsModal({
                     </View>
                 )}
 
+                {/* 5.5. Trade License Document (only if trade_license is true) */}
+                {Boolean(request.trade_license) && (
+                    <>
+                        <Text className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-2">
+                            Trade License Document
+                        </Text>
+                        {tradeLicenseDocUrl ? (
+                            <View className="mb-4 border border-amber-200 rounded-xl overflow-hidden bg-amber-50">
+                                <Image
+                                    source={{ uri: tradeLicenseDocUrl }}
+                                    className="w-full h-40"
+                                    resizeMode="contain"
+                                />
+                            </View>
+                        ) : (
+                            <View className="mb-4 p-4 rounded-xl border border-dashed border-amber-300 bg-amber-50/50 items-center justify-center">
+                                <IconButton icon="file-certificate-outline" size={32} iconColor="#d97706" />
+                                <Text className="text-xs text-amber-600 text-center font-semibold">
+                                    No Trade License document uploaded
+                                </Text>
+                            </View>
+                        )}
+                    </>
+                )}
+
                 {/* 6. Organization Photos & Videos (Super Admin Approval) */}
                 <Text className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-2">
                     Organization Media ({mediaItems.length})
@@ -266,17 +288,13 @@ export default function RequestDetailsModal({
                                                 <Text className="text-white text-xs font-bold">Video</Text>
                                             </View>
                                         )}
-                                        <Badge
-                                            className={`absolute top-2 left-2 ${
+                                        <View className={`absolute top-2 left-2 px-2 py-0.5 rounded ${
                                                 isApproved
-                                                    ? "bg-green-600 text-white"
+                                                    ? "bg-green-600"
                                                     : isRejected
-                                                    ? "bg-red-600 text-white"
-                                                    : "bg-amber-500 text-white"
-                                            }`}
-                                        >
-                                            {m.status.toUpperCase()}
-                                        </Badge>
+                                                    ? "bg-red-600"
+                                                    : "bg-amber-500"
+                                            }`}><Text className="font-bold text-xs text-white">{(m.status || "").toUpperCase()}</Text></View>
                                     </TouchableOpacity>
 
                                     <View className="flex-row justify-between gap-1">

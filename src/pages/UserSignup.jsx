@@ -31,9 +31,10 @@ import useToast from "../hooks/useToast";
 
 setConnected(true);
 
-const UserSignup = ({ navigation }) => {
+const UserSignup = ({ navigation, route }) => {
     const toast = useToast();
     const dispatch = useDispatch();
+    const googleData = route?.params?.googleData;
 
     const [acceptedTerms, setAcceptedTerms] = useState(false);
     const [termsModalVisible, setTermsModalVisible] = useState(false);
@@ -72,13 +73,105 @@ const UserSignup = ({ navigation }) => {
         phoneNumber: "",
         password: "",
         confirmPassword: "",
-        address: "",
-        landmark: "",
         photo: null,
-        latitude: null,
-        longitude: null,
         loading: false,
     });
+
+    // Populate Google data if navigating from Google sign in
+    useEffect(() => {
+        if (googleData) {
+            const initialUsername = (
+                googleData.email ? googleData.email.split("@")[0] : ""
+            )
+                .toLowerCase()
+                .replace(/[^a-z0-9_]/g, "");
+
+            setInputs((prev) => ({
+                ...prev,
+                name: prev.name || googleData.name || "",
+                email: prev.email || googleData.email || "",
+                username: prev.username || initialUsername,
+                photo:
+                    prev.photo ||
+                    (googleData.photoUrl
+                        ? { uri: googleData.photoUrl, isGooglePhoto: true }
+                        : null),
+            }));
+        }
+    }, [googleData]);
+
+    // OTP States
+    const [otp, setOtp] = useState("");
+    const [otpSent, setOtpSent] = useState(false);
+    const [otpVerified, setOtpVerified] = useState(false);
+    const [verificationToken, setVerificationToken] = useState("");
+    const [cooldownSeconds, setCooldownSeconds] = useState(0);
+    const [otpSending, setOtpSending] = useState(false);
+    const [otpVerifying, setOtpVerifying] = useState(false);
+
+    // 1-minute countdown timer effect
+    useEffect(() => {
+        let timer;
+        if (cooldownSeconds > 0) {
+            timer = setInterval(() => {
+                setCooldownSeconds((prev) => prev - 1);
+            }, 1000);
+        }
+        return () => {
+            if (timer) clearInterval(timer);
+        };
+    }, [cooldownSeconds]);
+
+    const handleSendOtp = async () => {
+        if (!inputs.phoneNumber || inputs.phoneNumber.trim().length < 8) {
+            toast.error("Please enter a valid Phone Number first.", "Validation Error", true);
+            return;
+        }
+        setOtpSending(true);
+        try {
+            const res = await apiService.post("otp/send", {
+                phone_number: inputs.phoneNumber,
+            });
+            if (res && res.success) {
+                setOtpSent(true);
+                setCooldownSeconds(60);
+                toast.success(res.message || "OTP sent successfully!", "Success", true);
+            } else {
+                toast.error(res?.message || "Failed to send OTP.", "Error", true);
+            }
+        } catch (err) {
+            const errorMsg = err.response?.data?.message || err.message || "Failed to send OTP.";
+            toast.error(errorMsg, "Error", true);
+        } finally {
+            setOtpSending(false);
+        }
+    };
+
+    const handleVerifyOtp = async () => {
+        if (!otp || otp.trim().length < 4) {
+            toast.error("Please enter the OTP digits sent to your phone.", "Validation Error", true);
+            return;
+        }
+        setOtpVerifying(true);
+        try {
+            const res = await apiService.post("otp/verify", {
+                phone_number: inputs.phoneNumber,
+                otp: otp.trim(),
+            });
+            if (res && res.success && res.data?.verification_token) {
+                setVerificationToken(res.data.verification_token);
+                setOtpVerified(true);
+                toast.success("Phone number verified successfully!", "Success", true);
+            } else {
+                toast.error(res?.message || "OTP verification failed.", "Error", true);
+            }
+        } catch (err) {
+            const errorMsg = err.response?.data?.message || err.message || "OTP verification failed.";
+            toast.error(errorMsg, "Error", true);
+        } finally {
+            setOtpVerifying(false);
+        }
+    };
 
     const handleSelectImage = async () => {
         try {
@@ -130,6 +223,15 @@ const UserSignup = ({ navigation }) => {
             return;
         }
 
+        if (!otpVerified || !verificationToken) {
+            toast.error(
+                "Please send and verify the OTP for your phone number before creating an account.",
+                "OTP Required",
+                true
+            );
+            return;
+        }
+
         if (inputs.password !== inputs.confirmPassword) {
             toast.error("Passwords do not match.", "Error", true);
             return;
@@ -154,23 +256,26 @@ const UserSignup = ({ navigation }) => {
             formData.append("username", inputs.username);
             formData.append("email", inputs.email);
             formData.append("phone_number", inputs.phoneNumber);
+            formData.append("otp_verification_token", verificationToken);
             formData.append("password", inputs.password);
-            formData.append("address", inputs.address || "");
-            formData.append("user_address", inputs.address || "");
-            formData.append("landmark", inputs.landmark || "");
-            formData.append("latitude", String(Number(inputs.latitude || 0)));
-            formData.append("longitude", String(Number(inputs.longitude || 0)));
 
             if (inputs.photo && inputs.photo.uri) {
-                const photoBase64 = await fileToBase64(inputs.photo.uri);
-                if (photoBase64) {
-                    formData.append("profile_photo", photoBase64);
+                if (
+                    inputs.photo.isGooglePhoto ||
+                    inputs.photo.uri.startsWith("http")
+                ) {
+                    formData.append("profile_photo_url", inputs.photo.uri);
                 } else {
-                    formData.append("profile_photo", {
-                        uri: inputs.photo.uri,
-                        name: "profile_photo.jpg",
-                        type: inputs.photo.mime || "image/jpeg",
-                    });
+                    const photoBase64 = await fileToBase64(inputs.photo.uri);
+                    if (photoBase64) {
+                        formData.append("profile_photo", photoBase64);
+                    } else {
+                        formData.append("profile_photo", {
+                            uri: inputs.photo.uri,
+                            name: "profile_photo.jpg",
+                            type: inputs.photo.mime || "image/jpeg",
+                        });
+                    }
                 }
             }
 
@@ -184,11 +289,6 @@ const UserSignup = ({ navigation }) => {
                     email: inputs.email,
                     phone_number: inputs.phoneNumber,
                     password: inputs.password,
-                    address: inputs.address || "",
-                    user_address: inputs.address || "",
-                    landmark: inputs.landmark || "",
-                    latitude: Number(inputs.latitude || 0),
-                    longitude: Number(inputs.longitude || 0),
                     profile_photo: inputs.photo ? inputs.photo.uri : null,
                 })
             );
@@ -254,6 +354,28 @@ const UserSignup = ({ navigation }) => {
 
             <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
                 <View className="px-5 gap-6 mb-10">
+                    {googleData && (
+                        <Surface
+                            elevation={1}
+                            className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 flex-row items-center"
+                        >
+                            <MaterialDesignIcons
+                                name="google"
+                                size={22}
+                                color="#4338ca"
+                            />
+                            <View className="ml-3 flex-1">
+                                <Text className="text-xs font-bold text-indigo-900">
+                                    Google Account Connected
+                                </Text>
+                                <Text className="text-[11px] text-indigo-700">
+                                    Details prefilled from {googleData.email}.
+                                    Please complete the remaining fields.
+                                </Text>
+                            </View>
+                        </Surface>
+                    )}
+
                     {/* Personal Information Section */}
                     <Card style={styles.card}>
                         <Card.Content className="gap-4">
@@ -300,25 +422,88 @@ const UserSignup = ({ navigation }) => {
                                 keyboardType="email-address"
                                 left={<TextInput.Icon icon="email" />}
                             />
-                            <TextInput
-                                label={
-                                    <Text>
-                                        Phone Number{" "}
-                                        <Text style={{ color: "#ef4444" }}>
-                                            *
+                            <View className="gap-2">
+                                <View className="flex-row items-center gap-2">
+                                    <View className="flex-1">
+                                        <TextInput
+                                            label={
+                                                <Text>
+                                                    Phone Number{" "}
+                                                    <Text style={{ color: "#ef4444" }}>
+                                                        *
+                                                    </Text>
+                                                </Text>
+                                            }
+                                            value={inputs.phoneNumber}
+                                            onChangeText={(text) => {
+                                                setInputs({ ...inputs, phoneNumber: text });
+                                                if (otpVerified) {
+                                                    setOtpVerified(false);
+                                                    setVerificationToken("");
+                                                    setOtpSent(false);
+                                                }
+                                            }}
+                                            disabled={otpVerified}
+                                            mode="outlined"
+                                            outlineColor="#e2e8f0"
+                                            activeOutlineColor="#4338ca"
+                                            keyboardType="phone-pad"
+                                            left={<TextInput.Icon icon="phone" />}
+                                        />
+                                    </View>
+                                    <Button
+                                        mode={otpVerified ? "contained-tonal" : "contained"}
+                                        onPress={handleSendOtp}
+                                        disabled={cooldownSeconds > 0 || otpSending || otpVerified}
+                                        loading={otpSending}
+                                        style={{ marginTop: 6 }}
+                                    >
+                                        {otpVerified
+                                            ? "Verified ✓"
+                                            : cooldownSeconds > 0
+                                            ? `${cooldownSeconds}s`
+                                            : otpSent
+                                            ? "Resend"
+                                            : "Send OTP"}
+                                    </Button>
+                                </View>
+
+                                {otpSent && !otpVerified && (
+                                    <View className="flex-row items-center gap-2 mt-1">
+                                        <View className="flex-1">
+                                            <TextInput
+                                                label="Enter 6-Digit OTP"
+                                                value={otp}
+                                                onChangeText={setOtp}
+                                                mode="outlined"
+                                                outlineColor="#e2e8f0"
+                                                activeOutlineColor="#4338ca"
+                                                keyboardType="number-pad"
+                                                maxLength={6}
+                                                left={<TextInput.Icon icon="shield-check" />}
+                                            />
+                                        </View>
+                                        <Button
+                                            mode="contained"
+                                            onPress={handleVerifyOtp}
+                                            loading={otpVerifying}
+                                            disabled={otpVerifying || !otp}
+                                            style={{ marginTop: 6, backgroundColor: "#16a34a" }}
+                                        >
+                                            Verify
+                                        </Button>
+                                    </View>
+                                )}
+
+                                {otpVerified && (
+                                    <View className="flex-row items-center bg-green-50 p-2.5 rounded-lg border border-green-200 mt-1">
+                                        <MaterialDesignIcons name="check-circle" size={20} color="#16a34a" />
+                                        <Text className="text-green-700 font-semibold ml-2 text-xs">
+                                            Phone Number Verified Successfully
                                         </Text>
-                                    </Text>
-                                }
-                                value={inputs.phoneNumber}
-                                onChangeText={(text) =>
-                                    setInputs({ ...inputs, phoneNumber: text })
-                                }
-                                mode="outlined"
-                                outlineColor="#e2e8f0"
-                                activeOutlineColor="#4338ca"
-                                keyboardType="phone-pad"
-                                left={<TextInput.Icon icon="phone" />}
-                            />
+                                    </View>
+                                )}
+                            </View>
                         </Card.Content>
                     </Card>
 
@@ -392,52 +577,6 @@ const UserSignup = ({ navigation }) => {
                         </Card.Content>
                     </Card>
 
-                    {/* Location Section */}
-                    <Card style={styles.card}>
-                        <Card.Content className="gap-4">
-                            <Text
-                                style={{ fontWeight: "bold" }}
-                                className="text-lg text-gray-800"
-                            >
-                                Your Location
-                            </Text>
-                            <TextInput
-                                label="Address"
-                                value={inputs.address}
-                                onChangeText={(text) =>
-                                    setInputs({ ...inputs, address: text })
-                                }
-                                mode="outlined"
-                                outlineColor="#e2e8f0"
-                                activeOutlineColor="#4338ca"
-                                multiline
-                                left={<TextInput.Icon icon="map-marker" />}
-                            />
-                            <TextInput
-                                label="Landmark"
-                                value={inputs.landmark}
-                                onChangeText={(text) =>
-                                    setInputs({ ...inputs, landmark: text })
-                                }
-                                mode="outlined"
-                                outlineColor="#e2e8f0"
-                                activeOutlineColor="#4338ca"
-                                left={<TextInput.Icon icon="map-marker" />}
-                            />
-
-                            <View className="w-full overflow-hidden">
-                                <SignupMap
-                                    onLocationSelect={(coords) => {
-                                        setInputs({
-                                            ...inputs,
-                                            longitude: coords[0],
-                                            latitude: coords[1],
-                                        });
-                                    }}
-                                />
-                            </View>
-                        </Card.Content>
-                    </Card>
 
                     {/* Terms & Conditions Checkbox Row */}
                     <View className="flex-row items-center bg-white p-3 rounded-2xl border border-slate-200 mt-2 mb-1">

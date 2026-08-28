@@ -37,7 +37,7 @@ const AgencyAdminDashboard = ({ navigation, onOpenMap }) => {
 
     const fetchDashboardStats = useCallback(async () => {
         try {
-            const response = await apiService.get("users/dashboard-stats");
+            const response = await apiService.get("dashboard/dashboard-stats");
             if (response?.data) {
                 setStats(response.data);
             }
@@ -547,9 +547,9 @@ const AgencyAdminDashboard = ({ navigation, onOpenMap }) => {
                                             {b.user_name || "Customer"}
                                         </Text>
                                         <Text className="text-slate-500 text-xs mt-0.5">
-                                            Code: {b.booking_code} •{" "}
-                                            {b.vehicle_type} ({b.vehicle_number}
-                                            )
+                                            {`Code: ${b.booking_code || ""} • ${
+                                                b.vehicle_type || ""
+                                            } (${b.vehicle_number || ""})`}
                                         </Text>
                                     </View>
                                     <View
@@ -563,7 +563,7 @@ const AgencyAdminDashboard = ({ navigation, onOpenMap }) => {
                                             className="text-[10px] font-bold"
                                             style={{ color: statusSt.text }}
                                         >
-                                            {b.status.toUpperCase()}
+                                            {(b.status || "").toUpperCase()}
                                         </Text>
                                     </View>
                                 </Surface>

@@ -1,4 +1,4 @@
-package com.parkinglocation
+package com.gbt.parkverse
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

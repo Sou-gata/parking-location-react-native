@@ -14,6 +14,7 @@ export default function EmployeeRosterList({
     onOpenEditAgency,
     onOpenAddEmployee,
     onOpenAgencyDetails,
+    onLodgeComplaint,
 }) {
     return (
         <FlatList
@@ -57,10 +58,8 @@ export default function EmployeeRosterList({
                                             >
                                                 {item.name}
                                             </Text>
-                                            {isBlocked && (
-                                                <Badge className="bg-red-100 text-red-800 font-bold px-1.5 py-0.5 rounded text-[10px]">
-                                                    Blocked
-                                                </Badge>
+                                            {Boolean(isBlocked) && (
+                                                <View className="bg-red-100 px-1.5 py-0.5 rounded"><Text className="text-red-800 font-bold text-[10px]">{String("                                                     Blocked                                                 ").trim()}</Text></View>
                                             )}
                                         </View>
                                         <Text className="text-xs text-slate-500">
@@ -68,9 +67,7 @@ export default function EmployeeRosterList({
                                         </Text>
                                     </View>
                                 </View>
-                                <Badge className="bg-indigo-100 text-indigo-800 font-bold px-2 py-0.5 rounded text-xs">
-                                    {ROLE_DISPLAY_NAMES[item.role] || "Customer"}
-                                </Badge>
+                                <View className="bg-indigo-100 px-2 py-0.5 rounded"><Text className="text-indigo-800 font-bold text-xs">{String("                                     " + (ROLE_DISPLAY_NAMES[item.role] || "Customer") + "                                 ").trim()}</Text></View>
                             </View>
 
                             <Divider className="my-3 bg-slate-100" />
@@ -88,6 +85,17 @@ export default function EmployeeRosterList({
 
                                 {/* Row of Action Buttons */}
                                 <View className="flex-row gap-1">
+                                    {/* Lodge Complaint (Super Admin) */}
+                                    {Boolean(onLodgeComplaint) && (
+                                        <IconButton
+                                            icon="alert-decagram-outline"
+                                            iconColor="#dc2626"
+                                            size={18}
+                                            style={{ margin: 0 }}
+                                            onPress={() => onLodgeComplaint(item)}
+                                        />
+                                    )}
+
                                     {/* Block / Unblock (Except Owner Admin) */}
                                     {!isOwnerAdmin && (
                                         <IconButton

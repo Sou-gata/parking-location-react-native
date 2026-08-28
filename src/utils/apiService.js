@@ -41,6 +41,11 @@ apiClient.interceptors.response.use(
         if (error.response) {
             const { status, data } = error.response;
 
+            // Attach backend error message directly to error.message
+            if (data && data.message) {
+                error.message = data.message;
+            }
+
             if (data?.seassonExpired) {
                 // navigateToLogin();
                 // toaster("error", "Session expired. Please log in again.");

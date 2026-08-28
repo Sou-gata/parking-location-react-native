@@ -731,7 +731,7 @@ const WorkingHoursTab = ({ agencyId, onRefresh }) => {
             </Portal>
 
             {/* Time / Date Picker Modal */}
-            {timePickerState.visible && (
+            {Boolean(timePickerState.visible) && (
                 <DateTimePicker
                     value={timePickerState.value}
                     mode={timePickerState.mode}

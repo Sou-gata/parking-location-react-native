@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import {
     View,
     Text,
@@ -7,7 +7,9 @@ import {
     Pressable,
     StatusBar,
     ScrollView,
+    BackHandler,
 } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import { useSelector, useDispatch } from "react-redux";
 import { logoutAndClearToken } from "../store/slices/userSlice";
 import {
@@ -17,11 +19,15 @@ import {
     Avatar,
     Divider,
     Badge,
+    Portal,
+    Modal,
+    Button,
 } from "react-native-paper";
 import HomeMap from "../components/HomeMap";
 import UserDashboard from "./UserDashboard";
 import AgencyAdminDashboard from "./AgencyAdminDashboard";
 import SuperAdminDashboard from "./SuperAdminDashboard";
+import SendNotificationModal from "../components/SendNotificationModal";
 import useRolePermissions from "../hooks/useRolePermissions";
 import { ROLES, PERMISSIONS, ROLE_DISPLAY_NAMES } from "../utils/rbacConfig";
 
@@ -34,39 +40,82 @@ const Home = ({ navigation }) => {
         useRolePermissions();
     const [activeView, setActiveView] = useState("dashboard"); // 'dashboard' or 'map'
     const [drawerOpen, setDrawerOpen] = useState(false);
+    const [exitDialogVisible, setExitDialogVisible] = useState(false);
+    const [sendPushModalOpen, setSendPushModalOpen] = useState(false);
     const drawerAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
     const backdropAnim = useRef(new Animated.Value(0)).current;
+    const lastBackPressRef = useRef(0);
 
-    const toggleDrawer = (open) => {
-        if (open) {
-            setDrawerOpen(true);
-            Animated.parallel([
-                Animated.timing(drawerAnim, {
-                    toValue: 0,
-                    duration: 300,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(backdropAnim, {
-                    toValue: 1,
-                    duration: 300,
-                    useNativeDriver: true,
-                }),
-            ]).start();
-        } else {
-            Animated.parallel([
-                Animated.timing(drawerAnim, {
-                    toValue: -DRAWER_WIDTH,
-                    duration: 250,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(backdropAnim, {
-                    toValue: 0,
-                    duration: 250,
-                    useNativeDriver: true,
-                }),
-            ]).start(() => setDrawerOpen(false));
-        }
-    };
+    const toggleDrawer = useCallback(
+        (open) => {
+            if (open) {
+                setDrawerOpen(true);
+                Animated.parallel([
+                    Animated.timing(drawerAnim, {
+                        toValue: 0,
+                        duration: 300,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(backdropAnim, {
+                        toValue: 1,
+                        duration: 300,
+                        useNativeDriver: true,
+                    }),
+                ]).start();
+            } else {
+                Animated.parallel([
+                    Animated.timing(drawerAnim, {
+                        toValue: -DRAWER_WIDTH,
+                        duration: 250,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(backdropAnim, {
+                        toValue: 0,
+                        duration: 250,
+                        useNativeDriver: true,
+                    }),
+                ]).start(() => setDrawerOpen(false));
+            }
+        },
+        [backdropAnim, drawerAnim]
+    );
+
+    useFocusEffect(
+        useCallback(() => {
+            const onBackPress = () => {
+                if (drawerOpen) {
+                    toggleDrawer(false);
+                    return true;
+                }
+                if (activeView === "map") {
+                    setActiveView("dashboard");
+                    return true;
+                }
+
+                if (exitDialogVisible) {
+                    BackHandler.exitApp();
+                    return true;
+                }
+
+                const now = Date.now();
+                if (now - lastBackPressRef.current < 2000) {
+                    BackHandler.exitApp();
+                    return true;
+                }
+
+                lastBackPressRef.current = now;
+                setExitDialogVisible(true);
+                return true;
+            };
+
+            const subscription = BackHandler.addEventListener(
+                "hardwareBackPress",
+                onBackPress
+            );
+
+            return () => subscription.remove();
+        }, [drawerOpen, activeView, toggleDrawer, exitDialogVisible])
+    );
 
     const handleLogout = () => {
         toggleDrawer(false);
@@ -109,10 +158,16 @@ const Home = ({ navigation }) => {
                 style={{ height: 110, paddingTop: StatusBar.currentHeight }}
             >
                 <IconButton
-                    icon="menu"
+                    icon={activeView === "dashboard" ? "menu" : "arrow-left"}
                     iconColor="white"
                     size={28}
-                    onPress={() => toggleDrawer(true)}
+                    onPress={() => {
+                        if (activeView === "map") {
+                            setActiveView("dashboard");
+                        } else {
+                            toggleDrawer(true);
+                        }
+                    }}
                 />
 
                 <Text className="text-white text-xl font-bold">
@@ -145,7 +200,7 @@ const Home = ({ navigation }) => {
             </View>
 
             {/* Backdrop */}
-            {drawerOpen && (
+            {Boolean(drawerOpen) && (
                 <Animated.View
                     className="absolute inset-0 bg-black/50 z-10"
                     style={{
@@ -186,9 +241,16 @@ const Home = ({ navigation }) => {
                                 {user?.name || "User"}
                             </Text>
                             <View className="flex-row items-center mt-1">
-                                <Badge className="bg-indigo-100 text-indigo-800 font-bold px-2 py-0.5 rounded text-xs self-start">
-                                    {ROLE_DISPLAY_NAMES[role] || "Customer"}
-                                </Badge>
+                                <View className="bg-indigo-100 px-2 py-0.5 rounded self-start">
+                                    <Text className="text-indigo-800 font-bold text-xs">
+                                        {String(
+                                            "                                     " +
+                                                (ROLE_DISPLAY_NAMES[role] ||
+                                                    "Customer") +
+                                                "                                 "
+                                        ).trim()}
+                                    </Text>
+                                </View>
                             </View>
                         </View>
                     </View>
@@ -216,7 +278,9 @@ const Home = ({ navigation }) => {
                                     }}
                                 />
 
-                                {hasPermission(PERMISSIONS.VIEW_MAP) && (
+                                {Boolean(
+                                    hasPermission(PERMISSIONS.VIEW_MAP)
+                                ) && (
                                     <Drawer.Item
                                         icon="map-search"
                                         label="Map View"
@@ -244,7 +308,9 @@ const Home = ({ navigation }) => {
                                     }}
                                 />
 
-                                {hasPermission(PERMISSIONS.BOOK_PARKING) && (
+                                {Boolean(
+                                    hasPermission(PERMISSIONS.BOOK_PARKING)
+                                ) && (
                                     <Drawer.Item
                                         icon="car"
                                         label="My Bookings"
@@ -255,11 +321,15 @@ const Home = ({ navigation }) => {
                                     />
                                 )}
 
-                                {hasPermission(PERMISSIONS.VIEW_WALLET) && (
+                                {Boolean(
+                                    hasPermission(PERMISSIONS.VIEW_WALLET)
+                                ) && (
                                     <Drawer.Item
                                         icon="wallet"
                                         label={
-                                            hasPermission(PERMISSIONS.BOOK_PARKING)
+                                            hasPermission(
+                                                PERMISSIONS.BOOK_PARKING
+                                            )
                                                 ? "Wallet & Transactions"
                                                 : "Earnings & Wallet"
                                         }
@@ -272,18 +342,22 @@ const Home = ({ navigation }) => {
                             </Drawer.Section>
 
                             {/* SECTION 3: PARKING OPERATIONS */}
-                            {hasAnyPermission([
-                                PERMISSIONS.MANAGE_BOOKINGS,
-                                PERMISSIONS.MANAGE_LOCATIONS,
-                            ]) && (
+                            {Boolean(
+                                hasAnyPermission([
+                                    PERMISSIONS.MANAGE_BOOKINGS,
+                                    PERMISSIONS.MANAGE_LOCATIONS,
+                                ])
+                            ) && (
                                 <>
                                     <Divider className="my-1 mx-4 bg-slate-100" />
                                     <Drawer.Section
                                         title="Operations"
                                         showDivider={false}
                                     >
-                                        {hasPermission(
-                                            PERMISSIONS.MANAGE_BOOKINGS
+                                        {Boolean(
+                                            hasPermission(
+                                                PERMISSIONS.MANAGE_BOOKINGS
+                                            )
                                         ) && (
                                             <Drawer.Item
                                                 icon="calendar-check"
@@ -297,8 +371,10 @@ const Home = ({ navigation }) => {
                                             />
                                         )}
 
-                                        {hasPermission(
-                                            PERMISSIONS.MANAGE_LOCATIONS
+                                        {Boolean(
+                                            hasPermission(
+                                                PERMISSIONS.MANAGE_LOCATIONS
+                                            )
                                         ) && (
                                             <>
                                                 <Drawer.Item
@@ -328,20 +404,24 @@ const Home = ({ navigation }) => {
                             )}
 
                             {/* SECTION 4: ADMINISTRATION & SUPPORT */}
-                            {hasAnyPermission([
-                                PERMISSIONS.MANAGE_AGENCIES,
-                                PERMISSIONS.MANAGE_USERS,
-                                PERMISSIONS.MANAGE_COMPLAINTS,
-                                PERMISSIONS.MANAGE_SETTINGS,
-                            ]) && (
+                            {Boolean(
+                                hasAnyPermission([
+                                    PERMISSIONS.MANAGE_AGENCIES,
+                                    PERMISSIONS.MANAGE_USERS,
+                                    PERMISSIONS.MANAGE_COMPLAINTS,
+                                    PERMISSIONS.MANAGE_SETTINGS,
+                                ])
+                            ) && (
                                 <>
                                     <Divider className="my-1 mx-4 bg-slate-100" />
                                     <Drawer.Section
                                         title="Administration"
                                         showDivider={false}
                                     >
-                                        {hasPermission(
-                                            PERMISSIONS.MANAGE_AGENCIES
+                                        {Boolean(
+                                            hasPermission(
+                                                PERMISSIONS.MANAGE_AGENCIES
+                                            )
                                         ) && (
                                             <Drawer.Item
                                                 icon="office-building"
@@ -359,8 +439,10 @@ const Home = ({ navigation }) => {
                                             />
                                         )}
 
-                                        {hasPermission(
-                                            PERMISSIONS.MANAGE_USERS
+                                        {Boolean(
+                                            hasPermission(
+                                                PERMISSIONS.MANAGE_USERS
+                                            )
                                         ) && (
                                             <Drawer.Item
                                                 icon="account-multiple-outline"
@@ -374,8 +456,10 @@ const Home = ({ navigation }) => {
                                             />
                                         )}
 
-                                        {hasPermission(
-                                            PERMISSIONS.MANAGE_COMPLAINTS
+                                        {Boolean(
+                                            hasPermission(
+                                                PERMISSIONS.MANAGE_COMPLAINTS
+                                            )
                                         ) && (
                                             <Drawer.Item
                                                 icon="alert-circle-outline"
@@ -389,19 +473,31 @@ const Home = ({ navigation }) => {
                                             />
                                         )}
 
-                                        {hasPermission(
-                                            PERMISSIONS.MANAGE_SETTINGS
+                                        {Boolean(
+                                            hasPermission(
+                                                PERMISSIONS.MANAGE_SETTINGS
+                                            )
                                         ) && (
-                                            <Drawer.Item
-                                                icon="cog"
-                                                label="System Settings"
-                                                onPress={() => {
-                                                    toggleDrawer(false);
-                                                    navigation.navigate(
-                                                        "SuperAdminSettings"
-                                                    );
-                                                }}
-                                            />
+                                            <>
+                                                <Drawer.Item
+                                                    icon="bell-ring-outline"
+                                                    label="Send Push Notification"
+                                                    onPress={() => {
+                                                        toggleDrawer(false);
+                                                        setSendPushModalOpen(true);
+                                                    }}
+                                                />
+                                                <Drawer.Item
+                                                    icon="cog"
+                                                    label="System Settings"
+                                                    onPress={() => {
+                                                        toggleDrawer(false);
+                                                        navigation.navigate(
+                                                            "SuperAdminSettings"
+                                                        );
+                                                    }}
+                                                />
+                                            </>
                                         )}
                                     </Drawer.Section>
                                 </>
@@ -419,6 +515,82 @@ const Home = ({ navigation }) => {
                     </Drawer.Section>
                 </Surface>
             </Animated.View>
+
+            {/* Send Push Notification Modal */}
+            <SendNotificationModal
+                visible={sendPushModalOpen}
+                onClose={() => setSendPushModalOpen(false)}
+            />
+
+            {/* Exit App Confirmation Dialog */}
+            <Portal>
+                <Modal
+                    visible={exitDialogVisible}
+                    onDismiss={() => setExitDialogVisible(false)}
+                    contentContainerStyle={{
+                        backgroundColor: "white",
+                        marginHorizontal: 28,
+                        borderRadius: 24,
+                        padding: 24,
+                        alignItems: "center",
+                        elevation: 10,
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: 0.25,
+                        shadowRadius: 12,
+                    }}
+                >
+                    {/* Glowing Icon Badge Container */}
+                    <View className="w-16 h-16 rounded-full bg-rose-50 items-center justify-center mb-4 border border-rose-100">
+                        <IconButton
+                            icon="power"
+                            iconColor="#e11d48"
+                            size={32}
+                            style={{ margin: 0 }}
+                        />
+                    </View>
+
+                    {/* Modal Title & Text */}
+                    <Text className="text-xl font-bold text-slate-800 text-center mb-1">
+                        Exit Application?
+                    </Text>
+                    <Text className="text-sm text-slate-500 text-center mb-6 px-2 leading-5">
+                        Are you sure you want to close Park Verse? Pressing back
+                        again will also exit.
+                    </Text>
+
+                    {/* Action Buttons Row */}
+                    <View className="flex-row items-center justify-between w-full gap-3">
+                        <View className="flex-1">
+                            <Button
+                                mode="outlined"
+                                onPress={() => setExitDialogVisible(false)}
+                                style={{
+                                    borderRadius: 12,
+                                    borderColor: "#cbd5e1",
+                                }}
+                                textColor="#475569"
+                                contentStyle={{ paddingVertical: 4 }}
+                            >
+                                Cancel
+                            </Button>
+                        </View>
+                        <View className="flex-1">
+                            <Button
+                                mode="contained"
+                                onPress={() => BackHandler.exitApp()}
+                                style={{ borderRadius: 12 }}
+                                buttonColor="#e11d48"
+                                textColor="white"
+                                icon="exit-to-app"
+                                contentStyle={{ paddingVertical: 4 }}
+                            >
+                                Exit App
+                            </Button>
+                        </View>
+                    </View>
+                </Modal>
+            </Portal>
         </View>
     );
 };

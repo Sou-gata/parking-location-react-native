@@ -1,0 +1,29 @@
+{
+    "project_info": {
+        "project_number": "167389264981",
+        "project_id": "parkverse",
+        "storage_bucket": "parkverse.firebasestorage.app"
+    },
+    "client": [
+        {
+            "client_info": {
+                "mobilesdk_app_id": "1:167389264981:android:3ea9e7176edb5e3b22f7ad",
+                "android_client_info": {
+                    "package_name": "com.gbt.parkverse"
+                }
+            },
+            "oauth_client": [],
+            "api_key": [
+                {
+                    "current_key": "AGzsTyCIs7vVZD6EPlx_zeoK84P2_MndrJH8jVL"
+                }
+            ],
+            "services": {
+                "appinvite_service": {
+                    "other_platform_oauth_client": []
+                }
+            }
+        }
+    ],
+    "configuration_version": "1"
+}

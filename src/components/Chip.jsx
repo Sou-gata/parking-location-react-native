@@ -209,7 +209,7 @@ function Chip({
                 },
             ]}
         >
-            {selected && showSelectedOverlay && (
+            {Boolean(selected && showSelectedOverlay) && (
                 <View className="mr-1 items-center justify-center">
                     <Icon
                         source="check"
@@ -219,13 +219,13 @@ function Chip({
                 </View>
             )}
 
-            {avatar && (
+            {Boolean(avatar) && (
                 <View className="mr-1.5 rounded-full overflow-hidden">
                     {avatar}
                 </View>
             )}
 
-            {!selected && icon && (
+            {Boolean(!selected && icon) && (
                 <View className="mr-1 items-center justify-center">
                     {typeof icon === "string" ? (
                         <Icon
@@ -248,7 +248,7 @@ function Chip({
                 {children}
             </Text>
 
-            {onClose && (
+            {Boolean(onClose) && (
                 <TouchableOpacity
                     onPress={onClose}
                     activeOpacity={0.6}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View } from "react-native";
-import { Text, Button, TextInput, Modal } from "react-native-paper";
+import { Text, Button, TextInput, Modal, Portal } from "react-native-paper";
 import Chip from "../Chip";
 import useToast from "../../hooks/useToast";
 
@@ -96,16 +96,20 @@ export default function AddRuleModal({
     };
 
     return (
-        <Modal
-            visible={visible}
-            onDismiss={onDismiss}
-            contentContainerStyle={{
-                backgroundColor: "white",
-                padding: 24,
-                margin: 20,
-                borderRadius: 16,
-            }}
-        >
+        <Portal>
+            <Modal
+                visible={visible}
+                onDismiss={onDismiss}
+                contentContainerStyle={{
+                    backgroundColor: "white",
+                    padding: 24,
+                    marginHorizontal: 20,
+                    borderRadius: 16,
+                    maxWidth: 500,
+                    width: "90%",
+                    alignSelf: "center",
+                }}
+            >
             <Text className="text-lg font-bold text-slate-800 mb-4">
                 Add Cancellation Rule
             </Text>
@@ -166,7 +170,7 @@ export default function AddRuleModal({
                 </Chip>
             </View>
 
-            {form.allowCancel && (
+            {Boolean(form.allowCancel) && (
                 <View className="mb-4">
                     <Text className="text-sm font-semibold text-slate-600 mb-2">
                         Cancellation Charge Type
@@ -238,5 +242,6 @@ export default function AddRuleModal({
                 </Button>
             </View>
         </Modal>
+        </Portal>
     );
 }

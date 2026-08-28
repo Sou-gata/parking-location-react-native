@@ -195,7 +195,7 @@ export default function ManageParking({ navigation }) {
                 </View>
             </Surface>
 
-            {parkingState.loading && (
+            {Boolean(parkingState.loading) && (
                 <ActivityIndicator
                     animating={true}
                     color="#4338ca"

@@ -149,7 +149,7 @@ export default function MediaViewerModal({ visible, onDismiss, media }) {
                 </View>
 
                 {/* Controls Bottom Bar */}
-                {isVideo && (
+                {Boolean(isVideo) && (
                     <View className="w-full bg-slate-900/90 border-t border-slate-800 px-6 py-6 items-center z-20">
                         <View className="w-full max-w-md gap-3">
                             {/* Progress Slider Bar */}

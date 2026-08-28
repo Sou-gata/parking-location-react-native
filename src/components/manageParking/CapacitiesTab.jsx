@@ -156,17 +156,13 @@ export default function CapacitiesTab({
                                         <Text className="text-base font-bold text-slate-800">
                                             {getVehicleLabel(item.type)}
                                         </Text>
-                                        <Badge
-                                            className={`${
+                                        <View className={`${
                                                 item.total === 0
                                                     ? "bg-slate-100 text-slate-500"
                                                     : "bg-indigo-50 text-indigo-700"
-                                            } font-bold`}
-                                        >
-                                            {item.total === 0
+                                            } font-bold`}><Text className="font-bold text-xs">{String("                                             " + (item.total === 0
                                                 ? "Disabled"
-                                                : `${item.parked} / ${item.total}`}
-                                        </Badge>
+                                                : `${item.parked} / ${item.total}`) + "                                         ").trim()}</Text></View>
                                     </View>
                                     <Text className="text-xs text-slate-500 font-medium mb-1">
                                         Rate: ₹

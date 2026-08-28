@@ -1,13 +1,16 @@
 import React, { useEffect } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import tokenStorage from "../utils/tokenStorage";
 import { loginSuccess } from "../store/slices/userSlice";
+import { showToast } from "../store/slices/toastSlice";
 import apiService from "../utils/apiService";
+import notificationService from "../utils/notificationService";
 
 const AuthInitializer: React.FC<{ children: React.ReactNode }> = ({
     children,
 }) => {
     const dispatch = useDispatch();
+    const isLoggedIn = useSelector((state: any) => state.user.isLoggedIn);
 
     useEffect(() => {
         const initAuth = async () => {
@@ -40,6 +43,28 @@ const AuthInitializer: React.FC<{ children: React.ReactNode }> = ({
 
         initAuth();
     }, [dispatch]);
+
+    // Initialize Push Notifications when logged in
+    useEffect(() => {
+        if (isLoggedIn) {
+            notificationService.initialize(
+                (remoteMessage: any) => {
+                    const title =
+                        remoteMessage.notification?.title || "New Notification";
+                    const message = remoteMessage.notification?.body || "";
+                    dispatch(
+                        showToast({
+                            title,
+                            message,
+                            type: "info",
+                            showHeading: true,
+                        })
+                    );
+                },
+                (data: any) => {}
+            );
+        }
+    }, [isLoggedIn, dispatch]);
 
     return <>{children}</>;
 };

@@ -16,7 +16,7 @@ export const getVehicleLabel = (type) => {
         .replace(/_/g, " ")
         .replace(/([A-Z])/g, " $1")
         .trim()
-        .replace(/^\w/, (c) => c.toUpperCase());
+        .replace(/^\w/, (c) => (c || "").toUpperCase());
 };
 
 export const getVehicleIcon = (type) => {

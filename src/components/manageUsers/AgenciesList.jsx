@@ -2,7 +2,7 @@ import React from "react";
 import { View, FlatList, Pressable } from "react-native";
 import { Card, Avatar, Text, Badge, IconButton } from "react-native-paper";
 
-export default function AgenciesList({ agencies, onPressAgency, onEditAgency }) {
+export default function AgenciesList({ agencies, onPressAgency, onEditAgency, onLodgeComplaint }) {
     return (
         <FlatList
             data={agencies}
@@ -44,43 +44,42 @@ export default function AgenciesList({ agencies, onPressAgency, onEditAgency }) 
                             </View>
                             <View className="flex-row items-center">
                                 <View className="items-end gap-1">
-                                    <Badge className="bg-indigo-100 text-indigo-800 font-bold px-2 py-0.5 rounded text-xs">
-                                        {item.users?.length || 0} Users
-                                    </Badge>
-                                    <Badge className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-xs">
-                                        {parseFloat(item.commission_percentage || 0).toFixed(1)}% Comm.
-                                    </Badge>
-                                    <Badge
-                                        className={
-                                            Boolean(
+                                    <View className="bg-indigo-100 px-2 py-0.5 rounded"><Text className="text-indigo-800 font-bold text-xs">{String("                                         " + (item.users?.length || 0) + " Users                                     ").trim()}</Text></View>
+                                    <View className="bg-emerald-100 px-2 py-0.5 rounded"><Text className="text-emerald-800 font-bold text-xs">{String("                                         " + (parseFloat(item.commission_percentage || 0).toFixed(1)) + "% Comm.                                     ").trim()}</Text></View>
+                                    <View className={Boolean(
                                                 item.require_booking_approval !== undefined
                                                     ? item.require_booking_approval
                                                     : item.requireBookingApproval
                                             )
                                                 ? "bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded text-xs"
-                                                : "bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded text-xs"
-                                        }
-                                    >
-                                        {Boolean(
+                                                : "bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded text-xs"}><Text className="font-bold text-xs">{String("                                         " + (Boolean(
                                             item.require_booking_approval !== undefined
                                                 ? item.require_booking_approval
                                                 : item.requireBookingApproval
                                         )
                                             ? "Approval Req."
-                                            : "Auto Approved"}
-                                    </Badge>
+                                            : "Auto Approved") + "                                     ").trim()}</Text></View>
                                     {item.wallet_balance !== undefined && (
                                         <Text className="text-[11px] font-bold text-slate-600 mt-0.5">
                                             ₹{parseFloat(item.wallet_balance || 0).toFixed(2)}
                                         </Text>
                                     )}
                                 </View>
-                                {onEditAgency && (
+                                {Boolean(onLodgeComplaint) && (
+                                    <IconButton
+                                        icon="alert-decagram-outline"
+                                        iconColor="#dc2626"
+                                        size={20}
+                                        style={{ margin: 0, marginLeft: 4 }}
+                                        onPress={() => onLodgeComplaint(item)}
+                                    />
+                                )}
+                                {Boolean(onEditAgency) && (
                                     <IconButton
                                         icon="pencil-outline"
                                         iconColor="#4338ca"
                                         size={20}
-                                        style={{ margin: 0, marginLeft: 4 }}
+                                        style={{ margin: 0, marginLeft: 2 }}
                                         onPress={() => onEditAgency(item)}
                                     />
                                 )}

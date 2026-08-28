@@ -7,14 +7,14 @@ import {
     ActivityIndicator,
 } from "react-native";
 import { Text, Surface } from "react-native-paper";
-import { useSelector } from "react-redux";
 import { MaterialDesignIcons } from "@react-native-vector-icons/material-design-icons";
 import apiService from "../utils/apiService";
-import useRolePermissions from "../hooks/useRolePermissions";
+import SendNotificationModal from "../components/SendNotificationModal";
 
 const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [sendNotificationVisible, setSendNotificationVisible] = useState(false);
     const [stats, setStats] = useState({
         totalUsers: 0,
         totalAgencies: 0,
@@ -31,7 +31,7 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
 
     const fetchDashboardStats = useCallback(async () => {
         try {
-            const response = await apiService.get("users/dashboard-stats");
+            const response = await apiService.get("dashboard/dashboard-stats");
             let whCount = 0;
             try {
                 const whRes = await apiService.get("working-hours/pending");
@@ -142,7 +142,8 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                                 </Text>
                             </TouchableOpacity>
                         </View>
-                    </Surface>                    {/* Attention Required Cards */}
+                    </Surface>{" "}
+                    {/* Attention Required Cards */}
                     {(stats.pendingAgenciesCount > 0 ||
                         stats.pendingTopupsCount > 0 ||
                         stats.pendingWithdrawalsCount > 0 ||
@@ -174,12 +175,14 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                                             <Text className="font-bold text-xs text-purple-950">
                                                 {stats.pendingSettlementsCount}{" "}
                                                 Pending Revenue Settlement
-                                                {stats.pendingSettlementsCount > 1
+                                                {stats.pendingSettlementsCount >
+                                                1
                                                     ? "s"
                                                     : ""}
                                             </Text>
                                             <Text className="text-[11px] mt-0.5 text-purple-800">
-                                                Approve parking owner earnings & custom split
+                                                Approve parking owner earnings &
+                                                custom split
                                             </Text>
                                         </View>
                                     </View>
@@ -349,7 +352,6 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                             )}
                         </View>
                     )}
-
                     {/* Master Overview Grid */}
                     <Text className="text-slate-700 text-base font-bold mb-3">
                         Platform Overview
@@ -450,7 +452,6 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                             </Text>
                         </Surface>
                     </View>
-
                     {/* Admin Controls */}
                     <Text className="text-slate-700 text-base font-bold mb-3">
                         Admin Controls
@@ -572,8 +573,28 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                                 </Text>
                             </View>
                         </TouchableOpacity>
-                    </View>
 
+                        <TouchableOpacity
+                            className="w-[48%] p-3.5 rounded-2xl mb-3 flex-row items-center bg-white border border-slate-200"
+                            onPress={() => setSendNotificationVisible(true)}
+                        >
+                            <View className="w-10 h-10 rounded-xl justify-center items-center mr-2.5 bg-indigo-100">
+                                <MaterialDesignIcons
+                                    name="bell-ring-outline"
+                                    size={24}
+                                    color="#4338ca"
+                                />
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-slate-800 font-bold text-xs">
+                                    Send Push
+                                </Text>
+                                <Text className="text-slate-500 text-[11px]">
+                                    FCM Notification
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
+                    </View>
                     {/* Recent Partner Agencies */}
                     <View className="flex-row justify-between items-center mt-2 mb-3">
                         <Text className="text-slate-700 text-base font-bold">
@@ -587,7 +608,6 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                             </Text>
                         </TouchableOpacity>
                     </View>
-
                     {stats.recentAgencies && stats.recentAgencies.length > 0 ? (
                         stats.recentAgencies.map((a) => {
                             const statusSt = getAgencyStatusStyle(a.status);
@@ -612,8 +632,9 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                                             {a.org_name}
                                         </Text>
                                         <Text className="text-slate-500 text-xs mt-0.5">
-                                            {a.email} •{" "}
-                                            {a.phone_number || "N/A"}
+                                            {`${a.email || ""} • ${
+                                                a.phone_number || "N/A"
+                                            }`}
                                         </Text>
                                     </View>
                                     <View
@@ -627,7 +648,7 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                                             className="text-[10px] font-bold"
                                             style={{ color: statusSt.text }}
                                         >
-                                            {a.status.toUpperCase()}
+                                            {(a.status || "").toUpperCase()}
                                         </Text>
                                     </View>
                                 </Surface>
@@ -650,6 +671,12 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                     )}
                 </View>
             )}
+
+            {/* Send Push Notification Modal */}
+            <SendNotificationModal
+                visible={sendNotificationVisible}
+                onClose={() => setSendNotificationVisible(false)}
+            />
         </ScrollView>
     );
 };

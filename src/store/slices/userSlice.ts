@@ -22,8 +22,13 @@ export interface WalletTransaction {
     id: string;
     type: "credit" | "debit";
     amount: number;
+    previousBalance?: number | null;
+    newBalance?: number | null;
     description: string;
+    status?: string;
     date: string;
+    transactionNumber?: string | null;
+    rejectionReason?: string | null;
 }
 
 export interface UserState {
@@ -154,6 +159,12 @@ export const {
 } = userSlice.actions;
 
 export const logoutAndClearToken = () => async (dispatch: any) => {
+    try {
+        const notificationService = require("../../utils/notificationService").default;
+        await notificationService.unregisterDevice();
+    } catch (pushErr) {
+        console.error("Failed to unregister push device:", pushErr);
+    }
     try {
         await tokenStorage.removeToken();
     } catch (error) {

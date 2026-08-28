@@ -1,6 +1,24 @@
 import React, { useEffect, useState } from "react";
-import { View, FlatList, StyleSheet, ActivityIndicator } from "react-native";
-import { Text, Card, Button, Avatar, Divider, Portal, Modal } from "react-native-paper";
+import {
+    View,
+    FlatList,
+    StyleSheet,
+    ActivityIndicator,
+    Linking,
+    Platform,
+    PermissionsAndroid,
+} from "react-native";
+import Geolocation from "react-native-geolocation-service";
+import {
+    Text,
+    Card,
+    Button,
+    Avatar,
+    Divider,
+    Portal,
+    Modal,
+    IconButton,
+} from "react-native-paper";
 import Chip from "../components/Chip";
 import RatingModal from "../components/RatingModal";
 import ComplaintModal from "../components/ComplaintModal";
@@ -35,6 +53,7 @@ export default function MyBookings() {
     const toast = useToast();
     const currentUser = useSelector((state) => state.user.user);
     const bookings = useSelector((state) => state.parking.bookings);
+    const agencies = useSelector((state) => state.parking.agencies);
 
     // Modal state for cancellation
     const [cancelModalVisible, setCancelModalVisible] = useState(false);
@@ -52,18 +71,29 @@ export default function MyBookings() {
 
     // Complaint modal state
     const [complaintModalVisible, setComplaintModalVisible] = useState(false);
-    const [targetBookingForComplaint, setTargetBookingForComplaint] = useState(null);
+    const [targetBookingForComplaint, setTargetBookingForComplaint] =
+        useState(null);
     const [complainedBookingIds, setComplainedBookingIds] = useState([]);
+    const [userComplainedBookingIds, setUserComplainedBookingIds] = useState(
+        []
+    );
     const [userComplaintsMap, setUserComplaintsMap] = useState({});
+    const [agencyComplaintsMap, setAgencyComplaintsMap] = useState({});
     const [submittingComplaint, setSubmittingComplaint] = useState(false);
 
     // Timeline modal state
     const [timelineModalVisible, setTimelineModalVisible] = useState(false);
-    const [activeComplaintForTimeline, setActiveComplaintForTimeline] = useState(null);
+    const [activeComplaintForTimeline, setActiveComplaintForTimeline] =
+        useState(null);
 
-    const handleOpenComplaintTimeline = (booking) => {
+    const handleOpenComplaintTimeline = (booking, specificComplaint = null) => {
         const bookingId = booking.id || booking.booking_id;
-        const comp = userComplaintsMap[bookingId] || { booking_id: bookingId, booking };
+        const comp = specificComplaint ||
+            userComplaintsMap[bookingId] ||
+            agencyComplaintsMap[bookingId] || {
+                booking_id: bookingId,
+                booking,
+            };
         setActiveComplaintForTimeline(comp);
         setTimelineModalVisible(true);
     };
@@ -93,7 +123,9 @@ export default function MyBookings() {
 
             const fetchUserRatings = async () => {
                 try {
-                    const res = await apiService.get(`ratings/user/${currentUser.id}`);
+                    const res = await apiService.get(
+                        `ratings/user/${currentUser.id}`
+                    );
                     if (res && res.success && res.data?.givenRatings) {
                         const map = {};
                         res.data.givenRatings.forEach((r) => {
@@ -113,18 +145,36 @@ export default function MyBookings() {
                 try {
                     const res = await apiService.get("complaints/user");
                     if (res && res.success && Array.isArray(res.data)) {
-                        const map = {};
-                        const ids = [];
+                        const uMap = {};
+                        const aMap = {};
+                        const uIds = [];
                         res.data.forEach((c) => {
-                            map[c.booking_id] = c;
-                            ids.push(c.booking_id);
+                            if (c.complainant_type === "agency_to_user") {
+                                aMap[c.booking_id] = c;
+                            } else {
+                                uMap[c.booking_id] = c;
+                                uIds.push(c.booking_id);
+                            }
                         });
-                        setUserComplaintsMap(map);
-                        setComplainedBookingIds(ids);
+                        setUserComplaintsMap(uMap);
+                        setAgencyComplaintsMap(aMap);
+                        setUserComplainedBookingIds(uIds);
+                        setComplainedBookingIds(uIds);
                     } else {
-                        const resStatus = await apiService.get("complaints/user-status");
-                        if (resStatus && resStatus.success && resStatus.data?.userComplainedBookingIds) {
-                            setComplainedBookingIds(resStatus.data.userComplainedBookingIds);
+                        const resStatus = await apiService.get(
+                            "complaints/user-status"
+                        );
+                        if (
+                            resStatus &&
+                            resStatus.success &&
+                            resStatus.data?.userComplainedBookingIds
+                        ) {
+                            setUserComplainedBookingIds(
+                                resStatus.data.userComplainedBookingIds
+                            );
+                            setComplainedBookingIds(
+                                resStatus.data.userComplainedBookingIds
+                            );
                         }
                     }
                 } catch (e) {
@@ -137,7 +187,10 @@ export default function MyBookings() {
 
     const getComplaintEligibility = (item) => {
         const bookingId = item.id || item.booking_id;
-        if (complainedBookingIds.includes(bookingId)) {
+        if (
+            userComplainedBookingIds.includes(bookingId) ||
+            complainedBookingIds.includes(bookingId)
+        ) {
             return { eligible: false, alreadyFiled: true };
         }
 
@@ -147,14 +200,30 @@ export default function MyBookings() {
         const checkoutTime = item.checkoutTime || item.checkout_time;
 
         // Calculate booking end time with fallbacks
-        const bookedDurationHours = parseFloat(item.bookedDuration || item.booked_duration || 1);
+        const bookedDurationHours = parseFloat(
+            item.bookedDuration || item.booked_duration || 1
+        );
         const durationMs = bookedDurationHours * 60 * 60 * 1000;
 
-        let startTimeRaw = item.bookingStartTime || item.booking_start_time || item.startTime || item.start_time || item.createdAt || item.created_at;
+        let startTimeRaw =
+            item.bookingStartTime ||
+            item.booking_start_time ||
+            item.startTime ||
+            item.start_time ||
+            item.createdAt ||
+            item.created_at;
         let startMs = startTimeRaw ? new Date(startTimeRaw).getTime() : null;
 
-        let bookingEndTimeRaw = item.bookingEndTime || item.booking_end_time || item.endTime || item.end_time;
-        let endMs = bookingEndTimeRaw ? new Date(bookingEndTimeRaw).getTime() : (startMs ? startMs + durationMs : null);
+        let bookingEndTimeRaw =
+            item.bookingEndTime ||
+            item.booking_end_time ||
+            item.endTime ||
+            item.end_time;
+        let endMs = bookingEndTimeRaw
+            ? new Date(bookingEndTimeRaw).getTime()
+            : startMs
+            ? startMs + durationMs
+            : null;
 
         let deadlineMs = null;
         if (checkoutTime) {
@@ -181,7 +250,9 @@ export default function MyBookings() {
 
     const handleSubmitComplaint = async ({ subject, description }) => {
         if (!targetBookingForComplaint) return;
-        const bookingId = targetBookingForComplaint.id || targetBookingForComplaint.booking_id;
+        const bookingId =
+            targetBookingForComplaint.id ||
+            targetBookingForComplaint.booking_id;
         setSubmittingComplaint(true);
         try {
             const res = await apiService.post("complaints", {
@@ -191,15 +262,31 @@ export default function MyBookings() {
                 complainantType: "user_to_agency",
             });
             if (res && res.success) {
-                toast.success("Complaint submitted successfully", "Complaint Submitted", true);
+                toast.success(
+                    "Complaint submitted successfully",
+                    "Complaint Submitted",
+                    true
+                );
+                setUserComplainedBookingIds((prev) => [...prev, bookingId]);
                 setComplainedBookingIds((prev) => [...prev, bookingId]);
+                if (res.data) {
+                    setUserComplaintsMap((prev) => ({
+                        ...prev,
+                        [bookingId]: res.data,
+                    }));
+                }
                 setComplaintModalVisible(false);
             } else {
-                toast.error(res?.message || "Failed to submit complaint", "Error", true);
+                toast.error(
+                    res?.message || "Failed to submit complaint",
+                    "Error",
+                    true
+                );
             }
         } catch (error) {
             console.error("Error submitting complaint:", error);
-            const msg = error.response?.data?.message || "Failed to submit complaint";
+            const msg =
+                error.response?.data?.message || "Failed to submit complaint";
             toast.error(msg, "Error", true);
         } finally {
             setSubmittingComplaint(false);
@@ -236,18 +323,27 @@ export default function MyBookings() {
                 ratingType: "user_to_agency",
             });
             if (res && res.success) {
-                toast.success("Thank you for your rating!", "Rating Submitted", true);
+                toast.success(
+                    "Thank you for your rating!",
+                    "Rating Submitted",
+                    true
+                );
                 setRatingsMap((prev) => ({
                     ...prev,
                     [targetBookingForRating.id]: res.data,
                 }));
                 setRatingModalVisible(false);
             } else {
-                toast.error(res?.message || "Failed to submit rating", "Error", true);
+                toast.error(
+                    res?.message || "Failed to submit rating",
+                    "Error",
+                    true
+                );
             }
         } catch (error) {
             console.error("Error submitting rating:", error);
-            const msg = error.response?.data?.message || "Failed to submit rating";
+            const msg =
+                error.response?.data?.message || "Failed to submit rating";
             toast.error(msg, "Error", true);
         } finally {
             setSubmittingRating(false);
@@ -260,16 +356,24 @@ export default function MyBookings() {
         setPreviewLoading(true);
         setCancelModalVisible(true);
         try {
-            const res = await apiService.get(`bookings/cancel-preview/${bookingCode}`);
+            const res = await apiService.get(
+                `bookings/cancel-preview/${bookingCode}`
+            );
             if (res && res.success) {
                 setPreviewData(res.data);
             } else {
-                toast.error("Failed to load cancellation details.", "Error", true);
+                toast.error(
+                    "Failed to load cancellation details.",
+                    "Error",
+                    true
+                );
                 setCancelModalVisible(false);
             }
         } catch (error) {
             console.error("Error fetching cancel preview:", error);
-            const msg = error.response?.data?.message || "Failed to load cancellation details.";
+            const msg =
+                error.response?.data?.message ||
+                "Failed to load cancellation details.";
             toast.error(msg, "Error", true);
             setCancelModalVisible(false);
         } finally {
@@ -281,22 +385,26 @@ export default function MyBookings() {
         if (!selectedBookingCode) return;
         setCancelling(true);
         try {
-            const res = await apiService.post("bookings/cancel", { bookingCode: selectedBookingCode });
+            const res = await apiService.post("bookings/cancel", {
+                bookingCode: selectedBookingCode,
+            });
             if (res && res.success) {
                 dispatch(cancelBooking(selectedBookingCode));
                 // Show success toast with fee details if any
                 const fee = previewData?.cancellationFee || 0;
                 toast.success(
-                    fee > 0 
+                    fee > 0
                         ? `Booking cancelled. Fee of ₹${fee} was charged.`
                         : `Booking ${selectedBookingCode} cancelled successfully!`,
                     "Success",
                     true
                 );
-                
+
                 // Refetch user bookings and wallet to update UI
                 if (currentUser?.id) {
-                    const fetchRes = await apiService.get(`bookings/user/${currentUser.id}`);
+                    const fetchRes = await apiService.get(
+                        `bookings/user/${currentUser.id}`
+                    );
                     if (fetchRes && fetchRes.success) {
                         dispatch(setBookings(fetchRes.data));
                     }
@@ -306,7 +414,8 @@ export default function MyBookings() {
             }
         } catch (error) {
             console.error("Error executing cancellation:", error);
-            const msg = error.response?.data?.message || "Failed to cancel booking";
+            const msg =
+                error.response?.data?.message || "Failed to cancel booking";
             toast.error(msg, "Error", true);
         } finally {
             setCancelling(false);
@@ -362,6 +471,139 @@ export default function MyBookings() {
         });
     };
 
+    const requestLocationPermission = async () => {
+        if (Platform.OS === "android") {
+            try {
+                const granted = await PermissionsAndroid.requestMultiple([
+                    PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+                    PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+                ]);
+                return (
+                    granted["android.permission.ACCESS_FINE_LOCATION"] ===
+                        PermissionsAndroid.RESULTS.GRANTED ||
+                    granted["android.permission.ACCESS_COARSE_LOCATION"] ===
+                        PermissionsAndroid.RESULTS.GRANTED
+                );
+            } catch (err) {
+                console.warn("Permission request error:", err);
+                return false;
+            }
+        }
+        return true;
+    };
+
+    const getCurrentLocation = () => {
+        return new Promise(async (resolve) => {
+            try {
+                const hasPermission = await requestLocationPermission();
+                if (!hasPermission) {
+                    return resolve(null);
+                }
+
+                Geolocation.getCurrentPosition(
+                    (pos) => {
+                        if (pos?.coords) {
+                            const lat = Number(pos.coords.latitude);
+                            const lng = Number(pos.coords.longitude);
+                            if (!isNaN(lat) && !isNaN(lng)) {
+                                return resolve({ lat, lng });
+                            }
+                        }
+                        resolve(null);
+                    },
+                    (err) => {
+                        console.log(
+                            "Could not get current location for directions:",
+                            err?.message || err
+                        );
+                        resolve(null);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 5000,
+                        maximumAge: 10000,
+                        forceRequestLocation: false,
+                    }
+                );
+            } catch (error) {
+                console.log("getCurrentLocation error:", error);
+                resolve(null);
+            }
+        });
+    };
+
+    const handleOpenGoogleMaps = async (booking) => {
+        let destLat = Number(booking.latitude);
+        let destLng = Number(booking.longitude);
+
+        if (
+            (isNaN(destLat) ||
+                isNaN(destLng) ||
+                destLat === 0 ||
+                destLng === 0) &&
+            agencies?.length > 0
+        ) {
+            const matched = agencies.find(
+                (a) => String(a.id || a.org_id) === String(booking.agencyId)
+            );
+            if (matched) {
+                destLat = Number(matched.latitude);
+                destLng = Number(matched.longitude);
+            }
+        }
+
+        const hasDestCoords =
+            !isNaN(destLat) &&
+            !isNaN(destLng) &&
+            destLat !== 0 &&
+            destLng !== 0;
+
+        const destAddress = [
+            booking.agencyName,
+            booking.address || booking.agencyAddress,
+            booking.landmark,
+        ]
+            .filter(Boolean)
+            .join(" ")
+            .trim();
+
+        if (!hasDestCoords && !destAddress) {
+            toast.error(
+                "Parking location coordinates or address not available",
+                "Error",
+                true
+            );
+            return;
+        }
+
+        // Check if current location is turned on / accessible
+        const userLoc = await getCurrentLocation();
+
+        let url = "";
+        const destParam = hasDestCoords
+            ? `${destLat},${destLng}`
+            : encodeURIComponent(destAddress);
+
+        if (userLoc?.lat && userLoc?.lng) {
+            url = `http://maps.google.com/maps?saddr=${userLoc.lat},${userLoc.lng}&daddr=${destParam}`;
+        } else {
+            if (hasDestCoords) {
+                url = `https://www.google.com/maps/search/?api=1&query=${destLat},${destLng}`;
+            } else {
+                url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                    destAddress
+                )}`;
+            }
+        }
+
+        if (url) {
+            Linking.openURL(url).catch((err) => {
+                console.error("Error opening Google Maps:", err);
+                toast.error("Could not open Google Maps", "Error", true);
+            });
+        }
+    };
+
     return (
         <View className="flex-1 bg-slate-50">
             <FlatList
@@ -370,6 +612,25 @@ export default function MyBookings() {
                 contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
                 renderItem={({ item }) => {
                     const statusColor = getStatusColor(item.status);
+                    const startTimeRaw =
+                        item.bookingStartTime || item.startTime;
+                    const durationHours = parseFloat(item.bookedDuration || 1);
+                    const endTimeCalculated =
+                        item.bookingEndTime ||
+                        item.endTime ||
+                        (startTimeRaw
+                            ? new Date(
+                                  new Date(startTimeRaw).getTime() +
+                                      durationHours * 60 * 60 * 1000
+                              ).toISOString()
+                            : null);
+                    const totalCost = parseFloat(
+                        item.totalBill && parseFloat(item.totalBill) > 0
+                            ? item.totalBill
+                            : parseFloat(item.hourlyRate || 0) *
+                                  parseFloat(item.bookedDuration || 0)
+                    ).toFixed(2);
+
                     return (
                         <Card className="mb-4 bg-white border border-slate-100 rounded-xl elevation-1">
                             <Card.Content className="pb-3">
@@ -438,14 +699,42 @@ export default function MyBookings() {
                                             ] || item.vehicleType}
                                         </Text>
                                     </View>
+
+                                    <Divider className="my-1.5 bg-slate-50" />
+
+                                    {/* Booking Schedule: From / To Time */}
                                     <View className="flex-row justify-between">
                                         <Text className="text-sm text-slate-500">
-                                            Booked Duration:
+                                            Booking From:
                                         </Text>
-                                        <Text className="text-sm font-semibold text-slate-700">
-                                            {item.bookedDuration} Hrs
+                                        <Text className="text-sm font-medium text-slate-700">
+                                            {formatDateTime(startTimeRaw)}
                                         </Text>
                                     </View>
+                                    <View className="flex-row justify-between">
+                                        <Text className="text-sm text-slate-500">
+                                            Booking To:
+                                        </Text>
+                                        <Text className="text-sm font-medium text-slate-700">
+                                            {formatDateTime(endTimeCalculated)}
+                                        </Text>
+                                    </View>
+
+                                    {/* Total Duration */}
+                                    <View className="flex-row justify-between">
+                                        <Text className="text-sm text-slate-500">
+                                            Total Duration:
+                                        </Text>
+                                        <Text className="text-sm font-semibold text-slate-700">
+                                            {item.bookedDuration}{" "}
+                                            {parseFloat(item.bookedDuration) ===
+                                            1
+                                                ? "Hr"
+                                                : "Hrs"}
+                                        </Text>
+                                    </View>
+
+                                    {/* Rate */}
                                     <View className="flex-row justify-between">
                                         <Text className="text-sm text-slate-500">
                                             Rate:
@@ -455,59 +744,61 @@ export default function MyBookings() {
                                         </Text>
                                     </View>
 
-                                    <Divider className="my-1.5 bg-slate-50" />
-
-                                    <View className="flex-row justify-between">
-                                        <Text className="text-sm text-slate-500">
-                                            Booked For:
+                                    {/* Total Cost */}
+                                    <View className="flex-row justify-between items-center bg-indigo-50/70 p-2.5 rounded-lg mt-1 border border-indigo-100/60">
+                                        <Text className="text-sm font-bold text-indigo-950">
+                                            Total Cost:
                                         </Text>
-                                        <Text className="text-sm font-medium text-slate-700">
-                                            {formatDateTime(
-                                                item.bookingStartTime ||
-                                                    item.startTime
-                                            )}
+                                        <Text className="text-base font-bold text-indigo-700">
+                                            ₹{totalCost}
                                         </Text>
                                     </View>
 
-                                    {item.otp &&
-                                        (item.status === "booked" ||
-                                            item.status === "checked_in") && (
-                                            <View className="flex-row justify-between mt-2 p-2.5 bg-indigo-50 rounded-lg border border-indigo-100 items-center">
-                                                <Text className="text-sm font-bold text-indigo-800">
-                                                    Entry OTP:
-                                                </Text>
-                                                <Text className="text-base font-mono font-bold text-indigo-900 tracking-widest">
-                                                    {item.otp}
-                                                </Text>
-                                            </View>
-                                        )}
+                                    {Boolean(
+                                        item.otp &&
+                                            (item.status === "booked" ||
+                                                item.status === "checked_in")
+                                    ) && (
+                                        <View className="flex-row justify-between mt-2 p-2.5 bg-indigo-50 rounded-lg border border-indigo-100 items-center">
+                                            <Text className="text-sm font-bold text-indigo-800">
+                                                Entry OTP:
+                                            </Text>
+                                            <Text className="text-base font-mono font-bold text-indigo-900 tracking-widest">
+                                                {item.otp}
+                                            </Text>
+                                        </View>
+                                    )}
 
-                                     {item.status === "pending_approval" && (
-                                         <View className="mt-2 p-3 bg-amber-50 rounded-lg border border-amber-100">
-                                             <Text className="text-xs font-bold text-amber-800">
-                                                 Awaiting Agency Approval
-                                             </Text>
-                                             <Text className="text-xs text-amber-700 mt-0.5">
-                                                 Your booking is currently pending approval by the agency admin.
-                                             </Text>
-                                         </View>
-                                     )}
+                                    {item.status === "pending_approval" && (
+                                        <View className="mt-2 p-3 bg-amber-50 rounded-lg border border-amber-100">
+                                            <Text className="text-xs font-bold text-amber-800">
+                                                Awaiting Agency Approval
+                                            </Text>
+                                            <Text className="text-xs text-amber-700 mt-0.5">
+                                                Your booking is currently
+                                                pending approval by the agency
+                                                admin.
+                                            </Text>
+                                        </View>
+                                    )}
 
-                                     {item.status === "rejected" && (
-                                         <View className="mt-2 p-3 bg-rose-50 rounded-lg border border-rose-100">
-                                             <Text className="text-xs font-bold text-rose-800">
-                                                 Booking Rejected
-                                             </Text>
-                                             {item.rejectionReason ? (
-                                                 <Text className="text-xs text-rose-700 mt-0.5 font-medium">
-                                                     Reason: {item.rejectionReason}
-                                                 </Text>
-                                             ) : null}
-                                             <Text className="text-[11px] text-rose-500 mt-1 italic">
-                                                 Reserved funds have been released to your usable balance.
-                                             </Text>
-                                         </View>
-                                     )}
+                                    {item.status === "rejected" && (
+                                        <View className="mt-2 p-3 bg-rose-50 rounded-lg border border-rose-100">
+                                            <Text className="text-xs font-bold text-rose-800">
+                                                Booking Rejected
+                                            </Text>
+                                            {item.rejectionReason ? (
+                                                <Text className="text-xs text-rose-700 mt-0.5 font-medium">
+                                                    Reason:{" "}
+                                                    {item.rejectionReason}
+                                                </Text>
+                                            ) : null}
+                                            <Text className="text-[11px] text-rose-500 mt-1 italic">
+                                                Reserved funds have been
+                                                released to your usable balance.
+                                            </Text>
+                                        </View>
+                                    )}
 
                                     {item.status === "completed" && (
                                         <View className="flex-row justify-between mt-1 p-2 bg-emerald-50 rounded-lg border border-emerald-100">
@@ -523,60 +814,113 @@ export default function MyBookings() {
                             </Card.Content>
 
                             {(() => {
-                                const eligibility = getComplaintEligibility(item);
+                                const eligibility =
+                                    getComplaintEligibility(item);
                                 const isCompleted = item.status === "completed";
                                 const isBooked = item.status === "booked";
-                                const showActions = isBooked || isCompleted || eligibility.eligible || eligibility.alreadyFiled;
+                                const isFutureBooking =
+                                    item.status === "booked" ||
+                                    item.status === "pending_approval";
+                                const showActions =
+                                    isFutureBooking ||
+                                    isBooked ||
+                                    isCompleted ||
+                                    eligibility.eligible ||
+                                    eligibility.alreadyFiled;
 
                                 if (!showActions) return null;
 
                                 return (
                                     <Card.Actions className="border-t border-slate-50 px-4 py-2 bg-slate-50/50 rounded-b-xl flex-col gap-2">
-                                        {isBooked && (
+                                        {Boolean(isFutureBooking) && (
+                                            <Button
+                                                mode="outlined"
+                                                icon="google-maps"
+                                                textColor="#0284c7"
+                                                buttonColor="#f0f9ff"
+                                                style={{
+                                                    borderColor: "#bae6fd",
+                                                    width: "100%",
+                                                }}
+                                                onPress={() =>
+                                                    handleOpenGoogleMaps(item)
+                                                }
+                                                className="rounded-lg"
+                                                labelStyle={{
+                                                    fontWeight: "700",
+                                                }}
+                                            >
+                                                View in Google Maps
+                                            </Button>
+                                        )}
+
+                                        {Boolean(isBooked) && (
                                             <Button
                                                 mode="outlined"
                                                 onPress={() =>
-                                                    handleCancelPress(item.bookingCode)
+                                                    handleCancelPress(
+                                                        item.bookingCode
+                                                    )
                                                 }
                                                 textColor="#ef4444"
-                                                style={{ borderColor: "#fee2e2", width: "100%" }}
+                                                style={{
+                                                    borderColor: "#fee2e2",
+                                                    width: "100%",
+                                                }}
                                                 className="rounded-lg"
-                                                labelStyle={{ fontWeight: "700" }}
+                                                labelStyle={{
+                                                    fontWeight: "700",
+                                                }}
                                             >
                                                 Cancel Reservation
                                             </Button>
                                         )}
 
-                                        {isCompleted && (
-                                            ratingsMap[item.id] ? (
+                                        {Boolean(isCompleted) &&
+                                            (ratingsMap[item.id] ? (
                                                 <Button
                                                     mode="contained-tonal"
                                                     icon="star"
                                                     textColor="#d97706"
                                                     buttonColor="#fef3c7"
-                                                    onPress={() => handleOpenRating(item)}
+                                                    onPress={() =>
+                                                        handleOpenRating(item)
+                                                    }
                                                     style={{ width: "100%" }}
                                                     className="rounded-lg"
-                                                    labelStyle={{ fontWeight: "700" }}
+                                                    labelStyle={{
+                                                        fontWeight: "700",
+                                                    }}
                                                 >
-                                                    {`Rated ${ratingsMap[item.id].rating}/5 ★`}
+                                                    {`Rated ${
+                                                        ratingsMap[item.id]
+                                                            .rating
+                                                    }/5 ★`}
                                                 </Button>
                                             ) : (
                                                 <Button
                                                     mode="contained"
                                                     icon="star-outline"
                                                     buttonColor="#4338ca"
-                                                    onPress={() => handleOpenRating(item)}
+                                                    onPress={() =>
+                                                        handleOpenRating(item)
+                                                    }
                                                     style={{ width: "100%" }}
                                                     className="rounded-lg"
-                                                    labelStyle={{ fontWeight: "700" }}
+                                                    labelStyle={{
+                                                        fontWeight: "700",
+                                                    }}
                                                 >
                                                     Rate & Review Parking
                                                 </Button>
-                                            )
-                                        )}
+                                            ))}
 
-                                        {item.paymentStatus === "refunded" || parseFloat(item.refundAmount || item.refund_amount || 0) > 0 ? (
+                                        {item.paymentStatus === "refunded" ||
+                                        parseFloat(
+                                            item.refundAmount ||
+                                                item.refund_amount ||
+                                                0
+                                        ) > 0 ? (
                                             <Button
                                                 mode="contained-tonal"
                                                 icon="cash-refund"
@@ -585,38 +929,123 @@ export default function MyBookings() {
                                                 disabled
                                                 style={{ width: "100%" }}
                                                 className="rounded-lg"
-                                                labelStyle={{ fontWeight: "700" }}
+                                                labelStyle={{
+                                                    fontWeight: "700",
+                                                }}
                                             >
-                                                {`✓ Refunded ₹${parseFloat(item.refundAmount || item.refund_amount || item.totalBill || 0).toFixed(2)} to Wallet`}
+                                                {`✓ Refunded ₹${parseFloat(
+                                                    item.refundAmount ||
+                                                        item.refund_amount ||
+                                                        item.totalBill ||
+                                                        0
+                                                ).toFixed(2)} to Wallet`}
                                             </Button>
                                         ) : (
                                             <View className="w-full flex-col gap-2">
-                                                {eligibility.alreadyFiled && (
+                                                {/* Parking Owner complaint notification banner for this booking */}
+                                                {Boolean(
+                                                    agencyComplaintsMap[
+                                                        item.id ||
+                                                            item.booking_id
+                                                    ]
+                                                ) && (
+                                                    <View className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 flex-row items-center justify-between">
+                                                        <View className="flex-row items-center flex-1 pr-2">
+                                                            <IconButton
+                                                                icon="alert-circle"
+                                                                iconColor="#d97706"
+                                                                size={18}
+                                                                style={{
+                                                                    margin: 0,
+                                                                    marginRight: 4,
+                                                                }}
+                                                            />
+                                                            <Text className="text-xs font-semibold text-amber-900 flex-1">
+                                                                Parking Owner
+                                                                filed a
+                                                                complaint
+                                                                against you
+                                                            </Text>
+                                                        </View>
+                                                        <Button
+                                                            mode="contained-tonal"
+                                                            compact
+                                                            buttonColor="#fef3c7"
+                                                            textColor="#92400e"
+                                                            onPress={() =>
+                                                                handleOpenComplaintTimeline(
+                                                                    item,
+                                                                    agencyComplaintsMap[
+                                                                        item.id ||
+                                                                            item.booking_id
+                                                                    ]
+                                                                )
+                                                            }
+                                                            labelStyle={{
+                                                                fontSize: 11,
+                                                                fontWeight:
+                                                                    "700",
+                                                            }}
+                                                        >
+                                                            View Notice
+                                                        </Button>
+                                                    </View>
+                                                )}
+
+                                                {Boolean(
+                                                    eligibility.alreadyFiled
+                                                ) && (
                                                     <Button
                                                         mode="contained-tonal"
                                                         icon="timeline-text-outline"
                                                         textColor="#4338ca"
                                                         buttonColor="#e0e7ff"
-                                                        style={{ width: "100%" }}
-                                                        onPress={() => handleOpenComplaintTimeline(item)}
+                                                        style={{
+                                                            width: "100%",
+                                                        }}
+                                                        onPress={() =>
+                                                            handleOpenComplaintTimeline(
+                                                                item,
+                                                                userComplaintsMap[
+                                                                    item.id ||
+                                                                        item.booking_id
+                                                                ]
+                                                            )
+                                                        }
                                                         className="rounded-lg"
-                                                        labelStyle={{ fontWeight: "700" }}
+                                                        labelStyle={{
+                                                            fontWeight: "700",
+                                                        }}
                                                     >
-                                                        View Complaint Timeline
+                                                        View My Complaint
+                                                        Timeline
                                                     </Button>
                                                 )}
 
-                                                {eligibility.eligible && (
+                                                {Boolean(
+                                                    eligibility.eligible
+                                                ) && (
                                                     <Button
                                                         mode="outlined"
                                                         icon="alert-circle-outline"
                                                         textColor="#ef4444"
-                                                        style={{ borderColor: "#fca5a5", width: "100%" }}
-                                                        onPress={() => handleOpenComplaint(item)}
+                                                        style={{
+                                                            borderColor:
+                                                                "#fca5a5",
+                                                            width: "100%",
+                                                        }}
+                                                        onPress={() =>
+                                                            handleOpenComplaint(
+                                                                item
+                                                            )
+                                                        }
                                                         className="rounded-lg"
-                                                        labelStyle={{ fontWeight: "700" }}
+                                                        labelStyle={{
+                                                            fontWeight: "700",
+                                                        }}
                                                     >
-                                                        File Complaint
+                                                        File Complaint against
+                                                        Agency
                                                     </Button>
                                                 )}
                                             </View>
@@ -650,7 +1079,9 @@ export default function MyBookings() {
             <Portal>
                 <Modal
                     visible={cancelModalVisible}
-                    onDismiss={() => !cancelling && setCancelModalVisible(false)}
+                    onDismiss={() =>
+                        !cancelling && setCancelModalVisible(false)
+                    }
                     contentContainerStyle={{
                         backgroundColor: "white",
                         padding: 24,
@@ -679,12 +1110,17 @@ export default function MyBookings() {
                                         Cancellation Blocked
                                     </Text>
                                     <Text className="text-sm text-slate-500 mt-2 text-center">
-                                        According to the agency's policy, cancellation is blocked within{" "}
-                                        {previewData.policyApplied?.ruleMinutes || 30} minutes of the booking start time.
+                                        According to the agency's policy,
+                                        cancellation is blocked within{" "}
+                                        {previewData.policyApplied
+                                            ?.ruleMinutes || 30}{" "}
+                                        minutes of the booking start time.
                                     </Text>
                                     <Button
                                         mode="contained"
-                                        onPress={() => setCancelModalVisible(false)}
+                                        onPress={() =>
+                                            setCancelModalVisible(false)
+                                        }
                                         buttonColor="#4338ca"
                                         className="mt-6 w-full rounded-lg"
                                         labelStyle={{ fontWeight: "700" }}
@@ -699,7 +1135,10 @@ export default function MyBookings() {
                                     </Text>
                                     <Text className="text-sm text-slate-500 mb-4">
                                         Are you sure you want to cancel booking{" "}
-                                        <Text className="font-bold text-slate-700">{selectedBookingCode}</Text>?
+                                        <Text className="font-bold text-slate-700">
+                                            {selectedBookingCode}
+                                        </Text>
+                                        ?
                                     </Text>
 
                                     {previewData.cancellationFee > 0 ? (
@@ -708,7 +1147,10 @@ export default function MyBookings() {
                                                 <Avatar.Icon
                                                     size={20}
                                                     icon="alert-decagram"
-                                                    style={{ backgroundColor: "transparent" }}
+                                                    style={{
+                                                        backgroundColor:
+                                                            "transparent",
+                                                    }}
                                                     color="#d97706"
                                                 />
                                                 <Text className="text-sm font-bold text-amber-800 ml-1">
@@ -718,11 +1160,14 @@ export default function MyBookings() {
                                             <Text className="text-xs text-amber-700">
                                                 Deduction:{" "}
                                                 <Text className="font-bold">
-                                                    {previewData.policyApplied?.chargeType === "percentage"
+                                                    {previewData.policyApplied
+                                                        ?.chargeType ===
+                                                    "percentage"
                                                         ? `${previewData.policyApplied?.chargeValue}%`
                                                         : `₹${previewData.policyApplied?.chargeValue}`}
                                                 </Text>{" "}
-                                                of total scheduled booking charge.
+                                                of total scheduled booking
+                                                charge.
                                             </Text>
                                             <Divider className="my-2 bg-amber-200" />
                                             <View className="flex-row justify-between items-center">
@@ -730,7 +1175,10 @@ export default function MyBookings() {
                                                     Deduction Fee:
                                                 </Text>
                                                 <Text className="text-base font-bold text-amber-900">
-                                                    ₹{previewData.cancellationFee.toFixed(2)}
+                                                    ₹
+                                                    {previewData.cancellationFee.toFixed(
+                                                        2
+                                                    )}
                                                 </Text>
                                             </View>
                                         </View>
@@ -739,11 +1187,15 @@ export default function MyBookings() {
                                             <Avatar.Icon
                                                 size={20}
                                                 icon="check-circle"
-                                                style={{ backgroundColor: "transparent" }}
+                                                style={{
+                                                    backgroundColor:
+                                                        "transparent",
+                                                }}
                                                 color="#059669"
                                             />
                                             <Text className="text-sm font-medium text-emerald-800 ml-1">
-                                                Free cancellation. No fee will be charged.
+                                                Free cancellation. No fee will
+                                                be charged.
                                             </Text>
                                         </View>
                                     )}
@@ -751,7 +1203,9 @@ export default function MyBookings() {
                                     <View className="flex-row gap-3 justify-end mt-2">
                                         <Button
                                             mode="outlined"
-                                            onPress={() => setCancelModalVisible(false)}
+                                            onPress={() =>
+                                                setCancelModalVisible(false)
+                                            }
                                             textColor="#64748b"
                                             style={{ borderColor: "#cbd5e1" }}
                                             disabled={cancelling}
@@ -776,7 +1230,9 @@ export default function MyBookings() {
                         </View>
                     ) : (
                         <View className="items-center py-6">
-                            <Text className="text-sm text-slate-500">Failed to load preview details.</Text>
+                            <Text className="text-sm text-slate-500">
+                                Failed to load preview details.
+                            </Text>
                             <Button
                                 mode="outlined"
                                 onPress={() => setCancelModalVisible(false)}
@@ -794,7 +1250,9 @@ export default function MyBookings() {
                 onClose={() => setRatingModalVisible(false)}
                 onSubmit={handleSubmitRating}
                 title="Rate Parking Agency"
-                subtitle={targetBookingForRating?.agencyName || "Parking Location"}
+                subtitle={
+                    targetBookingForRating?.agencyName || "Parking Location"
+                }
                 existingRating={existingRating}
                 loading={submittingRating}
             />
@@ -804,7 +1262,9 @@ export default function MyBookings() {
                 onClose={() => setComplaintModalVisible(false)}
                 onSubmit={handleSubmitComplaint}
                 title="File Complaint against Agency"
-                subtitle={targetBookingForComplaint?.agencyName || "Parking Location"}
+                subtitle={
+                    targetBookingForComplaint?.agencyName || "Parking Location"
+                }
                 loading={submittingComplaint}
             />
 
@@ -814,10 +1274,17 @@ export default function MyBookings() {
                 complaint={activeComplaintForTimeline}
                 onComplaintUpdated={(updated) => {
                     if (updated && updated.booking_id) {
-                        setUserComplaintsMap((prev) => ({
-                            ...prev,
-                            [updated.booking_id]: updated,
-                        }));
+                        if (updated.complainant_type === "agency_to_user") {
+                            setAgencyComplaintsMap((prev) => ({
+                                ...prev,
+                                [updated.booking_id]: updated,
+                            }));
+                        } else {
+                            setUserComplaintsMap((prev) => ({
+                                ...prev,
+                                [updated.booking_id]: updated,
+                            }));
+                        }
                     }
                 }}
                 currentUserRole="user"

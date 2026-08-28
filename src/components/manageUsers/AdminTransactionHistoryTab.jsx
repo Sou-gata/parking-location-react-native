@@ -118,17 +118,11 @@ export default function AdminTransactionHistoryTab({
                                             </Text>
                                         </View>
                                     </View>
-                                    <Badge
-                                        className={
-                                            isApproved
+                                    <View className={isApproved
                                                 ? "bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-xs"
                                                 : isRejected
                                                 ? "bg-red-100 text-red-800 font-bold px-2 py-0.5 rounded text-xs"
-                                                : "bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded text-xs"
-                                        }
-                                    >
-                                        {isApproved ? "Approved" : isRejected ? "Rejected" : "Pending"}
-                                    </Badge>
+                                                : "bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded text-xs"}><Text className="font-bold text-xs">{String("                                         " + (isApproved ? "Approved" : isRejected ? "Rejected" : "Pending") + "                                     ").trim()}</Text></View>
                                 </View>
 
                                 <Divider className="my-3 bg-slate-100" />
@@ -161,20 +155,34 @@ export default function AdminTransactionHistoryTab({
                                             </Text>
                                         </View>
 
-                                        {item.transactionNumber && (
+                                        {item.previousBalance !== null && item.previousBalance !== undefined && (
+                                            <View className="flex-row justify-between items-center">
+                                                <Text className="text-xs font-semibold text-slate-500">Previous Account Balance:</Text>
+                                                <Text className="text-xs font-bold text-slate-700">₹{parseFloat(item.previousBalance).toFixed(2)}</Text>
+                                            </View>
+                                        )}
+
+                                        {item.newBalance !== null && item.newBalance !== undefined && (
+                                            <View className="flex-row justify-between items-center">
+                                                <Text className="text-xs font-semibold text-slate-500">Updated Account Balance:</Text>
+                                                <Text className="text-xs font-extrabold text-indigo-700">₹{parseFloat(item.newBalance).toFixed(2)}</Text>
+                                            </View>
+                                        )}
+
+                                        {Boolean(item.transactionNumber) && (
                                             <Text className="text-xs text-slate-600">
                                                 <Text className="font-semibold">Tx ID / Ref:</Text> {item.transactionNumber}
                                             </Text>
                                         )}
 
-                                        {isRejected && item.rejectionReason && (
+                                        {Boolean(isRejected && item.rejectionReason) && (
                                             <View className="mt-1 p-2 bg-red-50 rounded-lg border border-red-100">
                                                 <Text className="text-xs font-bold text-red-800">Rejection Reason:</Text>
                                                 <Text className="text-xs text-red-700 mt-0.5">{item.rejectionReason}</Text>
                                             </View>
                                         )}
 
-                                        {proofUrl && (
+                                        {Boolean(proofUrl) && (
                                             <View className="mt-2 border border-slate-100 rounded-lg overflow-hidden bg-slate-50 p-1">
                                                 <Text className="text-[10px] font-bold text-slate-500 mb-1">Payment Proof:</Text>
                                                 <Image source={{ uri: proofUrl }} style={{ width: "100%", height: 120 }} resizeMode="contain" />

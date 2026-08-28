@@ -301,7 +301,7 @@ export default function ManageComplaintsModal({
                                         filterStatus === st ? "text-white" : "text-slate-600"
                                     }`}
                                 >
-                                    {st.replace("_", " ").toUpperCase()}
+                                    {(st.replace("_", " ") || "").toUpperCase()}
                                 </Text>
                             </TouchableOpacity>
                         )
@@ -336,7 +336,7 @@ export default function ManageComplaintsModal({
                 )}
 
                 {/* Resolution Status Sub-Modal */}
-                {resolveModalVisible && (
+                {Boolean(resolveModalVisible) && (
                     <Portal>
                         <Modal
                             visible={resolveModalVisible}
@@ -350,7 +350,7 @@ export default function ManageComplaintsModal({
                             }}
                         >
                             <Text className="text-base font-bold text-slate-800 mb-3">
-                                Update Status to {targetStatus.replace("_", " ").toUpperCase()}
+                                Update Status to {(targetStatus.replace("_", " ") || "").toUpperCase()}
                             </Text>
 
                             <TextInput

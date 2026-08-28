@@ -3,10 +3,11 @@ import { View, ScrollView, Pressable, ActivityIndicator } from "react-native";
 import {
     Text,
     TextInput,
-    SegmentedButtons,
     Portal,
     IconButton,
     Surface,
+    Modal,
+    Button,
 } from "react-native-paper";
 import Chip from "../components/Chip";
 import { useSelector, useDispatch } from "react-redux";
@@ -41,11 +42,20 @@ import AdminTransactionHistoryTab from "../components/manageUsers/AdminTransacti
 import WorkingHoursApprovalModal from "../components/manageUsers/WorkingHoursApprovalModal";
 import AgencySettlementsTab from "../components/manageUsers/AgencySettlementsTab";
 import ApproveSettlementModal from "../components/manageUsers/ApproveSettlementModal";
+import SuperAdminRegisterComplaintModal from "../components/SuperAdminRegisterComplaintModal";
+import VehicleRequestsTab from "../components/manageUsers/VehicleRequestsTab";
+import VehicleRejectModal from "../components/manageUsers/VehicleRejectModal";
 
 export default function SuperAdminManageUsers({ route, navigation }) {
     const toast = useToast();
     const dispatch = useDispatch();
     const { role } = useRolePermissions();
+
+    // Register Complaint Modal state
+    const [registerModalVisible, setRegisterModalVisible] = useState(false);
+    const [registerTargetType, setRegisterTargetType] = useState("user");
+    const [registerTargetId, setRegisterTargetId] = useState(null);
+    const [registerTargetName, setRegisterTargetName] = useState("");
 
     const [tab, setTab] = useState(route?.params?.initialTab || "requests");
     const [searchQuery, setSearchQuery] = useState("");
@@ -67,6 +77,10 @@ export default function SuperAdminManageUsers({ route, navigation }) {
     // API state
     const [apiAgencies, setApiAgencies] = useState([]);
     const [apiRequests, setApiRequests] = useState([]);
+    const [pendingVehicleRequests, setPendingVehicleRequests] = useState([]);
+    const [vehicleRejectModalVisible, setVehicleRejectModalVisible] =
+        useState(false);
+    const [vehicleToReject, setVehicleToReject] = useState(null);
     const [userWalletRequests, setUserWalletRequests] = useState([]);
     const [agencyWithdrawalRequests, setAgencyWithdrawalRequests] = useState(
         []
@@ -80,9 +94,11 @@ export default function SuperAdminManageUsers({ route, navigation }) {
     const [useApiData, setUseApiData] = useState(false);
 
     // Settlement modal states
-    const [approveSettlementModalVisible, setApproveSettlementModalVisible] = useState(false);
+    const [approveSettlementModalVisible, setApproveSettlementModalVisible] =
+        useState(false);
     const [settlementToApprove, setSettlementToApprove] = useState(null);
-    const [rejectSettlementModalVisible, setRejectSettlementModalVisible] = useState(false);
+    const [rejectSettlementModalVisible, setRejectSettlementModalVisible] =
+        useState(false);
     const [settlementToReject, setSettlementToReject] = useState(null);
     const [rejectionReasonInput, setRejectionReasonInput] = useState("");
     const [submittingSettlement, setSubmittingSettlement] = useState(false);
@@ -127,6 +143,21 @@ export default function SuperAdminManageUsers({ route, navigation }) {
                 setApiRequests(requestsRes.data);
             }
 
+            // Fetch pending vehicle registration requests
+            try {
+                const vehicleRequestsRes = await apiService.get(
+                    "users/vehicles/requests"
+                );
+                if (vehicleRequestsRes && vehicleRequestsRes.success) {
+                    setPendingVehicleRequests(vehicleRequestsRes.data || []);
+                }
+            } catch (vehErr) {
+                console.error(
+                    "Error fetching pending vehicle requests:",
+                    vehErr
+                );
+            }
+
             // Fetch pending customer deposit requests
             const customerWalletRes = await apiService.get("wallets/requests");
             if (customerWalletRes && customerWalletRes.success) {
@@ -143,12 +174,17 @@ export default function SuperAdminManageUsers({ route, navigation }) {
 
             // Fetch pending agency revenue settlements
             try {
-                const settlementsRes = await apiService.get("wallets/agency/settlements/pending");
+                const settlementsRes = await apiService.get(
+                    "wallets/agency/settlements/pending"
+                );
                 if (settlementsRes && settlementsRes.success) {
                     setAgencySettlements(settlementsRes.data || []);
                 }
             } catch (settleErr) {
-                console.error("Error fetching pending agency settlements:", settleErr);
+                console.error(
+                    "Error fetching pending agency settlements:",
+                    settleErr
+                );
             }
 
             // Fetch pending working hours requests
@@ -353,6 +389,75 @@ export default function SuperAdminManageUsers({ route, navigation }) {
                 "Rejected",
                 true
             );
+        }
+    };
+
+    // Handle Vehicle Approvals & Rejections
+    const handleApproveVehicle = async (item) => {
+        try {
+            const res = await apiService.post(
+                "users/vehicles/requests/approve",
+                {
+                    userId: item.userId,
+                    vehicleNumber: item.vehicleNumber,
+                }
+            );
+            if (res && res.success) {
+                toast.success(
+                    `Approved vehicle ${item.vehicleNumber}!`,
+                    "Approved",
+                    true
+                );
+                fetchData();
+            } else {
+                toast.error(
+                    res?.message || "Failed to approve vehicle",
+                    "Error",
+                    true
+                );
+            }
+        } catch (error) {
+            console.error("Error approving vehicle:", error);
+            toast.error("Failed to approve vehicle request", "Error", true);
+        }
+    };
+
+    const handleRejectVehicleClick = (item) => {
+        setVehicleToReject(item);
+        setVehicleRejectModalVisible(true);
+    };
+
+    const handleRejectVehicleSubmit = async ({
+        userId,
+        vehicleNumber,
+        rejection_reason,
+    }) => {
+        try {
+            const res = await apiService.post(
+                "users/vehicles/requests/reject",
+                {
+                    userId,
+                    vehicleNumber,
+                    rejection_reason,
+                }
+            );
+            if (res && res.success) {
+                toast.success(
+                    `Rejected vehicle ${vehicleNumber}.`,
+                    "Rejected",
+                    true
+                );
+                fetchData();
+            } else {
+                toast.error(
+                    res?.message || "Failed to reject vehicle",
+                    "Error",
+                    true
+                );
+            }
+        } catch (error) {
+            console.error("Error rejecting vehicle:", error);
+            toast.error("Failed to reject vehicle request", "Error", true);
         }
     };
 
@@ -928,7 +1033,7 @@ export default function SuperAdminManageUsers({ route, navigation }) {
                 />
             </View>
 
-            {apiLoading && (
+            {Boolean(apiLoading) && (
                 <ActivityIndicator
                     animating={true}
                     color="#4338ca"
@@ -948,6 +1053,11 @@ export default function SuperAdminManageUsers({ route, navigation }) {
                             key: "requests",
                             label: `Registrations (${activeRequests.length})`,
                             icon: "account-clock",
+                        },
+                        {
+                            key: "vehicles",
+                            label: `Vehicles (${pendingVehicleRequests.length})`,
+                            icon: "car-clock",
                         },
                         {
                             key: "active",
@@ -1005,7 +1115,7 @@ export default function SuperAdminManageUsers({ route, navigation }) {
             </View>
 
             {/* Role Filter Pills (Drill-down view) */}
-            {tab === "active" && currentSelectedAgency && (
+            {Boolean(tab === "active" && currentSelectedAgency) && (
                 <View className="bg-white pb-3">
                     <ScrollView
                         horizontal
@@ -1074,7 +1184,7 @@ export default function SuperAdminManageUsers({ route, navigation }) {
             )}
 
             {/* Breadcrumb / Back button when drilling down */}
-            {tab === "active" && currentSelectedAgency && (
+            {Boolean(tab === "active" && currentSelectedAgency) && (
                 <View className="px-4 py-2 bg-slate-100 border-b border-slate-200 flex-row items-center justify-between">
                     <Pressable
                         onPress={() => {
@@ -1106,6 +1216,12 @@ export default function SuperAdminManageUsers({ route, navigation }) {
                     onApprove={handleApprove}
                     onReject={handleReject}
                     onPressItem={handleOpenRequestDetails}
+                />
+            ) : tab === "vehicles" ? (
+                <VehicleRequestsTab
+                    data={pendingVehicleRequests}
+                    onApprove={handleApproveVehicle}
+                    onReject={handleRejectVehicleClick}
                 />
             ) : tab === "user_wallets" ? (
                 <WalletRequestsTab
@@ -1230,6 +1346,12 @@ export default function SuperAdminManageUsers({ route, navigation }) {
                     onOpenEditAgency={openEditAgency}
                     onOpenAddEmployee={openAddEmployee}
                     onOpenAgencyDetails={openAgencyDetails}
+                    onLodgeComplaint={(user) => {
+                        setRegisterTargetType("user");
+                        setRegisterTargetId(user.id || user.user_id);
+                        setRegisterTargetName(user.name || user.full_name);
+                        setRegisterModalVisible(true);
+                    }}
                 />
             ) : (
                 <AgenciesList
@@ -1239,6 +1361,12 @@ export default function SuperAdminManageUsers({ route, navigation }) {
                         setSearchQuery("");
                     }}
                     onEditAgency={openEditAgency}
+                    onLodgeComplaint={(agency) => {
+                        setRegisterTargetType("agency");
+                        setRegisterTargetId(agency.id || agency.org_id);
+                        setRegisterTargetName(agency.name || agency.org_name);
+                        setRegisterModalVisible(true);
+                    }}
                 />
             )}
 
@@ -1346,16 +1474,27 @@ export default function SuperAdminManageUsers({ route, navigation }) {
                                 { customAmount }
                             );
                             if (res && res.success) {
-                                toast.success("Agency settlement approved and wallet credited successfully!");
+                                toast.success(
+                                    "Agency settlement approved and wallet credited successfully!"
+                                );
                                 setApproveSettlementModalVisible(false);
                                 setSettlementToApprove(null);
                                 fetchData();
                             } else {
-                                toast.error(res?.message || "Failed to approve settlement", "Error", true);
+                                toast.error(
+                                    res?.message ||
+                                        "Failed to approve settlement",
+                                    "Error",
+                                    true
+                                );
                             }
                         } catch (err) {
                             console.error("Error approving settlement:", err);
-                            toast.error("Error approving settlement", "Error", true);
+                            toast.error(
+                                "Error approving settlement",
+                                "Error",
+                                true
+                            );
                         } finally {
                             setSubmittingSettlement(false);
                         }
@@ -1381,7 +1520,9 @@ export default function SuperAdminManageUsers({ route, navigation }) {
                             Reject Revenue Settlement
                         </Text>
                         <Text className="text-xs text-slate-500 mb-4">
-                            Specify a reason for rejecting the revenue settlement for booking #{settlementToReject?.bookingCode || ""}.
+                            Specify a reason for rejecting the revenue
+                            settlement for booking #
+                            {settlementToReject?.bookingCode || ""}.
                         </Text>
                         <TextInput
                             mode="outlined"
@@ -1398,7 +1539,9 @@ export default function SuperAdminManageUsers({ route, navigation }) {
                         <View className="flex-row gap-3">
                             <Button
                                 mode="outlined"
-                                onPress={() => setRejectSettlementModalVisible(false)}
+                                onPress={() =>
+                                    setRejectSettlementModalVisible(false)
+                                }
                                 disabled={submittingSettlement}
                                 className="flex-1 rounded-xl border-slate-200"
                                 textColor="#64748b"
@@ -1414,19 +1557,38 @@ export default function SuperAdminManageUsers({ route, navigation }) {
                                     try {
                                         const res = await apiService.post(
                                             `wallets/agency/settlements/${settlementToReject.id}/reject`,
-                                            { rejectionReason: rejectionReasonInput }
+                                            {
+                                                rejectionReason:
+                                                    rejectionReasonInput,
+                                            }
                                         );
                                         if (res && res.success) {
-                                            toast.success("Revenue settlement rejected");
-                                            setRejectSettlementModalVisible(false);
+                                            toast.success(
+                                                "Revenue settlement rejected"
+                                            );
+                                            setRejectSettlementModalVisible(
+                                                false
+                                            );
                                             setSettlementToReject(null);
                                             fetchData();
                                         } else {
-                                            toast.error(res?.message || "Failed to reject settlement", "Error", true);
+                                            toast.error(
+                                                res?.message ||
+                                                    "Failed to reject settlement",
+                                                "Error",
+                                                true
+                                            );
                                         }
                                     } catch (err) {
-                                        console.error("Error rejecting settlement:", err);
-                                        toast.error("Error rejecting settlement", "Error", true);
+                                        console.error(
+                                            "Error rejecting settlement:",
+                                            err
+                                        );
+                                        toast.error(
+                                            "Error rejecting settlement",
+                                            "Error",
+                                            true
+                                        );
                                     } finally {
                                         setSubmittingSettlement(false);
                                     }
@@ -1435,7 +1597,10 @@ export default function SuperAdminManageUsers({ route, navigation }) {
                                 disabled={submittingSettlement}
                                 buttonColor="#dc2626"
                                 className="flex-1 rounded-xl"
-                                labelStyle={{ fontWeight: "bold", color: "white" }}
+                                labelStyle={{
+                                    fontWeight: "bold",
+                                    color: "white",
+                                }}
                             >
                                 Reject Settlement
                             </Button>
@@ -1443,6 +1608,29 @@ export default function SuperAdminManageUsers({ route, navigation }) {
                     </Modal>
                 </Portal>
             </Portal>
+
+            {/* Super Admin Register Complaint Modal */}
+            <SuperAdminRegisterComplaintModal
+                visible={registerModalVisible}
+                onClose={() => setRegisterModalVisible(false)}
+                onSuccess={() => {
+                    toast.success("Complaint registered successfully", "Success", true);
+                }}
+                initialTargetType={registerTargetType}
+                initialTargetId={registerTargetId}
+                initialTargetName={registerTargetName}
+            />
+
+            {/* Vehicle Rejection Reason Modal */}
+            <VehicleRejectModal
+                visible={vehicleRejectModalVisible}
+                onDismiss={() => {
+                    setVehicleRejectModalVisible(false);
+                    setVehicleToReject(null);
+                }}
+                request={vehicleToReject}
+                onSubmit={handleRejectVehicleSubmit}
+            />
         </View>
     );
 }

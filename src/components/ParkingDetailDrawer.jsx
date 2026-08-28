@@ -8,6 +8,7 @@ import {
     ActivityIndicator,
     Text,
     StyleSheet,
+    Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
@@ -38,9 +39,12 @@ const ParkingDetailDrawer = ({
     location,
     onClose,
     onStartNavigation,
+    vehicleTypesSummary = [],
+    currentVehicleType,
+    onSelectVehicleType,
 }) => {
     const insets = useSafeAreaInsets();
-    const translateY = useSharedValue(500);
+    const translateY = useSharedValue(1200);
     const [activeTab, setActiveTab] = useState("general");
     const [approvedMedia, setApprovedMedia] = useState([]);
     const [viewerState, setViewerState] = useState({
@@ -70,9 +74,9 @@ const ParkingDetailDrawer = ({
         if (visible) {
             translateY.value = withTiming(0, { duration: 400 });
         } else {
-            translateY.value = withTiming(500, { duration: 300 });
+            translateY.value = withTiming(1200, { duration: 300 });
         }
-    }, [visible]);
+    }, [visible, translateY]);
 
     const [workingHours, setWorkingHours] = useState(null);
 
@@ -161,7 +165,10 @@ const ParkingDetailDrawer = ({
                         loadingMore: false,
                     }));
                 } else {
-                    setReviewsState((prev) => ({ ...prev, loadingMore: false }));
+                    setReviewsState((prev) => ({
+                        ...prev,
+                        loadingMore: false,
+                    }));
                 }
             })
             .catch((e) => {
@@ -176,6 +183,28 @@ const ParkingDetailDrawer = ({
 
     if (!location && !visible) return null;
 
+    const handleOpenInMap = () => {
+        if (!location) return;
+        const lat = Number(location.latitude);
+        const lng = Number(location.longitude);
+        let url = "";
+
+        if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+            url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+        } else if (location.address || location.name) {
+            const query = encodeURIComponent(
+                `${location.name || ""} ${location.address || ""}`.trim()
+            );
+            url = `https://www.google.com/maps/search/?api=1&query=${query}`;
+        }
+
+        if (url) {
+            Linking.openURL(url).catch((err) =>
+                console.error("Error opening Google Maps:", err)
+            );
+        }
+    };
+
     const getImageUrl = (path) => {
         if (!path) return null;
         const cleanPath = path.startsWith("uploads/")
@@ -184,8 +213,19 @@ const ParkingDetailDrawer = ({
         return `${imageBaseURL}${cleanPath}`;
     };
 
+    const isCctvAvailable = Boolean(
+        location?.cctv_available === true ||
+            location?.cctv_available === 1 ||
+            location?.cctv_available === "1" ||
+            location?.cctv_available === "yes" ||
+            location?.cctv_available === "true"
+    );
+
     return (
-        <Animated.View style={[styles.drawerContainer, animatedStyle]}>
+        <Animated.View
+            style={[styles.drawerContainer, animatedStyle]}
+            pointerEvents={visible ? "auto" : "none"}
+        >
             <View
                 style={[
                     styles.drawerCard,
@@ -200,9 +240,23 @@ const ParkingDetailDrawer = ({
                 {/* Header */}
                 <View style={styles.headerRow}>
                     <View style={styles.headerLeft}>
-                        <Text style={styles.titleText}>
-                            {location?.name || "Premium Parking"}
-                        </Text>
+                        <View style={styles.titleRow}>
+                            <Text style={styles.titleText}>
+                                {location?.name || "Premium Parking"}
+                            </Text>
+                            {isCctvAvailable && (
+                                <View style={styles.cctvBadge}>
+                                    <MaterialDesignIcons
+                                        name="cctv"
+                                        size={13}
+                                        color="#059669"
+                                    />
+                                    <Text style={styles.cctvBadgeText}>
+                                        CCTV Available
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
                         <View style={styles.ratingRow}>
                             <MaterialDesignIcons
                                 name="star"
@@ -211,17 +265,28 @@ const ParkingDetailDrawer = ({
                             />
                             <Text style={styles.ratingText}>
                                 {ratingInfo?.totalCount > 0
-                                    ? `${ratingInfo.averageRating} ★ (${ratingInfo.totalCount} ${ratingInfo.totalCount === 1 ? "review" : "reviews"})`
-                                    : (location?.averageRating || (location?.rating && location.rating !== "4.8" && parseFloat(location.rating) > 0))
-                                        ? `${location.averageRating || location.rating} ★ (${location.ratingCount || 0} reviews)`
-                                        : "No ratings yet"}
+                                    ? `${ratingInfo.averageRating} ★ (${
+                                          ratingInfo.totalCount
+                                      } ${
+                                          ratingInfo.totalCount === 1
+                                              ? "review"
+                                              : "reviews"
+                                      })`
+                                    : location?.averageRating ||
+                                      (location?.rating &&
+                                          location.rating !== "4.8" &&
+                                          parseFloat(location.rating) > 0)
+                                    ? `${
+                                          location.averageRating ||
+                                          location.rating
+                                      } ★ (${
+                                          location.ratingCount || 0
+                                      } reviews)`
+                                    : "No ratings yet"}
                             </Text>
                         </View>
                     </View>
-                    <TouchableOpacity
-                        onPress={onClose}
-                        style={styles.closeBtn}
-                    >
+                    <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
                         <MaterialDesignIcons
                             name="close"
                             size={24}
@@ -290,6 +355,64 @@ const ParkingDetailDrawer = ({
                 {/* Tab 1: General */}
                 {activeTab === "general" && (
                     <View style={styles.tabContentContainer}>
+                        {vehicleTypesSummary.length > 0 && (
+                            <View style={styles.vehicleSelectorContainer}>
+                                <Text style={styles.vehicleSelectorTitle}>
+                                    Select Vehicle Type:
+                                </Text>
+                                <ScrollView
+                                    horizontal
+                                    showsHorizontalScrollIndicator={false}
+                                    contentContainerStyle={{
+                                        paddingVertical: 2,
+                                    }}
+                                >
+                                    {vehicleTypesSummary.map((item) => {
+                                        const isActive =
+                                            item.type === currentVehicleType;
+                                        return (
+                                            <TouchableOpacity
+                                                key={item.type}
+                                                activeOpacity={0.8}
+                                                onPress={() =>
+                                                    onSelectVehicleType &&
+                                                    onSelectVehicleType(
+                                                        item.type
+                                                    )
+                                                }
+                                                style={[
+                                                    styles.vehicleChip,
+                                                    isActive &&
+                                                        styles.activeVehicleChip,
+                                                ]}
+                                            >
+                                                <MaterialDesignIcons
+                                                    name={item.icon || "car"}
+                                                    size={16}
+                                                    color={
+                                                        isActive
+                                                            ? "#4338ca"
+                                                            : "#64748b"
+                                                    }
+                                                />
+                                                <Text
+                                                    style={[
+                                                        styles.vehicleChipText,
+                                                        isActive &&
+                                                            styles.activeVehicleChipText,
+                                                    ]}
+                                                >
+                                                    {item.label}:{" "}
+                                                    {item.availableSpots} spots
+                                                    (₹{item.rate}/h)
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </ScrollView>
+                            </View>
+                        )}
+
                         <View style={styles.statsCard}>
                             <View style={styles.statBoxLeft}>
                                 <MaterialDesignIcons
@@ -298,10 +421,16 @@ const ParkingDetailDrawer = ({
                                     color="#4338ca"
                                 />
                                 <Text style={styles.statVal}>
-                                    {location?.availableSpots || "12"}
+                                    {location?.availableSpots !== undefined &&
+                                    location?.availableSpots !== null
+                                        ? location.availableSpots
+                                        : 0}
                                 </Text>
                                 <Text style={styles.statLbl}>
                                     Available Spots
+                                    {location?.vehicleTypeLabel
+                                        ? ` (${location.vehicleTypeLabel})`
+                                        : ""}
                                 </Text>
                             </View>
 
@@ -312,7 +441,9 @@ const ParkingDetailDrawer = ({
                                     color="#4338ca"
                                 />
                                 <Text style={styles.statVal}>
-                                    {location?.distance || "0.8"} km
+                                    {location?.distance
+                                        ? `${location.distance} km`
+                                        : "N/A"}
                                 </Text>
                                 <Text style={styles.statLbl}>
                                     Distance Away
@@ -320,7 +451,7 @@ const ParkingDetailDrawer = ({
                             </View>
                         </View>
 
-                        {location?.address && (
+                        {Boolean(location?.address) && (
                             <View style={styles.addressBox}>
                                 <MaterialDesignIcons
                                     name="map-marker-outline"
@@ -333,28 +464,95 @@ const ParkingDetailDrawer = ({
                             </View>
                         )}
 
-                        {workingHours && (
-                            <View style={[styles.addressBox, { marginTop: 8, backgroundColor: "#f0f9ff", borderColor: "#bae6fd", flexDirection: "column", alignItems: "stretch" }]}>
-                                <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
+                        {Boolean(workingHours) && (
+                            <View
+                                style={[
+                                    styles.addressBox,
+                                    {
+                                        marginTop: 8,
+                                        backgroundColor: "#f0f9ff",
+                                        borderColor: "#bae6fd",
+                                        flexDirection: "column",
+                                        alignItems: "stretch",
+                                    },
+                                ]}
+                            >
+                                <View
+                                    style={{
+                                        flexDirection: "row",
+                                        alignItems: "center",
+                                        marginBottom: 4,
+                                    }}
+                                >
                                     <MaterialDesignIcons
                                         name="clock-outline"
                                         size={20}
                                         color="#0284c7"
                                     />
-                                    <Text style={{ fontSize: 12, fontWeight: "bold", color: "#0369a1", marginLeft: 8 }}>
+                                    <Text
+                                        style={{
+                                            fontSize: 12,
+                                            fontWeight: "bold",
+                                            color: "#0369a1",
+                                            marginLeft: 8,
+                                        }}
+                                    >
                                         Operating Hours Schedule
                                     </Text>
                                 </View>
                                 {workingHours.dailySchedules ? (
                                     <View style={{ marginTop: 2 }}>
-                                        {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => {
-                                            const s = workingHours.dailySchedules[day];
+                                        {[
+                                            "Monday",
+                                            "Tuesday",
+                                            "Wednesday",
+                                            "Thursday",
+                                            "Friday",
+                                            "Saturday",
+                                            "Sunday",
+                                        ].map((day) => {
+                                            const s =
+                                                workingHours.dailySchedules[
+                                                    day
+                                                ];
                                             if (!s) return null;
                                             return (
-                                                <View key={day} style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 1.5 }}>
-                                                    <Text style={{ fontSize: 10, fontWeight: "600", color: "#0369a1" }}>{day}</Text>
-                                                    <Text style={{ fontSize: 10, color: s.isOpen ? "#0c4a6e" : "#e11d48", fontWeight: "bold" }}>
-                                                        {!s.isOpen ? "Closed" : s.is247 ? "24 Hours" : `${formatTime12h(s.openTime)} - ${formatTime12h(s.closeTime)}`}
+                                                <View
+                                                    key={day}
+                                                    style={{
+                                                        flexDirection: "row",
+                                                        justifyContent:
+                                                            "space-between",
+                                                        paddingVertical: 1.5,
+                                                    }}
+                                                >
+                                                    <Text
+                                                        style={{
+                                                            fontSize: 10,
+                                                            fontWeight: "600",
+                                                            color: "#0369a1",
+                                                        }}
+                                                    >
+                                                        {day}
+                                                    </Text>
+                                                    <Text
+                                                        style={{
+                                                            fontSize: 10,
+                                                            color: s.isOpen
+                                                                ? "#0c4a6e"
+                                                                : "#e11d48",
+                                                            fontWeight: "bold",
+                                                        }}
+                                                    >
+                                                        {!s.isOpen
+                                                            ? "Closed"
+                                                            : s.is247
+                                                            ? "24 Hours"
+                                                            : `${formatTime12h(
+                                                                  s.openTime
+                                                              )} - ${formatTime12h(
+                                                                  s.closeTime
+                                                              )}`}
                                                     </Text>
                                                 </View>
                                             );
@@ -362,14 +560,29 @@ const ParkingDetailDrawer = ({
                                     </View>
                                 ) : (
                                     <View>
-                                        <Text style={{ fontSize: 11, color: "#0c4a6e", marginTop: 2 }}>
+                                        <Text
+                                            style={{
+                                                fontSize: 11,
+                                                color: "#0c4a6e",
+                                                marginTop: 2,
+                                            }}
+                                        >
                                             {workingHours.is247
                                                 ? "Open 24 Hours / 7 Days"
                                                 : `${workingHours.openTime} - ${workingHours.closeTime}`}
                                         </Text>
-                                        {workingHours.workingDays && (
-                                            <Text style={{ fontSize: 10, color: "#0284c7", marginTop: 1 }}>
-                                                Open: {workingHours.workingDays.join(", ")}
+                                        {Boolean(workingHours.workingDays) && (
+                                            <Text
+                                                style={{
+                                                    fontSize: 10,
+                                                    color: "#0284c7",
+                                                    marginTop: 1,
+                                                }}
+                                            >
+                                                Open:{" "}
+                                                {workingHours.workingDays.join(
+                                                    ", "
+                                                )}
                                             </Text>
                                         )}
                                     </View>
@@ -537,7 +750,8 @@ const ParkingDetailDrawer = ({
                             ) : (
                                 <View style={styles.emptyContainer}>
                                     <Text style={styles.emptyText}>
-                                        No reviews written yet for this location.
+                                        No reviews written yet for this
+                                        location.
                                     </Text>
                                 </View>
                             )
@@ -581,13 +795,21 @@ const ParkingDetailDrawer = ({
                                                     resizeMode="cover"
                                                 />
                                             ) : (
-                                                <View style={styles.videoThumbnailBox}>
+                                                <View
+                                                    style={
+                                                        styles.videoThumbnailBox
+                                                    }
+                                                >
                                                     <MaterialDesignIcons
                                                         name="play-circle"
                                                         color="#ffffff"
                                                         size={36}
                                                     />
-                                                    <Text style={styles.videoLabel}>
+                                                    <Text
+                                                        style={
+                                                            styles.videoLabel
+                                                        }
+                                                    >
                                                         Video
                                                     </Text>
                                                 </View>
@@ -611,14 +833,16 @@ const ParkingDetailDrawer = ({
                     </View>
                 )}
 
-                {/* Action Button */}
-                <TouchableOpacity
-                    onPress={onStartNavigation}
-                    activeOpacity={0.85}
-                    style={styles.bookBtn}
-                >
-                    <Text style={styles.bookBtnText}>Book Now</Text>
-                </TouchableOpacity>
+                {/* Action Buttons */}
+                <View style={styles.actionButtonsRow}>
+                    <TouchableOpacity
+                        onPress={onStartNavigation}
+                        activeOpacity={0.85}
+                        style={styles.bookBtn}
+                    >
+                        <Text style={styles.bookBtnText}>Book Now</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
 
             <MediaViewerModal
@@ -670,10 +894,32 @@ const styles = StyleSheet.create({
         flex: 1,
         marginRight: 16,
     },
+    titleRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: 6,
+    },
     titleText: {
         fontSize: 22,
         fontWeight: "bold",
         color: "#1e293b",
+    },
+    cctvBadge: {
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "#ecfdf5",
+        borderColor: "#a7f3d0",
+        borderWidth: 1,
+        paddingHorizontal: 7,
+        paddingVertical: 2.5,
+        borderRadius: 8,
+    },
+    cctvBadgeText: {
+        color: "#047857",
+        fontSize: 11,
+        fontWeight: "700",
+        marginLeft: 4,
     },
     ratingRow: {
         flexDirection: "row",
@@ -684,6 +930,55 @@ const styles = StyleSheet.create({
         color: "#475569",
         marginLeft: 4,
         fontWeight: "500",
+    },
+    cctvCard: {
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "#f0fdf4",
+        borderColor: "#bbf7d0",
+        borderWidth: 1,
+        borderRadius: 12,
+        padding: 12,
+        marginTop: 8,
+    },
+    cctvIconBox: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: "#dcfce7",
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    cctvCardTitle: {
+        fontSize: 12,
+        fontWeight: "bold",
+        color: "#166534",
+    },
+    cctvCardSubtitle: {
+        fontSize: 10,
+        color: "#15803d",
+        marginTop: 1,
+    },
+    cctvLivePill: {
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "#dcfce7",
+        paddingHorizontal: 6,
+        paddingVertical: 1.5,
+        borderRadius: 6,
+        marginLeft: 6,
+    },
+    cctvLiveDot: {
+        width: 5,
+        height: 5,
+        borderRadius: 2.5,
+        backgroundColor: "#16a34a",
+        marginRight: 3,
+    },
+    cctvLiveText: {
+        fontSize: 9,
+        fontWeight: "800",
+        color: "#166534",
     },
     closeBtn: {
         backgroundColor: "#f1f5f9",
@@ -718,6 +1013,40 @@ const styles = StyleSheet.create({
     tabContentContainer: {
         marginBottom: 16,
     },
+    vehicleSelectorContainer: {
+        marginBottom: 12,
+    },
+    vehicleSelectorTitle: {
+        fontSize: 12,
+        fontWeight: "600",
+        color: "#64748b",
+        marginBottom: 6,
+    },
+    vehicleChip: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        backgroundColor: "#f8fafc",
+        borderWidth: 1,
+        borderColor: "#cbd5e1",
+        marginRight: 8,
+    },
+    activeVehicleChip: {
+        backgroundColor: "#e0e7ff",
+        borderColor: "#4338ca",
+    },
+    vehicleChipText: {
+        fontSize: 12,
+        fontWeight: "600",
+        color: "#475569",
+        marginLeft: 6,
+    },
+    activeVehicleChipText: {
+        color: "#3730a3",
+        fontWeight: "bold",
+    },
     statsCard: {
         flexDirection: "row",
         justifyContent: "space-between",
@@ -749,6 +1078,7 @@ const styles = StyleSheet.create({
     statLbl: {
         color: "#64748b",
         fontSize: 12,
+        textAlign: "center",
     },
     addressBox: {
         flexDirection: "row",
@@ -931,13 +1261,37 @@ const styles = StyleSheet.create({
         borderStyle: "dashed",
         borderColor: "#e2e8f0",
     },
+    actionButtonsRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10,
+        marginTop: 12,
+    },
+    openMapBtn: {
+        flex: 1,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+        borderRadius: 12,
+        paddingVertical: 14,
+        backgroundColor: "#f0f9ff",
+        borderWidth: 1,
+        borderColor: "#bae6fd",
+    },
+    openMapBtnText: {
+        color: "#0284c7",
+        fontSize: 15,
+        fontWeight: "bold",
+    },
     bookBtn: {
+        flex: 1,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
         borderRadius: 12,
         paddingVertical: 14,
         backgroundColor: "#4338ca",
-        alignItems: "center",
-        justifyContent: "center",
-        marginTop: 8,
     },
     bookBtnText: {
         color: "#ffffff",

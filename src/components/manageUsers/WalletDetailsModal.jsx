@@ -75,6 +75,26 @@ export default function WalletDetailsModal({
 
                     <Divider className="bg-slate-100 my-1" />
 
+                    {request.previousBalance !== null && request.previousBalance !== undefined && (
+                        <>
+                            <View className="flex-row justify-between items-center">
+                                <Text className="text-sm font-semibold text-slate-500">Previous Account Balance</Text>
+                                <Text className="text-sm font-bold text-slate-800">₹{parseFloat(request.previousBalance).toFixed(2)}</Text>
+                            </View>
+                            <Divider className="bg-slate-100 my-1" />
+                        </>
+                    )}
+
+                    {request.newBalance !== null && request.newBalance !== undefined && (
+                        <>
+                            <View className="flex-row justify-between items-center">
+                                <Text className="text-sm font-semibold text-slate-500">Expected Updated Balance</Text>
+                                <Text className="text-sm font-extrabold text-emerald-700">₹{parseFloat(request.newBalance).toFixed(2)}</Text>
+                            </View>
+                            <Divider className="bg-slate-100 my-1" />
+                        </>
+                    )}
+
                     <View className="flex-row justify-between items-center">
                         <Text className="text-sm font-semibold text-slate-500">Transaction ID / Ref No.</Text>
                         <Text className="text-sm font-bold text-slate-800">{request.transactionNumber || "N/A"}</Text>

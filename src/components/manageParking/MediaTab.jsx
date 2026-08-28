@@ -221,13 +221,13 @@ export default function MediaTab({ agencyId }) {
                 <Card.Content className="p-4">
                     <View className="flex-row justify-between items-center mb-2">
                         <Text className="text-lg font-bold text-indigo-900">Organization Photos & Videos</Text>
-                        <Badge className="bg-indigo-600 text-white font-bold px-2">{mediaItems.length}/10</Badge>
+                        <View className="bg-indigo-600 px-2"><Text className="text-white font-bold">{String((mediaItems.length) + "/10").trim()}</Text></View>
                     </View>
                     <Text className="text-xs text-indigo-700 leading-5">
                         Upload up to 10 photos or videos (videos max 45s). Newly uploaded or edited items are set to{" "}
                         <Text className="font-bold text-amber-700">Pending</Text> until Super Admin approves them.
                     </Text>
-                    {uploading && (
+                    {Boolean(uploading) && (
                         <View className="flex-row items-center mt-3 gap-2">
                             <ActivityIndicator size="small" color="#4338ca" />
                             <Text className="text-xs font-bold text-indigo-800">Processing & Compressing media...</Text>
@@ -287,26 +287,22 @@ export default function MediaTab({ agencyId }) {
                                         </View>
                                     )}
 
-                                    <Badge
-                                        className={`absolute top-2 left-2 ${
+                                    <View className={`absolute top-2 left-2 ${
                                             isApproved
                                                 ? "bg-green-600 text-white"
                                                 : isRejected
                                                 ? "bg-red-600 text-white"
                                                 : "bg-amber-500 text-white"
-                                        }`}
-                                    >
-                                        {isPending && item.pending_file_path ? "EDIT PENDING" : item.status.toUpperCase()}
-                                    </Badge>
+                                        }`}><Text className="font-bold text-xs">{String("                                         " + (isPending && item.pending_file_path ? "EDIT PENDING" : (item.status || "").toUpperCase()) + "                                     ").trim()}</Text></View>
                                 </TouchableOpacity>
 
                                 <Card.Content className="p-3 gap-2">
-                                    {isPending && (
+                                    {Boolean(isPending) && (
                                         <Text className="text-[10px] text-amber-700 font-semibold text-center">
                                             Awaiting Super Admin approval
                                         </Text>
                                     )}
-                                    {isRejected && item.rejection_reason && (
+                                    {Boolean(isRejected && item.rejection_reason) && (
                                         <Text className="text-[10px] text-red-600 font-semibold text-center">
                                             Reason: {item.rejection_reason}
                                         </Text>

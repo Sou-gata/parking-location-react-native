@@ -28,7 +28,7 @@ const UserDashboard = ({ navigation, onOpenMap }) => {
 
     const fetchDashboardStats = useCallback(async () => {
         try {
-            const response = await apiService.get("users/dashboard-stats");
+            const response = await apiService.get("dashboard/dashboard-stats");
             if (response?.data) {
                 setStats(response.data);
             }
@@ -180,7 +180,7 @@ const UserDashboard = ({ navigation, onOpenMap }) => {
                     </View>
 
                     {/* Active Booking Banner */}
-                    {stats.activeBooking && (
+                    {Boolean(stats.activeBooking) && (
                         <Surface
                             className="bg-white rounded-2xl p-4 mb-4 border-l-4 border-l-indigo-700 border border-slate-100"
                             elevation={2}
@@ -191,9 +191,16 @@ const UserDashboard = ({ navigation, onOpenMap }) => {
                                         {stats.activeBooking.agency_name}
                                     </Text>
                                     <Text className="text-slate-500 text-xs mt-1">
-                                        Code: {stats.activeBooking.booking_code}{" "}
-                                        • {stats.activeBooking.vehicle_type} (
-                                        {stats.activeBooking.vehicle_number})
+                                        {`Code: ${
+                                            stats.activeBooking.booking_code ||
+                                            "N/A"
+                                        } • ${
+                                            stats.activeBooking.vehicle_type ||
+                                            ""
+                                        } (${
+                                            stats.activeBooking
+                                                .vehicle_number || ""
+                                        })`}
                                     </Text>
                                 </View>
                                 <View
@@ -215,12 +222,14 @@ const UserDashboard = ({ navigation, onOpenMap }) => {
                                             ).text,
                                         }}
                                     >
-                                        {stats.activeBooking.status.toUpperCase()}
+                                        {(
+                                            stats.activeBooking.status || ""
+                                        ).toUpperCase()}
                                     </Text>
                                 </View>
                             </View>
 
-                            {stats.activeBooking.otp && (
+                            {Boolean(stats.activeBooking.otp) && (
                                 <View className="bg-indigo-100 p-2.5 rounded-xl flex-row justify-between items-center mt-3">
                                     <Text className="text-indigo-900 text-xs font-semibold">
                                         Check-In OTP Code:
@@ -361,8 +370,11 @@ const UserDashboard = ({ navigation, onOpenMap }) => {
                                             {b.agency_name}
                                         </Text>
                                         <Text className="text-slate-500 text-xs mt-0.5">
-                                            {b.vehicle_type} ({b.vehicle_number}
-                                            ) • {formatCurrency(b.total_bill)}
+                                            {`${b.vehicle_type || ""} (${
+                                                b.vehicle_number || ""
+                                            }) • ${formatCurrency(
+                                                b.total_bill
+                                            )}`}
                                         </Text>
                                     </View>
                                     <View
@@ -376,7 +388,7 @@ const UserDashboard = ({ navigation, onOpenMap }) => {
                                             className="text-[10px] font-bold"
                                             style={{ color: statusSt.text }}
                                         >
-                                            {b.status.toUpperCase()}
+                                            {(b.status || "").toUpperCase()}
                                         </Text>
                                     </View>
                                 </Surface>

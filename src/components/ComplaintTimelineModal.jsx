@@ -268,7 +268,7 @@ export default function ComplaintTimelineModal({
                                         </View>
                                     </View>
 
-                                    {activeComplaint?.agency?.org_name && (
+                                    {Boolean(activeComplaint?.agency?.org_name) && (
                                         <View className="items-end">
                                             <Text className="text-xs text-slate-500">
                                                 Agency
@@ -377,7 +377,7 @@ export default function ComplaintTimelineModal({
                                                         {step.comment}
                                                     </Text>
 
-                                                    {step.new_status && (
+                                                    {Boolean(step.new_status) && (
                                                         <View className="flex-row items-center pt-1 border-t border-slate-100">
                                                             <Text className="text-xs text-slate-400 mr-1.5">
                                                                 Stage:

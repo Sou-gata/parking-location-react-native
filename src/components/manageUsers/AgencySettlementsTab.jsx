@@ -53,9 +53,7 @@ export default function AgencySettlementsTab({
                                         </Text>
                                     </View>
                                 </View>
-                                <Badge className="bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded text-xs">
-                                    Pending Settlement
-                                </Badge>
+                                <View className="bg-amber-100 px-2 py-0.5 rounded"><Text className="text-amber-900 font-bold text-xs">{String("                                     Pending Settlement                                 ").trim()}</Text></View>
                             </View>
 
                             <Divider className="my-3 bg-slate-100" />

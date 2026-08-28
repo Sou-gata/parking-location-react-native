@@ -207,7 +207,7 @@ export default function WorkingHoursApprovalModal({
                     </Surface>
 
                     {/* Rejection input field */}
-                    {showRejectInput && (
+                    {Boolean(showRejectInput) && (
                         <TextInput
                             label="Reason for Rejection (Optional)"
                             value={rejectionReason}
