@@ -6,10 +6,10 @@ import {
     ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
+    Modal,
+    TouchableWithoutFeedback,
 } from "react-native";
 import {
-    Modal,
-    Portal,
     Text,
     TextInput,
     Button,
@@ -177,18 +177,16 @@ export default function ComplaintTimelineModal({
     const isWaitingForUser = activeComplaint?.status === "waiting_for_user";
 
     return (
-        <Portal>
-            <Modal
-                visible={visible}
-                onDismiss={onClose}
-                contentContainerStyle={{
-                    backgroundColor: "white",
-                    margin: 16,
-                    borderRadius: 16,
-                    maxHeight: "90%",
-                    overflow: "hidden",
-                }}
-            >
+        <Modal
+            visible={Boolean(visible)}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={onClose}
+        >
+            <TouchableWithoutFeedback onPress={onClose}>
+                <View className="flex-1 bg-black/50 justify-center items-center p-4">
+                    <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+                        <View className="bg-white rounded-3xl w-[92%] max-w-[550px] max-h-[85%] shadow-2xl overflow-hidden">
                 <KeyboardAvoidingView
                     behavior={Platform.OS === "ios" ? "padding" : "height"}
                 >
@@ -530,7 +528,10 @@ export default function ComplaintTimelineModal({
                         )}
                     </ScrollView>
                 </KeyboardAvoidingView>
-            </Modal>
-        </Portal>
+                        </View>
+                    </TouchableWithoutFeedback>
+                </View>
+            </TouchableWithoutFeedback>
+        </Modal>
     );
 }

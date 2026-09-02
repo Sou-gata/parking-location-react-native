@@ -206,29 +206,30 @@ export default function ManageParking({ navigation }) {
             {/* Super Admin selector */}
             {role === ROLES.SUPER_ADMIN && activeAgencies.length > 1 && (
                 <View className="px-4 py-3 bg-white border-b border-slate-200">
-                    <Text className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-                        Simulating Agency (Super Admin View)
-                    </Text>
                     <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}
                         className="flex-row"
                     >
-                        {activeAgencies.map((agency) => (
-                            <Chip
-                                key={agency.id}
-                                selected={
-                                    String(selectedAgencyId) ===
-                                    String(agency.id)
-                                }
-                                onPress={() => setSelectedAgencyId(agency.id)}
-                                className="mr-2"
-                                selectedColor="#4338ca"
-                                showSelectedOverlay
-                            >
-                                {agency.name}
-                            </Chip>
-                        ))}
+                        <View className="flex-row gap-2">
+                            {activeAgencies.map((agency) => (
+                                <Chip
+                                    key={agency.id}
+                                    selected={
+                                        String(selectedAgencyId) ===
+                                        String(agency.id)
+                                    }
+                                    onPress={() =>
+                                        setSelectedAgencyId(agency.id)
+                                    }
+                                    className="mr-2"
+                                    selectedColor="#4338ca"
+                                    showSelectedOverlay
+                                >
+                                    {agency.name}
+                                </Chip>
+                            ))}
+                        </View>
                     </ScrollView>
                 </View>
             )}
@@ -376,9 +377,7 @@ export default function ManageParking({ navigation }) {
                 />
             )}
 
-            {activeTab === "media" && (
-                <MediaTab agencyId={currentAgency.id} />
-            )}
+            {activeTab === "media" && <MediaTab agencyId={currentAgency.id} />}
 
             {activeTab === "working_hours" && (
                 <WorkingHoursTab agencyId={currentAgency.id} />

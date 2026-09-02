@@ -744,6 +744,42 @@ export default function MyBookings() {
                                         </Text>
                                     </View>
 
+                                    {/* Overtime Cost (if applicable) */}
+                                    {(() => {
+                                        const bookedDur = parseFloat(item.bookedDuration || 0);
+                                        const hRate = parseFloat(item.hourlyRate || 0);
+                                        const baseFee = parseFloat((bookedDur * hRate).toFixed(2));
+                                        let otCost = 0;
+
+                                        if (item.overtimeCost !== undefined && item.overtimeCost !== null) {
+                                            otCost = parseFloat(item.overtimeCost || 0);
+                                        } else if (item.status === "completed") {
+                                            const bill = parseFloat(item.totalBill || 0);
+                                            otCost = Math.max(0, parseFloat((bill - baseFee).toFixed(2)));
+                                        } else if (item.status === "checked_in" && (item.checkinTime || item.checkin_time || item.startTime)) {
+                                            const start = new Date(item.checkinTime || item.checkin_time || item.startTime);
+                                            const end = new Date();
+                                            const diffMs = end - start;
+                                            const durHours = Math.max(1, Math.ceil((diffMs / (1000 * 60 * 60)) * 2) / 2);
+                                            const estBill = parseFloat((durHours * hRate).toFixed(2));
+                                            otCost = Math.max(0, parseFloat((estBill - baseFee).toFixed(2)));
+                                        }
+
+                                        if (otCost > 0) {
+                                            return (
+                                                <View className="flex-row justify-between items-center bg-amber-50 p-2.5 rounded-lg mt-1 border border-amber-200">
+                                                    <Text className="text-sm font-bold text-amber-900">
+                                                        Overtime Charge:
+                                                    </Text>
+                                                    <Text className="text-base font-bold text-amber-700">
+                                                        +₹{otCost}
+                                                    </Text>
+                                                </View>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
+
                                     {/* Total Cost */}
                                     <View className="flex-row justify-between items-center bg-indigo-50/70 p-2.5 rounded-lg mt-1 border border-indigo-100/60">
                                         <Text className="text-sm font-bold text-indigo-950">
@@ -830,6 +866,10 @@ export default function MyBookings() {
 
                                 if (!showActions) return null;
 
+                                const isCancellable =
+                                    item.status === "booked" ||
+                                    item.status === "pending_approval";
+
                                 return (
                                     <Card.Actions className="border-t border-slate-50 px-4 py-2 bg-slate-50/50 rounded-b-xl flex-col gap-2">
                                         {Boolean(isFutureBooking) && (
@@ -854,7 +894,7 @@ export default function MyBookings() {
                                             </Button>
                                         )}
 
-                                        {Boolean(isBooked) && (
+                                        {Boolean(isCancellable) && (
                                             <Button
                                                 mode="outlined"
                                                 onPress={() =>

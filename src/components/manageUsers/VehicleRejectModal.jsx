@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { View, ScrollView } from "react-native";
-import { Modal, Text, TextInput, Button, IconButton } from "react-native-paper";
+import { View, ScrollView, Modal, TouchableWithoutFeedback } from "react-native";
+import { Text, TextInput, Button, IconButton } from "react-native-paper";
 import { MaterialDesignIcons } from "@react-native-vector-icons/material-design-icons";
 import useToast from "../../hooks/useToast";
 
@@ -51,20 +51,16 @@ export default function VehicleRejectModal({
 
     return (
         <Modal
-            visible={visible}
-            onDismiss={onDismiss}
-            contentContainerStyle={{
-                backgroundColor: "white",
-                padding: 24,
-                margin: 20,
-                borderRadius: 24,
-                maxHeight: "90%",
-                maxWidth: 480,
-                alignSelf: "center",
-                width: "92%",
-            }}
+            visible={Boolean(visible)}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={onDismiss}
         >
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <TouchableWithoutFeedback onPress={onDismiss}>
+                <View className="flex-1 bg-black/50 justify-center items-center p-4">
+                    <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+                        <View className="bg-white rounded-3xl p-5 w-[92%] max-w-[480px] max-h-[85%] shadow-2xl">
+                            <ScrollView showsVerticalScrollIndicator={false}>
                 {/* Header */}
                 <View className="flex-row items-center justify-between mb-3">
                     <View className="flex-1 mr-2">
@@ -148,7 +144,11 @@ export default function VehicleRejectModal({
                         Confirm Rejection
                     </Button>
                 </View>
-            </ScrollView>
+                            </ScrollView>
+                        </View>
+                    </TouchableWithoutFeedback>
+                </View>
+            </TouchableWithoutFeedback>
         </Modal>
     );
 }

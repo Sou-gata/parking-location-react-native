@@ -166,6 +166,12 @@ export const logoutAndClearToken = () => async (dispatch: any) => {
         console.error("Failed to unregister push device:", pushErr);
     }
     try {
+        const { resetNotificationState } = require("./notificationSlice");
+        dispatch(resetNotificationState());
+    } catch (notifErr) {
+        console.error("Failed to reset notification state:", notifErr);
+    }
+    try {
         await tokenStorage.removeToken();
     } catch (error) {
         console.error("Failed to remove token during logout:", error);

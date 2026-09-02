@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { View, ScrollView, Image, TouchableOpacity } from "react-native";
-import { Modal, Text, Divider, Button, Card, Badge, Avatar, IconButton } from "react-native-paper";
+import { View, ScrollView, Image, TouchableOpacity, Modal, TouchableWithoutFeedback } from "react-native";
+import { Text, Divider, Button, Card, Avatar, IconButton } from "react-native-paper";
 import { imageBaseURL } from "../../utils/baseURL";
 import apiService from "../../utils/apiService";
 import MediaViewerModal from "../MediaViewerModal";
@@ -53,10 +53,15 @@ export default function RequestDetailsModal({
 
     return (
         <Modal
-            visible={visible}
-            onDismiss={onDismiss}
-            className="bg-white p-6 m-4 rounded-2xl max-w-[600px] self-center w-[92%] max-h-[85%]"
+            visible={Boolean(visible)}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={onDismiss}
         >
+            <TouchableWithoutFeedback onPress={onDismiss}>
+                <View className="flex-1 bg-black/50 justify-center items-center p-4">
+                    <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+                        <View className="bg-white rounded-3xl p-5 w-[92%] max-w-[600px] max-h-[85%] shadow-2xl">
             <View className="flex-row justify-between items-center mb-3">
                 <Text className="text-xl font-bold text-slate-800 flex-1 mr-2" numberOfLines={1}>
                     {request.name}
@@ -375,6 +380,10 @@ export default function RequestDetailsModal({
                 onDismiss={() => setViewerState({ visible: false, media: null })}
                 media={viewerState.media}
             />
+                        </View>
+                    </TouchableWithoutFeedback>
+                </View>
+            </TouchableWithoutFeedback>
         </Modal>
     );
 }

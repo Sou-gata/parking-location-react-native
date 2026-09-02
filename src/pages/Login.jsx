@@ -7,6 +7,7 @@ import {
     Modal,
     Pressable,
     Image,
+    ActivityIndicator,
 } from "react-native";
 import {
     Text,
@@ -16,7 +17,6 @@ import {
     Surface,
     Avatar,
     IconButton,
-    ActivityIndicator,
 } from "react-native-paper";
 import { useDispatch } from "react-redux";
 import {
@@ -469,7 +469,6 @@ export default function Login({ navigation }) {
                                 <Button
                                     mode="contained"
                                     onPress={handleLogin}
-                                    loading={loading.login}
                                     disabled={loading.login || loading.google}
                                     style={styles.submitButton}
                                     contentStyle={{ paddingVertical: 8 }}
@@ -478,7 +477,27 @@ export default function Login({ navigation }) {
                                         fontWeight: "700",
                                     }}
                                 >
-                                    Sign In
+                                    {loading.login ? (
+                                        <View className="flex-row items-center justify-center gap-2">
+                                            <ActivityIndicator
+                                                size="small"
+                                                color="#ffffff"
+                                            />
+                                            <Text
+                                                className="text-white"
+                                                style={{
+                                                    fontSize: 18,
+                                                    fontWeight: "700",
+                                                    includeFontPadding: false,
+                                                    textAlignVertical: "center",
+                                                }}
+                                            >
+                                                Signing In
+                                            </Text>
+                                        </View>
+                                    ) : (
+                                        "Sign In"
+                                    )}
                                 </Button>
                                 <View className="gap-2">
                                     <View className="flex-row items-center">
@@ -701,7 +720,6 @@ export default function Login({ navigation }) {
                                 <Button
                                     mode="contained"
                                     onPress={handleSendForgotOtp}
-                                    loading={forgotState.sendingOtp}
                                     disabled={forgotState.sendingOtp}
                                     style={styles.submitButton}
                                     contentStyle={{ paddingVertical: 6 }}
@@ -710,7 +728,14 @@ export default function Login({ navigation }) {
                                         fontWeight: "700",
                                     }}
                                 >
-                                    Send OTP
+                                    {forgotState.sendingOtp ? (
+                                        <ActivityIndicator
+                                            size="small"
+                                            color="#ffffff"
+                                        />
+                                    ) : (
+                                        "Send OTP"
+                                    )}
                                 </Button>
                             </View>
                         )}
@@ -733,7 +758,6 @@ export default function Login({ navigation }) {
                                 <Button
                                     mode="contained"
                                     onPress={handleVerifyForgotOtp}
-                                    loading={forgotState.verifyingOtp}
                                     disabled={forgotState.verifyingOtp}
                                     style={styles.submitButton}
                                     contentStyle={{ paddingVertical: 6 }}
@@ -742,7 +766,14 @@ export default function Login({ navigation }) {
                                         fontWeight: "700",
                                     }}
                                 >
-                                    Verify OTP
+                                    {forgotState.verifyingOtp ? (
+                                        <ActivityIndicator
+                                            size="small"
+                                            color="#ffffff"
+                                        />
+                                    ) : (
+                                        "Verify OTP"
+                                    )}
                                 </Button>
                                 <TouchableOpacity
                                     onPress={handleSendForgotOtp}
@@ -799,7 +830,6 @@ export default function Login({ navigation }) {
                                 <Button
                                     mode="contained"
                                     onPress={handleResetPassword}
-                                    loading={forgotState.resetting}
                                     disabled={forgotState.resetting}
                                     style={styles.submitButton}
                                     contentStyle={{ paddingVertical: 6 }}
@@ -809,7 +839,14 @@ export default function Login({ navigation }) {
                                         fontWeight: "700",
                                     }}
                                 >
-                                    Set New Password
+                                    {forgotState.resetting ? (
+                                        <ActivityIndicator
+                                            size="small"
+                                            color="#ffffff"
+                                        />
+                                    ) : (
+                                        "Set New Password"
+                                    )}
                                 </Button>
                             </View>
                         )}

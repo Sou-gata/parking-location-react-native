@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { View, ScrollView } from "react-native";
+import { View, ScrollView, Modal, TouchableWithoutFeedback } from "react-native";
 import {
     Text,
     Button,
     TextInput,
     Avatar,
-    Modal,
-    Portal,
 } from "react-native-paper";
 import Chip from "../Chip";
 import { useDispatch } from "react-redux";
@@ -179,20 +177,16 @@ export default function EditCapacityModal({
     };
 
     return (
-        <Portal>
-            <Modal
-                visible={visible}
-                onDismiss={onDismiss}
-                contentContainerStyle={{
-                    backgroundColor: "white",
-                    padding: 24,
-                    marginHorizontal: 20,
-                    borderRadius: 16,
-                    maxWidth: 500,
-                    width: "90%",
-                    alignSelf: "center",
-                }}
-            >
+        <Modal
+            visible={Boolean(visible)}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={onDismiss}
+        >
+            <TouchableWithoutFeedback onPress={onDismiss}>
+                <View className="flex-1 bg-black/50 justify-center items-center p-4">
+                    <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+                        <View className="bg-white rounded-3xl p-5 w-[92%] max-w-[500px] shadow-2xl">
             <Text className="text-lg font-bold text-slate-800 mb-4">
                 {isAddingNew ? "Add Vehicle Capacity" : "Modify Capacity"}
             </Text>
@@ -313,7 +307,10 @@ export default function EditCapacityModal({
                     Save
                 </Button>
             </View>
+                        </View>
+                    </TouchableWithoutFeedback>
+                </View>
+            </TouchableWithoutFeedback>
         </Modal>
-        </Portal>
     );
 }

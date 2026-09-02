@@ -5,11 +5,11 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     StyleSheet,
+    Modal,
+    TouchableWithoutFeedback,
 } from "react-native";
 import {
     Text,
-    Modal,
-    Portal,
     Button,
     TextInput,
     Surface,
@@ -172,12 +172,16 @@ export default function SuperAdminRegisterComplaintModal({
     };
 
     return (
-        <Portal>
-            <Modal
-                visible={visible}
-                onDismiss={onClose}
-                contentContainerStyle={styles.modalContainer}
-            >
+        <Modal
+            visible={Boolean(visible)}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={onClose}
+        >
+            <TouchableWithoutFeedback onPress={onClose}>
+                <View className="flex-1 bg-black/50 justify-center items-center p-4">
+                    <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+                        <View style={{ width: "92%", maxWidth: 500 }}>
                 <Surface style={styles.surface}>
                     <View style={styles.header}>
                         <View style={{ flexDirection: "row", alignItems: "center" }}>
@@ -391,8 +395,11 @@ export default function SuperAdminRegisterComplaintModal({
                         </Button>
                     </View>
                 </Surface>
-            </Modal>
-        </Portal>
+                        </View>
+                    </TouchableWithoutFeedback>
+                </View>
+            </TouchableWithoutFeedback>
+        </Modal>
     );
 }
 

@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { View } from "react-native";
+import { View, Modal, TouchableWithoutFeedback } from "react-native";
 import {
     Text,
-    Modal,
-    Portal,
     TextInput,
     Button,
     IconButton,
@@ -91,18 +89,16 @@ export default function RefundBookingModal({
     };
 
     return (
-        <Portal>
-            <Modal
-                visible={visible}
-                onDismiss={onClose}
-                contentContainerStyle={{
-                    backgroundColor: "white",
-                    marginHorizontal: 16,
-                    borderRadius: 24,
-                    padding: 20,
-                    elevation: 6,
-                }}
-            >
+        <Modal
+            visible={Boolean(visible)}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={onClose}
+        >
+            <TouchableWithoutFeedback onPress={onClose}>
+                <View className="flex-1 bg-black/50 justify-center items-center p-4">
+                    <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+                        <View className="bg-white rounded-3xl p-5 w-[92%] max-w-[480px] shadow-2xl">
                 {/* Header */}
                 <View className="flex-row items-start justify-between mb-3">
                     <View className="flex-1 pr-2">
@@ -236,7 +232,10 @@ export default function RefundBookingModal({
                         Issue Refund
                     </Button>
                 </View>
-            </Modal>
-        </Portal>
+                        </View>
+                    </TouchableWithoutFeedback>
+                </View>
+            </TouchableWithoutFeedback>
+        </Modal>
     );
 }

@@ -6,10 +6,16 @@ import { showToast } from "../store/slices/toastSlice";
 import apiService from "../utils/apiService";
 import notificationService from "../utils/notificationService";
 
+import {
+    fetchNotifications,
+    fetchUnreadCount,
+    addNotification,
+} from "../store/slices/notificationSlice";
+
 const AuthInitializer: React.FC<{ children: React.ReactNode }> = ({
     children,
 }) => {
-    const dispatch = useDispatch();
+    const dispatch = useDispatch<any>();
     const isLoggedIn = useSelector((state: any) => state.user.isLoggedIn);
 
     useEffect(() => {
@@ -44,14 +50,46 @@ const AuthInitializer: React.FC<{ children: React.ReactNode }> = ({
         initAuth();
     }, [dispatch]);
 
-    // Initialize Push Notifications when logged in
+    // Initialize Notifications and fetch past history when logged in
     useEffect(() => {
         if (isLoggedIn) {
+            // 1. Fetch initial notifications and unread badge count from backend
+            dispatch(fetchNotifications({ page: 1, limit: 20 }));
+            dispatch(fetchUnreadCount());
+
+            // 2. Initialize Push Notifications & Realtime Listeners
             notificationService.initialize(
                 (remoteMessage: any) => {
                     const title =
-                        remoteMessage.notification?.title || "New Notification";
-                    const message = remoteMessage.notification?.body || "";
+                        remoteMessage.notification?.title ||
+                        remoteMessage.data?.title ||
+                        "New Notification";
+                    const message =
+                        remoteMessage.notification?.body ||
+                        remoteMessage.data?.message ||
+                        "";
+                    const type = remoteMessage.data?.type || "general";
+                    const notifId =
+                        remoteMessage.data?.notification_id ||
+                        remoteMessage.messageId ||
+                        `notif_${Date.now()}`;
+
+                    // Add to Redux store in real-time if not promo
+                    if (type !== "promo") {
+                        dispatch(
+                            addNotification({
+                                id: notifId,
+                                type,
+                                title,
+                                message,
+                                data: remoteMessage.data,
+                                isRead: false,
+                                createdAt: new Date().toISOString(),
+                            })
+                        );
+                    }
+
+                    // Show in-app Toast alert
                     dispatch(
                         showToast({
                             title,
@@ -61,7 +99,9 @@ const AuthInitializer: React.FC<{ children: React.ReactNode }> = ({
                         })
                     );
                 },
-                (data: any) => {}
+                (data: any) => {
+                    console.log("[AuthInitializer] Notification clicked:", data);
+                }
             );
         }
     }, [isLoggedIn, dispatch]);

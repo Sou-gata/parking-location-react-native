@@ -14,6 +14,8 @@ import Wallet from "../pages/Wallet";
 import SuperAdminSettings from "../pages/SuperAdminSettings";
 import WorkingHours from "../pages/WorkingHours";
 import ManageComplaints from "../pages/ManageComplaints";
+import NotificationScreen from "../pages/NotificationScreen";
+import About from "../pages/About";
 
 const Stack = createNativeStackNavigator();
 
@@ -111,6 +113,22 @@ const Screens = () => {
                             headerBackTitle: "Back",
                         }}
                     />
+                    <Stack.Screen
+                        name="NotificationScreen"
+                        component={NotificationScreen}
+                        options={{
+                            title: "Notifications",
+                            headerBackTitle: "Back",
+                        }}
+                    />
+                    <Stack.Screen
+                        name="About"
+                        component={About}
+                        options={{
+                            title: "About App",
+                            headerBackTitle: "Back",
+                        }}
+                    />
                 </>
             ) : (
                 <>
@@ -135,6 +153,14 @@ const Screens = () => {
                             headerShown: false,
                             headerBackVisible: false,
                             gestureEnabled: false,
+                        }}
+                    />
+                    <Stack.Screen
+                        name="About"
+                        component={About}
+                        options={{
+                            title: "About App",
+                            headerBackTitle: "Back",
                         }}
                     />
                 </>

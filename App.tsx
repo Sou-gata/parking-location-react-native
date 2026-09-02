@@ -8,7 +8,7 @@ import Screens from "./src/utils/Screens";
 import "./src/utils/paper-interop";
 import "./global.css";
 
-import { PaperProvider, MD3LightTheme } from "react-native-paper";
+import { PaperProvider, Portal, MD3LightTheme } from "react-native-paper";
 import Toast from "./src/components/Toast";
 import AuthInitializer from "./src/components/AuthInitializer";
 
@@ -24,10 +24,10 @@ const theme = {
 function App() {
     return (
         <ReduxProvider store={store}>
-            <NavigationContainer>
-                <PaperProvider theme={theme}>
-                    <View style={styles.container}>
-                        <SafeAreaProvider>
+            <PaperProvider theme={theme}>
+                <SafeAreaProvider>
+                    <NavigationContainer>
+                        <View style={styles.container}>
                             <AuthInitializer>
                                 <StatusBar
                                     backgroundColor="#4338ca"
@@ -36,10 +36,10 @@ function App() {
                                 <Screens />
                                 <Toast />
                             </AuthInitializer>
-                        </SafeAreaProvider>
-                    </View>
-                </PaperProvider>
-            </NavigationContainer>
+                        </View>
+                    </NavigationContainer>
+                </SafeAreaProvider>
+            </PaperProvider>
         </ReduxProvider>
     );
 }

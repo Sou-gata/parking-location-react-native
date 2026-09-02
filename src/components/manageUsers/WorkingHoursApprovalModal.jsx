@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { View, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
-import { Text, Surface, Portal, Modal, TextInput, Button } from "react-native-paper";
+import { View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TouchableWithoutFeedback } from "react-native";
+import { Text, Surface, TextInput, Button } from "react-native-paper";
 import { MaterialDesignIcons } from "@react-native-vector-icons/material-design-icons";
 import useToast from "../../hooks/useToast";
 import apiService from "../../utils/apiService";
@@ -92,19 +92,17 @@ export default function WorkingHoursApprovalModal({
     const DAYS_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
     return (
-        <Portal>
-            <Modal
-                visible={visible}
-                onDismiss={onClose}
-                contentContainerStyle={{
-                    backgroundColor: "white",
-                    padding: 20,
-                    margin: 20,
-                    borderRadius: 24,
-                    maxHeight: "85%",
-                }}
-            >
-                <ScrollView showsVerticalScrollIndicator={false}>
+        <Modal
+            visible={Boolean(visible)}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={onClose}
+        >
+            <TouchableWithoutFeedback onPress={onClose}>
+                <View className="flex-1 bg-black/50 justify-center items-center p-4">
+                    <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+                        <View className="bg-white rounded-3xl p-5 w-[92%] max-w-[500px] max-h-[85%] shadow-2xl">
+                            <ScrollView showsVerticalScrollIndicator={false}>
                     {/* Header */}
                     <View className="flex-row justify-between items-center mb-3">
                         <View className="flex-1 mr-2">
@@ -272,8 +270,11 @@ export default function WorkingHoursApprovalModal({
                             </>
                         )}
                     </View>
-                </ScrollView>
-            </Modal>
-        </Portal>
+                            </ScrollView>
+                        </View>
+                    </TouchableWithoutFeedback>
+                </View>
+            </TouchableWithoutFeedback>
+        </Modal>
     );
 }

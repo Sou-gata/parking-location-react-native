@@ -44,7 +44,6 @@ export const ROLE_PERMISSIONS = {
 
     // Agency Admin manages their organization's lots, users, checkins, complaints, and payouts
     [ROLES.AGENCY_ADMIN]: [
-        PERMISSIONS.VIEW_MAP,
         PERMISSIONS.MANAGE_LOCATIONS,
         PERMISSIONS.MANAGE_USERS,
         PERMISSIONS.MANAGE_BOOKINGS,

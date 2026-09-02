@@ -2098,12 +2098,22 @@ export default function Profile({ navigation }) {
                         </Card>
                     )}
 
-                {/* 9. Sign Out Action Button */}
+                {/* 9. About App & Sign Out Action Buttons */}
+                <Button
+                    mode="outlined"
+                    onPress={() => navigation.navigate("About")}
+                    style={{ borderColor: "#4338ca", borderRadius: 12, marginBottom: 10, marginTop: 8 }}
+                    textColor="#4338ca"
+                    icon="information-outline"
+                >
+                    About App & Check Updates
+                </Button>
+
                 <Button
                     mode="contained"
                     onPress={handleSignOut}
                     buttonColor="#dc2626"
-                    className="rounded-xl py-1.5 mt-2"
+                    className="rounded-xl py-1.5"
                     labelStyle={{
                         color: "white",
                         fontSize: 15,

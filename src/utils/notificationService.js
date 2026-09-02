@@ -71,10 +71,10 @@ class NotificationService {
             const token = await getToken(messaging);
             if (token) {
                 this.currentToken = token;
-                console.log(
-                    "[NotificationService] Device FCM Token retrieved:",
-                    token
-                );
+                // console.log(
+                //     "[NotificationService] Device FCM Token retrieved:",
+                //     token
+                // );
             }
             return token;
         } catch (error) {
@@ -116,9 +116,9 @@ class NotificationService {
             );
 
             if (response && response.success) {
-                console.log(
-                    "[NotificationService] Device successfully registered with backend."
-                );
+                // console.log(
+                //     "[NotificationService] Device successfully registered with backend."
+                // );
                 return true;
             } else {
                 console.warn(

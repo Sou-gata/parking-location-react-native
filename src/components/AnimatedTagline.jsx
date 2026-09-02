@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View, Animated, StyleSheet, Easing, Text } from "react-native";
 
-const BRAND = "ParkVarse";
+const BRAND = "Pointo Park";
 
 export default function AnimatedTagline() {
     // ── Animation refs ──────────────────────────────────────────────────────
@@ -32,7 +32,7 @@ export default function AnimatedTagline() {
     const [brandDone, setBrandDone] = useState(false);
     const [cursorVisible, setCursorVisible] = useState(true);
 
-    // ── Sparkle float loop ──────────────────────────────────────────────────
+    // ── Sparkle float loop ──
     const startSparkle = (opAnim, yAnim, delay) => {
         const loop = () => {
             opAnim.setValue(0);
@@ -256,7 +256,7 @@ export default function AnimatedTagline() {
         };
     }, []);
 
-    // ── Derived interpolations ──────────────────────────────────────────────
+    // ── Derived interpolations ──
     const p1Style = {
         opacity: prefix1Anim,
         transform: [

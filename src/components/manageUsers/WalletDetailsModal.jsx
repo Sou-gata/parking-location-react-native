@@ -1,9 +1,7 @@
 import React from "react";
-import { View, Image, ScrollView, Dimensions } from "react-native";
-import { Modal, Text, Button, Card, Divider, Avatar, IconButton } from "react-native-paper";
+import { View, Image, ScrollView, Modal, TouchableWithoutFeedback } from "react-native";
+import { Text, Button, Card, Divider, Avatar, IconButton } from "react-native-paper";
 import { imageBaseURL } from "../../utils/baseURL";
-
-const { height } = Dimensions.get("window");
 
 export default function WalletDetailsModal({
     visible,
@@ -25,17 +23,16 @@ export default function WalletDetailsModal({
 
     return (
         <Modal
-            visible={visible}
-            onDismiss={onDismiss}
-            contentContainerStyle={{
-                backgroundColor: "white",
-                padding: 24,
-                margin: 20,
-                borderRadius: 24,
-                maxHeight: "90%",
-            }}
+            visible={Boolean(visible)}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={onDismiss}
         >
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <TouchableWithoutFeedback onPress={onDismiss}>
+                <View className="flex-1 bg-black/50 justify-center items-center p-4">
+                    <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+                        <View className="bg-white rounded-3xl p-5 w-[92%] max-w-[500px] max-h-[85%] shadow-2xl">
+                            <ScrollView showsVerticalScrollIndicator={false}>
                 {/* Header */}
                 <View className="flex-row items-center justify-between mb-4">
                     <View>
@@ -148,7 +145,11 @@ export default function WalletDetailsModal({
                         Approve
                     </Button>
                 </View>
-            </ScrollView>
+                            </ScrollView>
+                        </View>
+                    </TouchableWithoutFeedback>
+                </View>
+            </TouchableWithoutFeedback>
         </Modal>
     );
 }

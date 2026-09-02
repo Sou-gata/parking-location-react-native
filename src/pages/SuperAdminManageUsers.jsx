@@ -4,9 +4,9 @@ import {
     Text,
     TextInput,
     Portal,
+    Modal,
     IconButton,
     Surface,
-    Modal,
     Button,
 } from "react-native-paper";
 import Chip from "../components/Chip";

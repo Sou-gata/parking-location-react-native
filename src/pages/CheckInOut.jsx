@@ -1,5 +1,14 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, FlatList, Pressable, ActivityIndicator } from "react-native";
+import {
+    View,
+    FlatList,
+    Pressable,
+    ActivityIndicator,
+    ScrollView,
+    TouchableOpacity,
+    Modal as RNModal,
+    TouchableWithoutFeedback,
+} from "react-native";
 import {
     Text,
     Card,
@@ -7,7 +16,6 @@ import {
     TextInput,
     Avatar,
     Divider,
-    SegmentedButtons,
     Portal,
     Modal,
 } from "react-native-paper";
@@ -98,7 +106,37 @@ const mapAgencyFromApi = (a) => {
     };
 };
 
-export default function CheckInOut() {
+const mapBookingFromApi = (b) => {
+    if (!b) return b;
+    return {
+        ...b,
+        id: b.id || b.booking_id,
+        bookingCode: b.bookingCode || b.booking_code || "",
+        userId: b.userId ?? b.user_id ?? null,
+        userName: b.userName || b.user_name || "",
+        userPhone: b.userPhone || b.user_phone || b.phone_number || "",
+        agencyId: b.agencyId || b.agency_id || b.org_id || "",
+        agencyName: b.agencyName || b.agency_name || b.org_name || "",
+        vehicleType: b.vehicleType || b.vehicle_type || "car",
+        vehicleNumber: b.vehicleNumber || b.vehicle_number || "",
+        status: b.status || "booked",
+        startTime: b.startTime || b.start_time || b.check_in_time || null,
+        endTime: b.endTime || b.end_time || b.check_out_time || null,
+        bookingStartTime: b.bookingStartTime || b.booking_start_time || null,
+        bookingEndTime: b.bookingEndTime || b.booking_end_time || null,
+        bookedDuration: b.bookedDuration ?? b.booked_duration ?? 0,
+        hourlyRate: parseFloat(b.hourlyRate ?? b.hourly_rate ?? 0),
+        baseCost: b.baseCost ?? b.base_cost ?? parseFloat(((parseFloat(b.bookedDuration ?? b.booked_duration ?? 0)) * (parseFloat(b.hourlyRate ?? b.hourly_rate ?? 0))).toFixed(2)),
+        overtimeCost: b.overtimeCost ?? b.overtime_cost ?? (b.status === "completed" ? Math.max(0, parseFloat(((parseFloat(b.totalBill ?? b.total_bill ?? 0)) - ((parseFloat(b.bookedDuration ?? b.booked_duration ?? 0)) * (parseFloat(b.hourlyRate ?? b.hourly_rate ?? 0)))).toFixed(2))) : 0),
+        overtimeDuration: b.overtimeDuration ?? b.overtime_duration ?? 0,
+        totalBill: parseFloat(b.totalBill ?? b.total_bill ?? 0),
+        paymentStatus: b.paymentStatus || b.payment_status || "pending",
+        otp: b.otp || null,
+        refundAmount: b.refundAmount ?? b.refund_amount ?? null,
+    };
+};
+
+export default function CheckInOut({ navigation, route }) {
     const dispatch = useDispatch();
     const toast = useToast();
     const { user: currentUser, hasPermission } = useRolePermissions();
@@ -122,11 +160,13 @@ export default function CheckInOut() {
         ) || agencies[0]; // fallback to first agency for super admin testing
 
     // Filter bookings belonging to this agency
-    const myAgencyBookings = bookings.filter(
-        (b) =>
-            String(b.agencyId) === String(myAgency?.id) ||
-            String(b.agencyId) === String(userAgencyId)
-    );
+    const myAgencyBookings = (Array.isArray(bookings) ? bookings : [])
+        .filter(Boolean)
+        .filter(
+            (b) =>
+                String(b.agencyId) === String(myAgency?.id) ||
+                String(b.agencyId) === String(userAgencyId)
+        );
 
     const [tab, setTab] = useState("checked_in"); // checked_in (Parked), booked (Reserved), completed
 
@@ -517,11 +557,18 @@ export default function CheckInOut() {
                     `bookings/agency/${resolvedAgencyId}`
                 );
                 if (bookingsRes && bookingsRes.success) {
-                    dispatch(setBookings(bookingsRes.data));
+                    const rawData = Array.isArray(bookingsRes.data)
+                        ? bookingsRes.data
+                        : bookingsRes.data?.items || [];
+                    dispatch(setBookings(rawData.map(mapBookingFromApi)));
                 }
                 try {
                     const compRes = await apiService.get("complaints/agency");
-                    if (compRes && compRes.success && Array.isArray(compRes.data)) {
+                    if (
+                        compRes &&
+                        compRes.success &&
+                        Array.isArray(compRes.data)
+                    ) {
                         const agencyComplaintsMap = {};
                         const agencyComplaintIds = [];
                         compRes.data.forEach((c) => {
@@ -583,9 +630,10 @@ export default function CheckInOut() {
                 );
 
                 if (res && res.success) {
-                    const items =
+                    const rawItems =
                         res.data?.items ||
                         (Array.isArray(res.data) ? res.data : []);
+                    const items = rawItems.map(mapBookingFromApi);
                     const pagination = res.data?.pagination || {};
 
                     setCompletedState((prev) => {
@@ -684,6 +732,10 @@ export default function CheckInOut() {
     // Checkout calculated variables (derived dynamically)
     let actualDuration = 0;
     let calculatedBill = 0;
+    let modalBookedDuration = 0;
+    let modalBaseCost = 0;
+    let modalOvertimeCost = 0;
+    let modalOvertimeDuration = 0;
     if (selectedBooking) {
         const start = new Date(selectedBooking.startTime);
         const end = new Date();
@@ -694,6 +746,12 @@ export default function CheckInOut() {
             Math.ceil((diffMs / (1000 * 60 * 60)) * 2) / 2
         );
         calculatedBill = actualDuration * selectedBooking.hourlyRate;
+        modalBookedDuration = parseFloat(selectedBooking.bookedDuration || 0);
+        modalBaseCost = parseFloat((modalBookedDuration * selectedBooking.hourlyRate).toFixed(2));
+        if (calculatedBill > modalBaseCost && modalBookedDuration > 0) {
+            modalOvertimeCost = parseFloat((calculatedBill - modalBaseCost).toFixed(2));
+            modalOvertimeDuration = Math.max(0, parseFloat((actualDuration - modalBookedDuration).toFixed(2)));
+        }
     }
 
     const updateWalkinForm = (key, value) => {
@@ -713,20 +771,32 @@ export default function CheckInOut() {
     );
 
     const handleSearch = (booking) => {
-        const query = searchQuery.toLowerCase().trim();
+        const query = (searchQuery || "").toLowerCase().trim();
         if (!query) return true;
         return (
-            booking.bookingCode.toLowerCase().includes(query) ||
-            booking.vehicleNumber.toLowerCase().includes(query) ||
-            booking.userName.toLowerCase().includes(query)
+            (booking?.bookingCode || booking?.booking_code || "")
+                .toLowerCase()
+                .includes(query) ||
+            (booking?.vehicleNumber || booking?.vehicle_number || "")
+                .toLowerCase()
+                .includes(query) ||
+            (booking?.userName || booking?.user_name || "")
+                .toLowerCase()
+                .includes(query)
         );
     };
 
     const filteredBookings =
         tab === "completed"
-            ? completedList
-            : myAgencyBookings
-                  .filter((b) => b.status === tab)
+            ? (completedList || []).filter(Boolean)
+            : (myAgencyBookings || [])
+                  .filter(Boolean)
+                  .filter((b) =>
+                      tab === "pending_approval"
+                          ? b.status === "pending_approval" ||
+                            b.status === "pending"
+                          : b.status === tab
+                  )
                   .filter(handleSearch);
 
     const handleCheckIn = async (code, otp = null) => {
@@ -997,43 +1067,104 @@ export default function CheckInOut() {
                 </Button>
             </View>
 
-            {/* Tab Selector */}
-            <View className="px-4 py-3">
-                <SegmentedButtons
-                    value={tab}
-                    onValueChange={setTab}
-                    buttons={[
+            {/* Tab Selector matching ManageParking.jsx pattern */}
+            <View className="flex-row bg-white border-b border-slate-200">
+                <Pressable
+                    className={`flex-1 py-3.5 items-center justify-center border-b-2 ${
+                        tab === "pending_approval"
+                            ? "border-indigo-600"
+                            : "border-transparent"
+                    }`}
+                    onPress={() => setTab("pending_approval")}
+                >
+                    <Text
+                        className={`text-xs font-bold ${
+                            tab === "pending_approval"
+                                ? "text-indigo-600"
+                                : "text-slate-500"
+                        }`}
+                    >
+                        Approvals (
                         {
-                            value: "pending_approval",
-                            label: `Approvals (${
-                                myAgencyBookings.filter(
-                                    (b) =>
-                                        b.status === "pending_approval" ||
-                                        b.status === "pending"
-                                ).length
-                            })`,
-                        },
+                            myAgencyBookings.filter(
+                                (b) =>
+                                    b.status === "pending_approval" ||
+                                    b.status === "pending"
+                            ).length
+                        }
+                        )
+                    </Text>
+                </Pressable>
+
+                <Pressable
+                    className={`flex-1 py-3.5 items-center justify-center border-b-2 ${
+                        tab === "booked"
+                            ? "border-indigo-600"
+                            : "border-transparent"
+                    }`}
+                    onPress={() => setTab("booked")}
+                >
+                    <Text
+                        className={`text-xs font-bold ${
+                            tab === "booked"
+                                ? "text-indigo-600"
+                                : "text-slate-500"
+                        }`}
+                    >
+                        Reserved (
                         {
-                            value: "checked_in",
-                            label: `Parked (${activeBookings.length})`,
-                        },
-                        {
-                            value: "booked",
-                            label: `Reserved (${
-                                myAgencyBookings.filter(
-                                    (b) => b.status === "booked"
-                                ).length
-                            })`,
-                        },
-                        {
-                            value: "completed",
-                            label: `Completed (${
-                                totalCompletedCount || completedBookings.length
-                            })`,
-                        },
-                    ]}
-                    theme={{ colors: { primary: "#4338ca" } }}
-                />
+                            myAgencyBookings.filter(
+                                (b) => b.status === "booked"
+                            ).length
+                        }
+                        )
+                    </Text>
+                </Pressable>
+
+                <Pressable
+                    className={`flex-1 py-3.5 items-center justify-center border-b-2 ${
+                        tab === "checked_in"
+                            ? "border-indigo-600"
+                            : "border-transparent"
+                    }`}
+                    onPress={() => setTab("checked_in")}
+                >
+                    <Text
+                        className={`text-xs font-bold ${
+                            tab === "checked_in"
+                                ? "text-indigo-600"
+                                : "text-slate-500"
+                        }`}
+                    >
+                        Parked ({activeBookings.length})
+                    </Text>
+                </Pressable>
+
+                <Pressable
+                    className={`flex-1 py-3.5 items-center justify-center border-b-2 ${
+                        tab === "completed"
+                            ? "border-indigo-600"
+                            : "border-transparent"
+                    }`}
+                    onPress={() => setTab("completed")}
+                >
+                    <Text
+                        className={`text-xs font-bold ${
+                            tab === "completed"
+                                ? "text-indigo-600"
+                                : "text-slate-500"
+                        }`}
+                    >
+                        Completed (
+                        {totalCompletedCount ??
+                            completedList?.length ??
+                            myAgencyBookings.filter(
+                                (b) => b.status === "completed"
+                            ).length ??
+                            0}
+                        )
+                    </Text>
+                </Pressable>
             </View>
 
             {/* Bulk Action Header for Pending Approvals */}
@@ -1104,7 +1235,13 @@ export default function CheckInOut() {
                                     fontWeight: "700",
                                     color: "white",
                                 }}
-                            >{String("                                 Approve (" + (selectedPendingIds.length) + ")                             ")}</Button>
+                            >
+                                {String(
+                                    "                                 Approve (" +
+                                        selectedPendingIds.length +
+                                        ")                             "
+                                )}
+                            </Button>
                             <Button
                                 compact
                                 mode="contained"
@@ -1117,7 +1254,13 @@ export default function CheckInOut() {
                                     fontWeight: "700",
                                     color: "white",
                                 }}
-                            >{String("                                 Reject (" + (selectedPendingIds.length) + ")                             ")}</Button>
+                            >
+                                {String(
+                                    "                                 Reject (" +
+                                        selectedPendingIds.length +
+                                        ")                             "
+                                )}
+                            </Button>
                         </View>
                     )}
                 </View>
@@ -1126,7 +1269,9 @@ export default function CheckInOut() {
             {/* Bookings List */}
             <FlatList
                 data={filteredBookings}
-                keyExtractor={(item) => String(item.id)}
+                keyExtractor={(item, index) =>
+                    String(item?.id ?? item?.bookingCode ?? index)
+                }
                 contentContainerStyle={{
                     paddingHorizontal: 16,
                     paddingBottom: 40,
@@ -1156,7 +1301,7 @@ export default function CheckInOut() {
                     ) : null
                 }
                 renderItem={({ item }) => (
-                    <Card className="mb-4 bg-white border border-slate-100 rounded-xl elevation-1">
+                    <Card className="mt-4 bg-white border border-slate-100 rounded-xl elevation-1">
                         <Card.Content className="pb-3">
                             <View className="flex-row items-center justify-between">
                                 <View className="flex-row items-center flex-1 pr-2">
@@ -1270,7 +1415,9 @@ export default function CheckInOut() {
                                         <Avatar.Icon
                                             size={18}
                                             icon="account-circle-outline"
-                                            style={{ backgroundColor: "transparent" }}
+                                            style={{
+                                                backgroundColor: "transparent",
+                                            }}
                                             color="#4338ca"
                                         />
                                         <Text className="text-sm font-bold text-indigo-700 underline ml-1">
@@ -1288,8 +1435,7 @@ export default function CheckInOut() {
                                     <Text className="font-semibold">Rate:</Text>{" "}
                                     ₹{item.hourlyRate}/hr
                                 </Text>
-                                {item.status === "pending_approval" ||
-                                item.status === "booked" ? (
+                                {Boolean(item.bookingStartTime) && (
                                     <>
                                         <Text className="text-sm text-slate-600">
                                             <Text className="font-semibold">
@@ -1308,7 +1454,10 @@ export default function CheckInOut() {
                                             ({item.bookedDuration} Hrs)
                                         </Text>
                                     </>
-                                ) : (
+                                )}
+                                {(item.status === "checked_in" ||
+                                    item.status === "completed" ||
+                                    Boolean(item.startTime)) && (
                                     <Text className="text-sm text-slate-600">
                                         <Text className="font-semibold">
                                             Checked In At:
@@ -1325,6 +1474,29 @@ export default function CheckInOut() {
                                             </Text>{" "}
                                             {formatDateTime(item.endTime)}
                                         </Text>
+                                        {(() => {
+                                            const itemBookedDur = parseFloat(item.bookedDuration || item.booked_duration || 0);
+                                            const itemHourlyRate = parseFloat(item.hourlyRate || item.hourly_rate || 0);
+                                            const itemTotalBill = parseFloat(item.totalBill || item.total_bill || 0);
+                                            const itemBaseCost = parseFloat((itemBookedDur * itemHourlyRate).toFixed(2));
+                                            const itemOvertimeCost = item.overtimeCost !== undefined && item.overtimeCost !== null
+                                                ? parseFloat(item.overtimeCost || 0)
+                                                : Math.max(0, parseFloat((itemTotalBill - itemBaseCost).toFixed(2)));
+                                            
+                                            if (itemOvertimeCost > 0) {
+                                                return (
+                                                    <View className="flex-row justify-between items-center mt-1 p-2 bg-amber-50 rounded-lg border border-amber-200">
+                                                        <Text className="text-sm font-bold text-amber-900">
+                                                            Overtime Charge:
+                                                        </Text>
+                                                        <Text className="text-sm font-bold text-amber-700">
+                                                            +₹{itemOvertimeCost}
+                                                        </Text>
+                                                    </View>
+                                                );
+                                            }
+                                            return null;
+                                        })()}
                                         <View className="flex-row justify-between mt-1 p-2 bg-emerald-50 rounded-lg border border-emerald-100">
                                             <Text className="text-sm font-bold text-emerald-800">
                                                 Income Collected:
@@ -1708,164 +1880,232 @@ export default function CheckInOut() {
                     </View>
                 </Modal>
 
-                {/* 2. Checkout Billing Modal */}
-                <Modal
+                {/* Checkout Billing Modal */}
+                <RNModal
                     visible={!!selectedBooking}
-                    onDismiss={() => setSelectedBooking(null)}
-                    className="bg-white p-6 m-5 rounded-2xl max-w-[450px] self-center w-[90%]"
+                    transparent={true}
+                    animationType="fade"
+                    onRequestClose={() => setSelectedBooking(null)}
+                    statusBarTranslucent={true}
                 >
-                    <Text className="text-lg font-bold text-slate-800 mb-2">
-                        Calculate Invoice Bill
-                    </Text>
-                    <Text className="text-xs text-slate-400 mb-4">
-                        Booking code: {selectedBooking?.bookingCode}
-                    </Text>
-
-                    <Card
-                        className="bg-slate-50 border border-slate-100 rounded-xl mb-4"
-                        elevation={0}
-                    >
-                        <Card.Content className="py-3 gap-2">
-                            <View className="flex-row justify-between">
-                                <Text className="text-slate-500 text-sm">
-                                    Vehicle Number:
-                                </Text>
-                                <Text className="font-bold text-slate-800 text-sm">
-                                    {selectedBooking?.vehicleNumber}
-                                </Text>
-                            </View>
-                            <View className="flex-row justify-between">
-                                <Text className="text-slate-500 text-sm">
-                                    Hourly Rate:
-                                </Text>
-                                <Text className="font-semibold text-slate-800 text-sm">
-                                    ₹{selectedBooking?.hourlyRate}/hr
-                                </Text>
-                            </View>
-                            <View className="flex-row justify-between">
-                                <Text className="text-slate-500 text-sm">
-                                    Time Checked-In:
-                                </Text>
-                                <Text className="font-medium text-slate-800 text-sm">
-                                    {formatDateTime(selectedBooking?.startTime)}
-                                </Text>
-                            </View>
-                            <View className="flex-row justify-between">
-                                <Text className="text-slate-500 text-sm">
-                                    Time Checked-Out:
-                                </Text>
-                                <Text className="font-medium text-slate-800 text-sm">
-                                    {formatDateTime(new Date().toISOString())}
-                                </Text>
-                            </View>
-                        </Card.Content>
-                    </Card>
-
-                    <View className="flex-row justify-between items-center py-2 px-1">
-                        <Text className="font-semibold text-slate-600">
-                            Actual Duration Paid:
-                        </Text>
-                        <Text className="font-bold text-slate-800 text-base">
-                            {actualDuration} Hrs
-                        </Text>
-                    </View>
-
-                    <Divider className="my-2 bg-slate-100" />
-
-                    <View className="flex-row justify-between items-center py-2 px-1 mb-4">
-                        <Text className="font-bold text-slate-800 text-lg">
-                            Total Bill Amount:
-                        </Text>
-                        <Text className="font-bold text-indigo-700 text-2xl">
-                            ₹{calculatedBill}
-                        </Text>
-                    </View>
-
-                    <Button
-                        mode="contained"
-                        onPress={handleConfirmCheckout}
-                        buttonColor="#16a34a"
-                        contentStyle={{ height: 48 }}
-                        className="rounded-xl justify-center"
-                        labelStyle={{
-                            color: "white",
-                            fontSize: 16,
-                            fontWeight: "bold",
-                        }}
-                    >
-                        Collect Payment & Print Invoice
-                    </Button>
-
-                    <Button
-                        mode="text"
+                    <TouchableWithoutFeedback
                         onPress={() => setSelectedBooking(null)}
-                        textColor="#ef4444"
-                        className="mt-2"
                     >
-                        Cancel Checkout
-                    </Button>
-                </Modal>
+                        <View className="flex-1 bg-black/50 justify-center items-center p-4">
+                            <TouchableWithoutFeedback
+                                onPress={(e) => e.stopPropagation()}
+                            >
+                                <View className="bg-white p-6 rounded-2xl max-w-[450px] w-[90%] shadow-2xl">
+                                    <Text className="text-lg font-bold text-slate-800 mb-2">
+                                        Calculate Invoice Bill
+                                    </Text>
+                                    <Text className="text-xs text-slate-400 mb-4">
+                                        Booking code:{" "}
+                                        {selectedBooking?.bookingCode}
+                                    </Text>
+
+                                    <Card
+                                        className="bg-slate-50 border border-slate-100 rounded-xl mb-4"
+                                        elevation={0}
+                                    >
+                                        <Card.Content className="py-3 gap-2">
+                                            <View className="flex-row justify-between">
+                                                <Text className="text-slate-500 text-sm">
+                                                    Vehicle Number:
+                                                </Text>
+                                                <Text className="font-bold text-slate-800 text-sm">
+                                                    {
+                                                        selectedBooking?.vehicleNumber
+                                                    }
+                                                </Text>
+                                            </View>
+                                            <View className="flex-row justify-between">
+                                                <Text className="text-slate-500 text-sm">
+                                                    Hourly Rate:
+                                                </Text>
+                                                <Text className="font-semibold text-slate-800 text-sm">
+                                                    ₹
+                                                    {
+                                                        selectedBooking?.hourlyRate
+                                                    }
+                                                    /hr
+                                                </Text>
+                                            </View>
+                                            <View className="flex-row justify-between">
+                                                <Text className="text-slate-500 text-sm">
+                                                    Time Checked-In:
+                                                </Text>
+                                                <Text className="font-medium text-slate-800 text-sm">
+                                                    {formatDateTime(
+                                                        selectedBooking?.startTime
+                                                    )}
+                                                </Text>
+                                            </View>
+                                            <View className="flex-row justify-between">
+                                                <Text className="text-slate-500 text-sm">
+                                                    Time Checked-Out:
+                                                </Text>
+                                                <Text className="font-medium text-slate-800 text-sm">
+                                                    {formatDateTime(
+                                                        new Date().toISOString()
+                                                    )}
+                                                </Text>
+                                            </View>
+                                        </Card.Content>
+                                    </Card>
+
+                                    <View className="flex-row justify-between items-center py-2 px-1">
+                                        <Text className="font-semibold text-slate-600">
+                                            Actual Duration Spent:
+                                        </Text>
+                                        <Text className="font-bold text-slate-800 text-base">
+                                            {actualDuration} Hrs
+                                        </Text>
+                                    </View>
+
+                                    <View className="flex-row justify-between items-center py-1.5 px-1">
+                                        <Text className="font-medium text-slate-500 text-sm">
+                                            Base Booking Charge ({modalBookedDuration} {modalBookedDuration === 1 ? "Hr" : "Hrs"}):
+                                        </Text>
+                                        <Text className="font-semibold text-slate-700 text-sm">
+                                            ₹{modalBaseCost}
+                                        </Text>
+                                    </View>
+
+                                    {modalOvertimeCost > 0 && (
+                                        <View className="flex-row justify-between items-center py-2 px-3 bg-amber-50 rounded-xl border border-amber-200 my-1">
+                                            <Text className="font-bold text-amber-900 text-sm">
+                                                Overtime Fee ({modalOvertimeDuration} {modalOvertimeDuration === 1 ? "Hr" : "Hrs"}):
+                                            </Text>
+                                            <Text className="font-bold text-amber-700 text-base">
+                                                +₹{modalOvertimeCost}
+                                            </Text>
+                                        </View>
+                                    )}
+
+                                    <Divider className="my-2 bg-slate-100" />
+
+                                    <View className="flex-row justify-between items-center py-2 px-1 mb-4">
+                                        <Text className="font-bold text-slate-800 text-lg">
+                                            Total Bill Amount:
+                                        </Text>
+                                        <Text className="font-bold text-indigo-700 text-2xl">
+                                            ₹{calculatedBill}
+                                        </Text>
+                                    </View>
+
+                                    <Button
+                                        mode="contained"
+                                        onPress={handleConfirmCheckout}
+                                        buttonColor="#16a34a"
+                                        contentStyle={{ height: 48 }}
+                                        className="rounded-xl justify-center"
+                                        labelStyle={{
+                                            color: "white",
+                                            fontSize: 16,
+                                            fontWeight: "bold",
+                                        }}
+                                    >
+                                        Collect Payment & Print Invoice
+                                    </Button>
+
+                                    <Button
+                                        mode="text"
+                                        onPress={() => setSelectedBooking(null)}
+                                        textColor="#ef4444"
+                                        className="mt-2"
+                                    >
+                                        Cancel Checkout
+                                    </Button>
+                                </View>
+                            </TouchableWithoutFeedback>
+                        </View>
+                    </TouchableWithoutFeedback>
+                </RNModal>
 
                 {/* 3. OTP Verification Modal */}
-                <Modal
+                <RNModal
                     visible={!!otpState.targetBooking}
-                    onDismiss={() => {
+                    transparent={true}
+                    animationType="fade"
+                    onRequestClose={() => {
                         setOtpState({
                             targetBooking: null,
                             input: "",
                         });
                     }}
-                    className="bg-white p-6 m-5 rounded-2xl max-w-[400px] self-center w-[85%]"
+                    statusBarTranslucent={true}
                 >
-                    <Text className="text-lg font-bold text-slate-800 mb-2">
-                        Verify Entry OTP
-                    </Text>
-                    <Text className="text-sm text-slate-500 mb-4">
-                        Please ask the customer for the 6-digit verification OTP
-                        visible on their booking details.
-                    </Text>
+                    <TouchableWithoutFeedback
+                        onPress={() => {
+                            setOtpState({
+                                targetBooking: null,
+                                input: "",
+                            });
+                        }}
+                    >
+                        <View className="flex-1 bg-black/50 justify-center items-center p-4">
+                            <TouchableWithoutFeedback
+                                onPress={(e) => e.stopPropagation()}
+                            >
+                                <View className="bg-white p-6 rounded-2xl max-w-[400px] w-[88%] shadow-2xl">
+                                    <Text className="text-lg font-bold text-slate-800 mb-2">
+                                        Verify Entry OTP
+                                    </Text>
+                                    <Text className="text-sm text-slate-500 mb-4">
+                                        Please ask the customer for the 6-digit
+                                        verification OTP visible on their
+                                        booking details.
+                                    </Text>
 
-                    <TextInput
-                        label="Enter 6-Digit OTP *"
-                        value={otpState.input}
-                        onChangeText={(val) =>
-                            setOtpState((prev) => ({ ...prev, input: val }))
-                        }
-                        mode="outlined"
-                        dense
-                        keyboardType="numeric"
-                        maxLength={6}
-                        className="bg-white mb-4 text-center text-lg tracking-widest font-mono"
-                        outlineColor="#e2e8f0"
-                        activeOutlineColor="#4338ca"
-                    />
+                                    <TextInput
+                                        label="Enter 6-Digit OTP *"
+                                        value={otpState.input}
+                                        onChangeText={(val) =>
+                                            setOtpState((prev) => ({
+                                                ...prev,
+                                                input: val,
+                                            }))
+                                        }
+                                        mode="outlined"
+                                        dense
+                                        keyboardType="numeric"
+                                        maxLength={6}
+                                        className="bg-white mb-4 text-center text-lg tracking-widest font-mono"
+                                        outlineColor="#e2e8f0"
+                                        activeOutlineColor="#4338ca"
+                                    />
 
-                    <View className="flex-row gap-2 mt-2">
-                        <Button
-                            mode="outlined"
-                            onPress={() => {
-                                setOtpState({
-                                    targetBooking: null,
-                                    input: "",
-                                });
-                            }}
-                            className="flex-1 rounded-lg"
-                            textColor="#64748b"
-                            style={{ borderColor: "#cbd5e1" }}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            mode="contained"
-                            onPress={handleVerifyOtpAndCheckIn}
-                            className="flex-1 rounded-lg"
-                            buttonColor="#4338ca"
-                            textColor="white"
-                        >
-                            Verify & Check-In
-                        </Button>
-                    </View>
-                </Modal>
+                                    <View className="flex-row gap-2 mt-2">
+                                        <Button
+                                            mode="outlined"
+                                            onPress={() => {
+                                                setOtpState({
+                                                    targetBooking: null,
+                                                    input: "",
+                                                });
+                                            }}
+                                            className="flex-1 rounded-lg"
+                                            textColor="#64748b"
+                                            style={{ borderColor: "#cbd5e1" }}
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button
+                                            mode="contained"
+                                            onPress={handleVerifyOtpAndCheckIn}
+                                            className="flex-1 rounded-lg"
+                                            buttonColor="#4338ca"
+                                            textColor="white"
+                                        >
+                                            Verify & Check-In
+                                        </Button>
+                                    </View>
+                                </View>
+                            </TouchableWithoutFeedback>
+                        </View>
+                    </TouchableWithoutFeedback>
+                </RNModal>
 
                 {/* 4. Force Cancel Modal */}
                 <Modal

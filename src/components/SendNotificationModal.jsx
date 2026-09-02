@@ -6,6 +6,7 @@ import {
     Pressable,
     ScrollView,
     StyleSheet,
+    TouchableWithoutFeedback,
 } from "react-native";
 import {
     TextInput,
@@ -108,170 +109,173 @@ export default function SendNotificationModal({
 
     return (
         <Modal
-            visible={visible}
-            transparent
-            animationType="slide"
+            visible={Boolean(visible)}
+            transparent={true}
+            animationType="fade"
             onRequestClose={onClose}
         >
-            <View style={styles.overlay}>
-                <Pressable style={styles.backdrop} onPress={onClose} />
-                <Surface style={styles.container} elevation={5}>
-                    <View style={styles.header}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.headerTitle}>
-                                Send Push Notification
-                            </Text>
-                            <Text style={styles.headerSubtitle}>
-                                Dispatch Firebase push notification to devices
-                            </Text>
-                        </View>
-                        <IconButton
-                            icon="close"
-                            size={22}
-                            iconColor="#64748b"
-                            onPress={onClose}
-                        />
-                    </View>
-
-                    <ScrollView
-                        showsVerticalScrollIndicator={false}
-                        contentContainerStyle={styles.scrollContent}
-                    >
-                        {/* Recipient Selection */}
-                        <Text style={styles.label}>Recipient Target</Text>
-                        <RadioButton.Group
-                            onValueChange={(val) => setRecipientType(val)}
-                            value={recipientType}
-                        >
-                            <View style={styles.radioRow}>
-                                <View style={styles.radioOption}>
-                                    <RadioButton.Android
-                                        value="all"
-                                        color="#4338ca"
-                                    />
-                                    <Text style={styles.radioLabel}>
-                                        All Users (Broadcast)
+            <TouchableWithoutFeedback onPress={onClose}>
+                <View style={styles.overlay}>
+                    <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+                        <Surface style={styles.container} elevation={5}>
+                            <View style={styles.header}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.headerTitle}>
+                                        Send Push Notification
+                                    </Text>
+                                    <Text style={styles.headerSubtitle}>
+                                        Dispatch Firebase push notification to devices
                                     </Text>
                                 </View>
-                                <View style={styles.radioOption}>
-                                    <RadioButton.Android
-                                        value="specific"
-                                        color="#4338ca"
-                                    />
-                                    <Text style={styles.radioLabel}>
-                                        Specific User ID
-                                    </Text>
-                                </View>
+                                <IconButton
+                                    icon="close"
+                                    size={22}
+                                    iconColor="#64748b"
+                                    onPress={onClose}
+                                />
                             </View>
-                        </RadioButton.Group>
 
-                        {recipientType === "specific" && (
-                            <View style={{ marginTop: 8 }}>
+                            <ScrollView
+                                showsVerticalScrollIndicator={false}
+                                contentContainerStyle={styles.scrollContent}
+                            >
+                                {/* Recipient Selection */}
+                                <Text style={styles.label}>Recipient Target</Text>
+                                <RadioButton.Group
+                                    onValueChange={(val) => setRecipientType(val)}
+                                    value={recipientType}
+                                >
+                                    <View style={styles.radioRow}>
+                                        <View style={styles.radioOption}>
+                                            <RadioButton.Android
+                                                value="all"
+                                                color="#4338ca"
+                                            />
+                                            <Text style={styles.radioLabel}>
+                                                All Users (Broadcast)
+                                            </Text>
+                                        </View>
+                                        <View style={styles.radioOption}>
+                                            <RadioButton.Android
+                                                value="specific"
+                                                color="#4338ca"
+                                            />
+                                            <Text style={styles.radioLabel}>
+                                                Specific User ID
+                                            </Text>
+                                        </View>
+                                    </View>
+                                </RadioButton.Group>
+
+                                {recipientType === "specific" && (
+                                    <View style={{ marginTop: 8 }}>
+                                        <TextInput
+                                            label="User ID"
+                                            value={userId}
+                                            onChangeText={setUserId}
+                                            keyboardType="numeric"
+                                            mode="outlined"
+                                            outlineColor="#cbd5e1"
+                                            activeOutlineColor="#4338ca"
+                                            style={styles.input}
+                                            placeholder="Enter User ID (e.g. 1)"
+                                        />
+                                    </View>
+                                )}
+
+                                {/* Notification Type Selector */}
+                                <Text style={[styles.label, { marginTop: 14 }]}>
+                                    Notification Type
+                                </Text>
+                                <ScrollView
+                                    horizontal
+                                    showsHorizontalScrollIndicator={false}
+                                    style={styles.chipScroll}
+                                >
+                                    {NOTIFICATION_TYPES.map((type) => (
+                                        <Chip
+                                            key={type}
+                                            selected={selectedType === type}
+                                            onPress={() => setSelectedType(type)}
+                                            style={[
+                                                styles.chip,
+                                                selectedType === type &&
+                                                    styles.chipSelected,
+                                            ]}
+                                            textStyle={[
+                                                styles.chipText,
+                                                selectedType === type &&
+                                                    styles.chipTextSelected,
+                                            ]}
+                                        >
+                                            {type.toUpperCase()}
+                                        </Chip>
+                                    ))}
+                                </ScrollView>
+
+                                {/* Title Input */}
+                                <Text style={[styles.label, { marginTop: 14 }]}>
+                                    Notification Title
+                                </Text>
                                 <TextInput
-                                    label="User ID"
-                                    value={userId}
-                                    onChangeText={setUserId}
-                                    keyboardType="numeric"
+                                    label="Title"
+                                    value={title}
+                                    onChangeText={setTitle}
                                     mode="outlined"
                                     outlineColor="#cbd5e1"
                                     activeOutlineColor="#4338ca"
                                     style={styles.input}
-                                    placeholder="Enter User ID (e.g. 1)"
+                                    placeholder="e.g. Booking Confirmed, Special Offer"
+                                    maxLength={100}
                                 />
-                            </View>
-                        )}
 
-                        {/* Notification Type Selector */}
-                        <Text style={[styles.label, { marginTop: 14 }]}>
-                            Notification Type
-                        </Text>
-                        <ScrollView
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                            style={styles.chipScroll}
-                        >
-                            {NOTIFICATION_TYPES.map((type) => (
-                                <Chip
-                                    key={type}
-                                    selected={selectedType === type}
-                                    onPress={() => setSelectedType(type)}
-                                    style={[
-                                        styles.chip,
-                                        selectedType === type &&
-                                            styles.chipSelected,
-                                    ]}
-                                    textStyle={[
-                                        styles.chipText,
-                                        selectedType === type &&
-                                            styles.chipTextSelected,
-                                    ]}
-                                >
-                                    {type.toUpperCase()}
-                                </Chip>
-                            ))}
-                        </ScrollView>
+                                {/* Message Body Input */}
+                                <Text style={[styles.label, { marginTop: 14 }]}>
+                                    Message Body
+                                </Text>
+                                <TextInput
+                                    label="Message"
+                                    value={message}
+                                    onChangeText={setMessage}
+                                    mode="outlined"
+                                    outlineColor="#cbd5e1"
+                                    activeOutlineColor="#4338ca"
+                                    multiline
+                                    numberOfLines={4}
+                                    style={[styles.input, { minHeight: 90 }]}
+                                    placeholder="Type notification message here..."
+                                    maxLength={300}
+                                />
 
-                        {/* Title Input */}
-                        <Text style={[styles.label, { marginTop: 14 }]}>
-                            Notification Title
-                        </Text>
-                        <TextInput
-                            label="Title"
-                            value={title}
-                            onChangeText={setTitle}
-                            mode="outlined"
-                            outlineColor="#cbd5e1"
-                            activeOutlineColor="#4338ca"
-                            style={styles.input}
-                            placeholder="e.g. Booking Confirmed, Special Offer"
-                            maxLength={100}
-                        />
-
-                        {/* Message Body Input */}
-                        <Text style={[styles.label, { marginTop: 14 }]}>
-                            Message Body
-                        </Text>
-                        <TextInput
-                            label="Message"
-                            value={message}
-                            onChangeText={setMessage}
-                            mode="outlined"
-                            outlineColor="#cbd5e1"
-                            activeOutlineColor="#4338ca"
-                            multiline
-                            numberOfLines={4}
-                            style={[styles.input, { minHeight: 90 }]}
-                            placeholder="Type notification message here..."
-                            maxLength={300}
-                        />
-
-                        {/* Action Buttons */}
-                        <View style={styles.buttonRow}>
-                            <Button
-                                mode="outlined"
-                                onPress={onClose}
-                                style={styles.cancelBtn}
-                                textColor="#64748b"
-                                disabled={loading}
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                mode="contained"
-                                onPress={handleSend}
-                                style={styles.sendBtn}
-                                buttonColor="#4338ca"
-                                textColor="#ffffff"
-                                loading={loading}
-                                disabled={loading}
-                                icon="send"
-                            >
-                                Send Push
-                            </Button>
-                        </View>
-                    </ScrollView>
-                </Surface>
-            </View>
+                                {/* Action Buttons */}
+                                <View style={styles.buttonRow}>
+                                    <Button
+                                        mode="outlined"
+                                        onPress={onClose}
+                                        style={styles.cancelBtn}
+                                        textColor="#64748b"
+                                        disabled={loading}
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        mode="contained"
+                                        onPress={handleSend}
+                                        style={styles.sendBtn}
+                                        buttonColor="#4338ca"
+                                        textColor="#ffffff"
+                                        loading={loading}
+                                        disabled={loading}
+                                        icon="send"
+                                    >
+                                        Send Push
+                                    </Button>
+                                </View>
+                            </ScrollView>
+                        </Surface>
+                    </TouchableWithoutFeedback>
+                </View>
+            </TouchableWithoutFeedback>
         </Modal>
     );
 }
@@ -279,19 +283,19 @@ export default function SendNotificationModal({
 const styles = StyleSheet.create({
     overlay: {
         flex: 1,
-        justifyContent: "flex-end",
+        justifyContent: "center",
+        alignItems: "center",
         backgroundColor: "rgba(0,0,0,0.5)",
-    },
-    backdrop: {
-        ...StyleSheet.absoluteFillObject,
+        padding: 16,
     },
     container: {
         backgroundColor: "#ffffff",
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
+        borderRadius: 24,
         maxHeight: "85%",
+        maxWidth: 500,
+        width: "92%",
         paddingTop: 16,
-        paddingBottom: 24,
+        paddingBottom: 16,
     },
     header: {
         flexDirection: "row",

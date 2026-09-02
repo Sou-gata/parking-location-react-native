@@ -2,12 +2,14 @@ import React, { useState, useRef, useCallback } from "react";
 import {
     View,
     Text,
+    Image,
     Animated,
     Dimensions,
     Pressable,
     StatusBar,
     ScrollView,
     BackHandler,
+    Modal,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useSelector, useDispatch } from "react-redux";
@@ -18,9 +20,6 @@ import {
     Surface,
     Avatar,
     Divider,
-    Badge,
-    Portal,
-    Modal,
     Button,
 } from "react-native-paper";
 import HomeMap from "../components/HomeMap";
@@ -38,6 +37,9 @@ const Home = ({ navigation }) => {
     const dispatch = useDispatch();
     const { user, role, hasPermission, hasAnyPermission } =
         useRolePermissions();
+    const unreadCount = useSelector(
+        (state) => state.notification?.unreadCount || 0
+    );
     const [activeView, setActiveView] = useState("dashboard"); // 'dashboard' or 'map'
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [exitDialogVisible, setExitDialogVisible] = useState(false);
@@ -170,29 +172,93 @@ const Home = ({ navigation }) => {
                     }}
                 />
 
-                <Text className="text-white text-xl font-bold">
-                    {activeView === "dashboard" ? "Dashboard" : "Map View"}
-                </Text>
+                {/* Absolute Centered Header Title / Logo */}
+                <View
+                    className="absolute left-0 right-0 items-center justify-center"
+                    style={{
+                        top: StatusBar.currentHeight || 0,
+                        bottom: 0,
+                    }}
+                    pointerEvents="none"
+                >
+                    {activeView === "dashboard" ? (
+                        <Image
+                            source={require("../assets/logo_text.png")}
+                            style={{ width: 140, height: 32 }}
+                            resizeMode="contain"
+                        />
+                    ) : (
+                        <Text className="text-white text-xl font-bold">
+                            Map View
+                        </Text>
+                    )}
+                </View>
 
-                <IconButton
-                    icon={
-                        activeView === "dashboard"
-                            ? "map-marker"
-                            : "view-dashboard"
-                    }
-                    iconColor="white"
-                    size={24}
-                    onPress={() =>
-                        setActiveView(
-                            activeView === "dashboard" ? "map" : "dashboard"
-                        )
-                    }
-                />
+                <View className="flex-row items-center">
+                    {/* Notification Bell Icon with Badge */}
+                    <View style={{ position: "relative" }}>
+                        <IconButton
+                            icon="bell-outline"
+                            iconColor="white"
+                            size={24}
+                            onPress={() => navigation.navigate("NotificationScreen")}
+                        />
+                        {unreadCount > 0 && (
+                            <View
+                                style={{
+                                    position: "absolute",
+                                    top: 4,
+                                    right: 4,
+                                    backgroundColor: "#ef4444",
+                                    borderRadius: 10,
+                                    minWidth: 18,
+                                    height: 18,
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    paddingHorizontal: 4,
+                                    borderWidth: 1.5,
+                                    borderColor: "#4338ca",
+                                }}
+                            >
+                                <Text
+                                    style={{
+                                        color: "#ffffff",
+                                        fontSize: 10,
+                                        fontWeight: "bold",
+                                    }}
+                                >
+                                    {unreadCount > 99 ? "99+" : unreadCount}
+                                </Text>
+                            </View>
+                        )}
+                    </View>
+
+                    {/* View Switcher (Dashboard / Map) */}
+                    {Boolean(hasPermission(PERMISSIONS.VIEW_MAP)) && (
+                        <IconButton
+                            icon={
+                                activeView === "dashboard"
+                                    ? "map-marker"
+                                    : "view-dashboard"
+                            }
+                            iconColor="white"
+                            size={24}
+                            onPress={() =>
+                                setActiveView(
+                                    activeView === "dashboard"
+                                        ? "map"
+                                        : "dashboard"
+                                )
+                            }
+                        />
+                    )}
+                </View>
             </Surface>
 
             {/* Main Active View */}
             <View className="flex-1">
-                {activeView === "dashboard" ? (
+                {activeView === "dashboard" ||
+                !hasPermission(PERMISSIONS.VIEW_MAP) ? (
                     renderRoleDashboard()
                 ) : (
                     <HomeMap />
@@ -299,6 +365,15 @@ const Home = ({ navigation }) => {
                                 title="My Account"
                                 showDivider={false}
                             >
+                                <Drawer.Item
+                                    icon="bell-outline"
+                                    label={unreadCount > 0 ? `Notifications (${unreadCount})` : "Notifications"}
+                                    onPress={() => {
+                                        toggleDrawer(false);
+                                        navigation.navigate("NotificationScreen");
+                                    }}
+                                />
+
                                 <Drawer.Item
                                     icon="account"
                                     label="My Profile"
@@ -484,7 +559,9 @@ const Home = ({ navigation }) => {
                                                     label="Send Push Notification"
                                                     onPress={() => {
                                                         toggleDrawer(false);
-                                                        setSendPushModalOpen(true);
+                                                        setSendPushModalOpen(
+                                                            true
+                                                        );
                                                     }}
                                                 />
                                                 <Drawer.Item
@@ -505,8 +582,16 @@ const Home = ({ navigation }) => {
                         </ScrollView>
                     </View>
 
-                    {/* SECTION 5: SIGN OUT */}
+                    {/* SECTION 5: APP INFO & SIGN OUT */}
                     <Drawer.Section className="mb-5 border-t border-gray-100 pt-2">
+                        <Drawer.Item
+                            icon="information-outline"
+                            label="About App"
+                            onPress={() => {
+                                toggleDrawer(false);
+                                navigation.navigate("About");
+                            }}
+                        />
                         <Drawer.Item
                             icon="logout"
                             label="Sign Out"
@@ -523,74 +608,99 @@ const Home = ({ navigation }) => {
             />
 
             {/* Exit App Confirmation Dialog */}
-            <Portal>
-                <Modal
-                    visible={exitDialogVisible}
-                    onDismiss={() => setExitDialogVisible(false)}
-                    contentContainerStyle={{
-                        backgroundColor: "white",
-                        marginHorizontal: 28,
-                        borderRadius: 24,
-                        padding: 24,
+            <Modal
+                visible={exitDialogVisible}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setExitDialogVisible(false)}
+                statusBarTranslucent={true}
+            >
+                <View
+                    style={{
+                        flex: 1,
+                        backgroundColor: "rgba(0,0,0,0.5)",
+                        justifyContent: "center",
                         alignItems: "center",
-                        elevation: 10,
-                        shadowColor: "#000",
-                        shadowOffset: { width: 0, height: 4 },
-                        shadowOpacity: 0.25,
-                        shadowRadius: 12,
+                        padding: 24,
                     }}
                 >
-                    {/* Glowing Icon Badge Container */}
-                    <View className="w-16 h-16 rounded-full bg-rose-50 items-center justify-center mb-4 border border-rose-100">
-                        <IconButton
-                            icon="power"
-                            iconColor="#e11d48"
-                            size={32}
-                            style={{ margin: 0 }}
-                        />
-                    </View>
-
-                    {/* Modal Title & Text */}
-                    <Text className="text-xl font-bold text-slate-800 text-center mb-1">
-                        Exit Application?
-                    </Text>
-                    <Text className="text-sm text-slate-500 text-center mb-6 px-2 leading-5">
-                        Are you sure you want to close Park Verse? Pressing back
-                        again will also exit.
-                    </Text>
-
-                    {/* Action Buttons Row */}
-                    <View className="flex-row items-center justify-between w-full gap-3">
-                        <View className="flex-1">
-                            <Button
-                                mode="outlined"
-                                onPress={() => setExitDialogVisible(false)}
-                                style={{
-                                    borderRadius: 12,
-                                    borderColor: "#cbd5e1",
-                                }}
-                                textColor="#475569"
-                                contentStyle={{ paddingVertical: 4 }}
-                            >
-                                Cancel
-                            </Button>
+                    <Pressable
+                        style={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                        }}
+                        onPress={() => setExitDialogVisible(false)}
+                    />
+                    <View
+                        style={{
+                            width: "100%",
+                            maxWidth: 340,
+                            backgroundColor: "#ffffff",
+                            borderRadius: 24,
+                            padding: 24,
+                            alignItems: "center",
+                            elevation: 10,
+                            shadowColor: "#000",
+                            shadowOffset: { width: 0, height: 4 },
+                            shadowOpacity: 0.25,
+                            shadowRadius: 12,
+                        }}
+                    >
+                        {/* Glowing Icon Badge Container */}
+                        <View className="w-16 h-16 rounded-full bg-rose-50 items-center justify-center mb-4 border border-rose-100">
+                            <IconButton
+                                icon="power"
+                                iconColor="#e11d48"
+                                size={32}
+                                style={{ margin: 0 }}
+                            />
                         </View>
-                        <View className="flex-1">
-                            <Button
-                                mode="contained"
-                                onPress={() => BackHandler.exitApp()}
-                                style={{ borderRadius: 12 }}
-                                buttonColor="#e11d48"
-                                textColor="white"
-                                icon="exit-to-app"
-                                contentStyle={{ paddingVertical: 4 }}
-                            >
-                                Exit App
-                            </Button>
+
+                        {/* Modal Title & Text */}
+                        <Text className="text-xl font-bold text-slate-800 text-center mb-1">
+                            Exit Application?
+                        </Text>
+                        <Text className="text-sm text-slate-500 text-center mb-6 px-2 leading-5">
+                            Are you sure you want to close Park Verse? Pressing
+                            back again will also exit.
+                        </Text>
+
+                        {/* Action Buttons Row */}
+                        <View className="flex-row items-center justify-between w-full gap-3">
+                            <View className="flex-1">
+                                <Button
+                                    mode="outlined"
+                                    onPress={() => setExitDialogVisible(false)}
+                                    style={{
+                                        borderRadius: 12,
+                                        borderColor: "#cbd5e1",
+                                    }}
+                                    textColor="#475569"
+                                    contentStyle={{ paddingVertical: 4 }}
+                                >
+                                    Cancel
+                                </Button>
+                            </View>
+                            <View className="flex-1">
+                                <Button
+                                    mode="contained"
+                                    onPress={() => BackHandler.exitApp()}
+                                    style={{ borderRadius: 12 }}
+                                    buttonColor="#e11d48"
+                                    textColor="white"
+                                    icon="exit-to-app"
+                                    contentStyle={{ paddingVertical: 4 }}
+                                >
+                                    Exit App
+                                </Button>
+                            </View>
                         </View>
                     </View>
-                </Modal>
-            </Portal>
+                </View>
+            </Modal>
         </View>
     );
 };

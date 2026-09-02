@@ -6,13 +6,37 @@ import {
     TouchableOpacity,
     ActivityIndicator,
 } from "react-native";
-import { Text, Surface } from "react-native-paper";
+import { Text, Surface, Avatar } from "react-native-paper";
 import { MaterialDesignIcons } from "@react-native-vector-icons/material-design-icons";
 import apiService from "../utils/apiService";
 import useRolePermissions from "../hooks/useRolePermissions";
+import { imageBaseURL } from "../utils/baseURL";
 
 const AgencyAdminDashboard = ({ navigation, onOpenMap }) => {
     const { user } = useRolePermissions();
+
+    const getImageUrl = (path) => {
+        if (!path) return null;
+        if (
+            path.startsWith("http://") ||
+            path.startsWith("https://") ||
+            path.startsWith("data:") ||
+            path.startsWith("file:")
+        ) {
+            return path;
+        }
+        const cleanPath = path.startsWith("uploads/")
+            ? path.substring(8)
+            : path;
+        return `${imageBaseURL}${cleanPath}`;
+    };
+
+    const userPhotoPath =
+        user?.profile_photo ||
+        user?.profile_photo_path ||
+        user?.profilePhoto ||
+        user?.avatar;
+    const profilePhotoUrl = getImageUrl(userPhotoPath);
 
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -106,14 +130,73 @@ const AgencyAdminDashboard = ({ navigation, onOpenMap }) => {
                 </View>
             ) : (
                 <View className="px-4 mt-4">
-                    {/* Revenue / Wallet Card */}
+                    {/* Integrated Agency Admin Header & Revenue Hero Card */}
                     <Surface
-                        className="bg-emerald-700 rounded-2xl p-5 mb-4"
-                        elevation={3}
+                        className="bg-emerald-950 rounded-3xl p-5 mb-5 border border-emerald-800/50 shadow-lg"
+                        elevation={4}
                     >
+                        {/* Profile & Full Name Header */}
+                        <View className="flex-row items-center justify-between">
+                            <TouchableOpacity
+                                className="flex-row items-center flex-1 mr-2"
+                                onPress={() => navigation.navigate("Profile")}
+                                activeOpacity={0.8}
+                            >
+                                <View className="relative">
+                                    <View className="w-[46px] h-[46px] rounded-full border border-white/80 items-center justify-center overflow-hidden bg-emerald-900/80 shadow-sm">
+                                        {profilePhotoUrl ? (
+                                            <Avatar.Image
+                                                size={44}
+                                                source={{ uri: profilePhotoUrl }}
+                                                style={{ backgroundColor: "#064e3b" }}
+                                            />
+                                        ) : (
+                                            <MaterialDesignIcons
+                                                name="account"
+                                                size={26}
+                                                color="#ffffff"
+                                            />
+                                        )}
+                                    </View>
+                                    <View className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-emerald-950" />
+                                </View>
+                                <View className="ml-3.5 flex-1 justify-center">
+                                    <Text
+                                        className="text-white text-xl font-extrabold tracking-tight mt-0.5"
+                                        numberOfLines={1}
+                                    >
+                                        {user?.full_name ||
+                                            user?.name ||
+                                            stats.agencyName ||
+                                            "Agency Admin"}
+                                    </Text>
+                                    {Boolean(user?.username || user?.org_name) && (
+                                        <Text className="text-emerald-300 text-[11px] font-bold tracking-wider">
+                                            {user?.username ? `@${user.username}` : user?.org_name}
+                                        </Text>
+                                    )}
+                                </View>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                className="w-9 h-9 rounded-full bg-emerald-900/80 items-center justify-center border border-emerald-700/60"
+                                onPress={() => navigation.navigate("Profile")}
+                            >
+                                <MaterialDesignIcons
+                                    name="chevron-right"
+                                    size={20}
+                                    color="#a7f3d0"
+                                />
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Subtle Divider Line */}
+                        <View className="h-[1px] bg-emerald-800/60 my-4" />
+
+                        {/* Earnings & Action */}
                         <View className="flex-row items-center justify-between">
                             <View>
-                                <Text className="text-emerald-200 text-[11px] font-bold tracking-wider">
+                                <Text className="text-emerald-300 text-[11px] font-bold tracking-wider uppercase">
                                     AGENCY NET EARNINGS
                                 </Text>
                                 <Text className="text-white text-3xl font-extrabold mt-1">
@@ -127,8 +210,9 @@ const AgencyAdminDashboard = ({ navigation, onOpenMap }) => {
                                 )}
                             </View>
                             <TouchableOpacity
-                                className="bg-white/20 px-3.5 py-2 rounded-xl flex-row items-center border border-white/30"
+                                className="bg-emerald-600/90 px-4 py-2.5 rounded-2xl flex-row items-center border border-emerald-400/30 shadow-sm"
                                 onPress={() => navigation.navigate("Wallet")}
+                                activeOpacity={0.8}
                             >
                                 <MaterialDesignIcons
                                     name="cash-fast"
@@ -348,26 +432,6 @@ const AgencyAdminDashboard = ({ navigation, onOpenMap }) => {
                             </View>
                         </TouchableOpacity>
 
-                        <TouchableOpacity
-                            className="w-[48%] p-3.5 rounded-2xl mb-3 flex-row items-center bg-white border border-slate-200"
-                            onPress={onOpenMap}
-                        >
-                            <View className="w-10 h-10 rounded-xl justify-center items-center mr-2.5 bg-amber-100">
-                                <MaterialDesignIcons
-                                    name="map-marker"
-                                    size={24}
-                                    color="#d97706"
-                                />
-                            </View>
-                            <View className="flex-1">
-                                <Text className="text-slate-800 font-bold text-xs">
-                                    Agency Location
-                                </Text>
-                                <Text className="text-slate-500 text-[11px]">
-                                    View Map
-                                </Text>
-                            </View>
-                        </TouchableOpacity>
 
                         {/* Pending Complaints Alert Banner */}
                         {Boolean(stats.pendingComplaintsCount > 0) && (

@@ -6,13 +6,38 @@ import {
     TouchableOpacity,
     ActivityIndicator,
 } from "react-native";
-import { Text, Surface, Button } from "react-native-paper";
+import { Text, Surface, Button, Avatar } from "react-native-paper";
 import { useSelector } from "react-redux";
 import { MaterialDesignIcons } from "@react-native-vector-icons/material-design-icons";
 import apiService from "../utils/apiService";
+import { imageBaseURL } from "../utils/baseURL";
 
 const UserDashboard = ({ navigation, onOpenMap }) => {
-    const reduxWalletBalance = useSelector((state) => state.user.walletBalance);
+    const user = useSelector((state) => state.user);
+    const reduxWalletBalance = user?.walletBalance;
+
+    const getImageUrl = (path) => {
+        if (!path) return null;
+        if (
+            path.startsWith("http://") ||
+            path.startsWith("https://") ||
+            path.startsWith("data:") ||
+            path.startsWith("file:")
+        ) {
+            return path;
+        }
+        const cleanPath = path.startsWith("uploads/")
+            ? path.substring(8)
+            : path;
+        return `${imageBaseURL}${cleanPath}`;
+    };
+
+    const userPhotoPath =
+        user?.user?.profile_photo ||
+        user?.user?.profile_photo_path ||
+        user?.user?.profilePhoto ||
+        user?.user?.avatar;
+    const profilePhotoUrl = getImageUrl(userPhotoPath);
 
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -89,23 +114,85 @@ const UserDashboard = ({ navigation, onOpenMap }) => {
                 </View>
             ) : (
                 <View className="px-4 mt-4">
-                    {/* Wallet Balance Hero Card */}
+                    {/* Integrated User Header & Wallet Hero Card */}
                     <Surface
-                        className="bg-indigo-900 rounded-2xl p-5 mb-4"
-                        elevation={3}
+                        className="bg-indigo-950 rounded-3xl p-5 mb-5 border border-indigo-800/50 shadow-lg"
+                        elevation={4}
                     >
+                        {/* Profile & Full Name Header */}
+                        <View className="flex-row items-center justify-between">
+                            <TouchableOpacity
+                                className="flex-row items-center flex-1 mr-2"
+                                onPress={() => navigation.navigate("Profile")}
+                                activeOpacity={0.8}
+                            >
+                                <View className="relative">
+                                    <View className="w-[46px] h-[46px] rounded-full border border-white/80 items-center justify-center overflow-hidden bg-indigo-900/80 shadow-sm">
+                                        {profilePhotoUrl ? (
+                                            <Avatar.Image
+                                                size={44}
+                                                source={{
+                                                    uri: profilePhotoUrl,
+                                                }}
+                                                style={{
+                                                    backgroundColor: "#312e81",
+                                                }}
+                                            />
+                                        ) : (
+                                            <MaterialDesignIcons
+                                                name="account"
+                                                size={26}
+                                                color="#ffffff"
+                                            />
+                                        )}
+                                    </View>
+                                    <View className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-indigo-950" />
+                                </View>
+                                <View className="ml-3.5 flex-1 justify-center">
+                                    <Text
+                                        className="text-white text-xl font-extrabold tracking-tight mt-0.5"
+                                        numberOfLines={1}
+                                    >
+                                        {user?.user?.full_name ||
+                                            user?.user?.name ||
+                                            "User"}
+                                    </Text>
+                                    <Text className="text-indigo-300 text-[11px] font-bold tracking-wider">
+                                        @{user?.user?.username}
+                                    </Text>
+                                </View>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                className="w-9 h-9 rounded-full bg-indigo-900/80 items-center justify-center border border-indigo-700/60"
+                                onPress={() => navigation.navigate("Profile")}
+                            >
+                                <MaterialDesignIcons
+                                    name="chevron-right"
+                                    size={20}
+                                    color="#c7d2fe"
+                                />
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Subtle Divider Line */}
+                        <View className="h-[1px] bg-indigo-800/60 my-4" />
+
+                        {/* Wallet Balance & Action */}
                         <View className="flex-row items-center justify-between">
                             <View>
-                                <Text className="text-indigo-200 text-[11px] font-bold tracking-wider">
-                                    WALLET BALANCE
+                                <Text className="text-indigo-300 text-[11px] font-bold tracking-wider uppercase">
+                                    Wallet Balance
                                 </Text>
-                                <Text className="text-white text-3xl font-extrabold mt-1">
+                                <Text className="text-white text-3xl font-black mt-0.5">
                                     {formatCurrency(stats.walletBalance)}
                                 </Text>
                             </View>
+
                             <TouchableOpacity
-                                className="bg-white/20 px-3.5 py-2 rounded-xl flex-row items-center border border-white/30"
+                                className="bg-indigo-600/90 px-4 py-2.5 rounded-2xl flex-row items-center border border-indigo-400/30 shadow-sm"
                                 onPress={() => navigation.navigate("Wallet")}
+                                activeOpacity={0.8}
                             >
                                 <MaterialDesignIcons
                                     name="plus-circle"

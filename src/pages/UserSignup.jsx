@@ -7,8 +7,6 @@ import {
     Card,
     Surface,
     Checkbox,
-    Portal,
-    Modal,
 } from "react-native-paper";
 import {
     BackHandler,
@@ -16,6 +14,8 @@ import {
     StyleSheet,
     TouchableOpacity,
     View,
+    Modal,
+    TouchableWithoutFeedback,
 } from "react-native";
 import ImageCropPicker from "react-native-image-crop-picker";
 import { Image as ImageCompressor } from "react-native-compressor";
@@ -627,55 +627,56 @@ const UserSignup = ({ navigation, route }) => {
             </ScrollView>
 
             {/* Terms and Conditions Dialog Modal */}
-            <Portal>
-                <Modal
-                    visible={termsModalVisible}
-                    onDismiss={() => setTermsModalVisible(false)}
-                    contentContainerStyle={{
-                        backgroundColor: "white",
-                        padding: 22,
-                        margin: 20,
-                        borderRadius: 24,
-                        maxHeight: "80%",
-                    }}
-                >
-                    <View className="flex-row justify-between items-center mb-3 pb-2 border-b border-slate-200">
-                        <Text className="text-slate-800 text-lg font-bold">
-                            Customer Terms & Conditions
-                        </Text>
-                        <TouchableOpacity
-                            onPress={() => setTermsModalVisible(false)}
-                            className="p-1 rounded-full bg-slate-100"
-                        >
-                            <MaterialDesignIcons
-                                name="close"
-                                size={20}
-                                color="#475569"
-                            />
-                        </TouchableOpacity>
-                    </View>
+            <Modal
+                visible={Boolean(termsModalVisible)}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setTermsModalVisible(false)}
+            >
+                <TouchableWithoutFeedback onPress={() => setTermsModalVisible(false)}>
+                    <View className="flex-1 bg-black/50 justify-center items-center p-4">
+                        <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+                            <View className="bg-white rounded-3xl p-5 w-[92%] max-w-[500px] max-h-[80%] shadow-2xl">
+                                <View className="flex-row justify-between items-center mb-3 pb-2 border-b border-slate-200">
+                                    <Text className="text-slate-800 text-lg font-bold">
+                                        Customer Terms & Conditions
+                                    </Text>
+                                    <TouchableOpacity
+                                        onPress={() => setTermsModalVisible(false)}
+                                        className="p-1 rounded-full bg-slate-100"
+                                    >
+                                        <MaterialDesignIcons
+                                            name="close"
+                                            size={20}
+                                            color="#475569"
+                                        />
+                                    </TouchableOpacity>
+                                </View>
 
-                    <ScrollView className="mb-4">
-                        <Text className="text-slate-700 text-xs leading-5">
-                            {termsContent || "Loading Terms and Conditions..."}
-                        </Text>
-                    </ScrollView>
+                                <ScrollView className="mb-4">
+                                    <Text className="text-slate-700 text-xs leading-5">
+                                        {termsContent || "Loading Terms and Conditions..."}
+                                    </Text>
+                                </ScrollView>
 
-                    <View className="flex-row justify-end">
-                        <Button
-                            mode="contained"
-                            onPress={() => {
-                                setAcceptedTerms(true);
-                                setTermsModalVisible(false);
-                            }}
-                            buttonColor="#4338ca"
-                            className="rounded-xl"
-                        >
-                            I Accept Terms
-                        </Button>
+                                <View className="flex-row justify-end">
+                                    <Button
+                                        mode="contained"
+                                        onPress={() => {
+                                            setAcceptedTerms(true);
+                                            setTermsModalVisible(false);
+                                        }}
+                                        buttonColor="#4338ca"
+                                        className="rounded-xl"
+                                    >
+                                        I Accept Terms
+                                    </Button>
+                                </View>
+                            </View>
+                        </TouchableWithoutFeedback>
                     </View>
-                </Modal>
-            </Portal>
+                </TouchableWithoutFeedback>
+            </Modal>
         </View>
     );
 };

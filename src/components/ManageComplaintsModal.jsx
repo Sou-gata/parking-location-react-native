@@ -5,11 +5,11 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     ScrollView,
+    Modal,
+    TouchableWithoutFeedback,
 } from "react-native";
 import {
     Text,
-    Modal,
-    Portal,
     Card,
     Button,
     TextInput,
@@ -249,20 +249,16 @@ export default function ManageComplaintsModal({
     };
 
     return (
-        <Portal>
-            <Modal
-                visible={visible}
-                onDismiss={onClose}
-                contentContainerStyle={{
-                    backgroundColor: "white",
-                    marginHorizontal: 12,
-                    marginVertical: 40,
-                    borderRadius: 24,
-                    padding: 16,
-                    maxHeight: "85%",
-                    elevation: 5,
-                }}
-            >
+        <Modal
+            visible={Boolean(visible)}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={onClose}
+        >
+            <TouchableWithoutFeedback onPress={onClose}>
+                <View className="flex-1 bg-black/50 justify-center items-center p-4">
+                    <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+                        <View className="bg-white rounded-3xl p-5 w-[92%] max-w-[550px] max-h-[85%] shadow-2xl">
                 {/* Header Row - Fixes title & close button overlap */}
                 <View className="flex-row items-start justify-between mb-2">
                     <View className="flex-1 pr-2">
@@ -337,58 +333,62 @@ export default function ManageComplaintsModal({
 
                 {/* Resolution Status Sub-Modal */}
                 {Boolean(resolveModalVisible) && (
-                    <Portal>
-                        <Modal
-                            visible={resolveModalVisible}
-                            onDismiss={() => setResolveModalVisible(false)}
-                            contentContainerStyle={{
-                                backgroundColor: "white",
-                                marginHorizontal: 20,
-                                borderRadius: 20,
-                                padding: 20,
-                                elevation: 6,
-                            }}
-                        >
-                            <Text className="text-base font-bold text-slate-800 mb-3">
-                                Update Status to {(targetStatus.replace("_", " ") || "").toUpperCase()}
-                            </Text>
+                    <Modal
+                        visible={Boolean(resolveModalVisible)}
+                        transparent={true}
+                        animationType="fade"
+                        onRequestClose={() => setResolveModalVisible(false)}
+                    >
+                        <TouchableWithoutFeedback onPress={() => setResolveModalVisible(false)}>
+                            <View className="flex-1 bg-black/50 justify-center items-center p-4">
+                                <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+                                    <View className="bg-white rounded-3xl p-5 w-[92%] max-w-[450px] shadow-2xl">
+                                        <Text className="text-base font-bold text-slate-800 mb-3">
+                                            Update Status to {(targetStatus.replace("_", " ") || "").toUpperCase()}
+                                        </Text>
 
-                            <TextInput
-                                label="Resolution Notes / Remarks"
-                                value={resolutionNotes}
-                                onChangeText={setResolutionNotes}
-                                mode="outlined"
-                                multiline
-                                numberOfLines={3}
-                                outlineColor="#cbd5e1"
-                                activeOutlineColor="#4338ca"
-                                className="mb-4 bg-slate-50"
-                                placeholder="Enter details regarding status update or resolution..."
-                            />
+                                        <TextInput
+                                            label="Resolution Notes / Remarks"
+                                            value={resolutionNotes}
+                                            onChangeText={setResolutionNotes}
+                                            mode="outlined"
+                                            multiline
+                                            numberOfLines={3}
+                                            outlineColor="#cbd5e1"
+                                            activeOutlineColor="#4338ca"
+                                            className="mb-4 bg-slate-50"
+                                            placeholder="Enter details regarding status update or resolution..."
+                                        />
 
-                            <View className="flex-row gap-2">
-                                <Button
-                                    mode="outlined"
-                                    onPress={() => setResolveModalVisible(false)}
-                                    className="flex-1 rounded-xl"
-                                    disabled={updating}
-                                >
-                                    Cancel
-                                </Button>
-                                <Button
-                                    mode="contained"
-                                    onPress={handleUpdateStatus}
-                                    className="flex-1 rounded-xl bg-indigo-700"
-                                    loading={updating}
-                                    disabled={updating}
-                                >
-                                    Confirm
-                                </Button>
+                                        <View className="flex-row gap-2">
+                                            <Button
+                                                mode="outlined"
+                                                onPress={() => setResolveModalVisible(false)}
+                                                className="flex-1 rounded-xl"
+                                                disabled={updating}
+                                            >
+                                                Cancel
+                                            </Button>
+                                            <Button
+                                                mode="contained"
+                                                onPress={handleUpdateStatus}
+                                                className="flex-1 rounded-xl bg-indigo-700"
+                                                loading={updating}
+                                                disabled={updating}
+                                            >
+                                                Confirm
+                                            </Button>
+                                        </View>
+                                    </View>
+                                </TouchableWithoutFeedback>
                             </View>
-                        </Modal>
-                    </Portal>
+                        </TouchableWithoutFeedback>
+                    </Modal>
                 )}
-            </Modal>
-        </Portal>
+                        </View>
+                    </TouchableWithoutFeedback>
+                </View>
+            </TouchableWithoutFeedback>
+        </Modal>
     );
 }

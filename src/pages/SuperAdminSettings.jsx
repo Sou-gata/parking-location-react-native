@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, ScrollView, ActivityIndicator } from "react-native";
-import { Text, Card, TextInput, Button, Avatar } from "react-native-paper";
+import { Text, Card, TextInput, Button, Avatar, Switch } from "react-native-paper";
 import apiService from "../utils/apiService";
 import useToast from "../hooks/useToast";
 
@@ -10,19 +10,26 @@ export default function SuperAdminSettings() {
     const [userTerms, setUserTerms] = useState("");
     const [agencyTerms, setAgencyTerms] = useState("");
 
+    const [firstReminderMins, setFirstReminderMins] = useState("60");
+    const [secondReminderMins, setSecondReminderMins] = useState("15");
+    const [overdueIntervalMins, setOverdueIntervalMins] = useState("15");
+    const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+
     const [loading, setLoading] = useState(false);
     const [savingUpi, setSavingUpi] = useState(false);
     const [savingUserTerms, setSavingUserTerms] = useState(false);
     const [savingAgencyTerms, setSavingAgencyTerms] = useState(false);
+    const [savingOvertime, setSavingOvertime] = useState(false);
 
     const fetchConfig = async () => {
         setLoading(true);
         try {
-            const [upiRes, userTermsRes, agencyTermsRes] =
+            const [upiRes, userTermsRes, agencyTermsRes, overtimeRes] =
                 await Promise.allSettled([
                     apiService.get("wallets/config"),
                     apiService.get("config/user"),
                     apiService.get("config/agency"),
+                    apiService.get("config/overtime-settings"),
                 ]);
 
             if (upiRes.status === "fulfilled" && upiRes.value?.success) {
@@ -39,6 +46,24 @@ export default function SuperAdminSettings() {
                 agencyTermsRes.value?.success
             ) {
                 setAgencyTerms(agencyTermsRes.value.data.content || "");
+            }
+            if (
+                overtimeRes.status === "fulfilled" &&
+                overtimeRes.value?.success
+            ) {
+                const data = overtimeRes.value.data;
+                if (data) {
+                    setFirstReminderMins(
+                        String(data.first_reminder_mins ?? 60)
+                    );
+                    setSecondReminderMins(
+                        String(data.second_reminder_mins ?? 15)
+                    );
+                    setOverdueIntervalMins(
+                        String(data.overdue_reminder_interval_mins ?? 15)
+                    );
+                    setNotificationsEnabled(data.enabled ?? true);
+                }
             }
         } catch (error) {
             console.error("Error loading config:", error);
@@ -166,6 +191,74 @@ export default function SuperAdminSettings() {
         }
     };
 
+    const handleSaveOvertimeSettings = async () => {
+        const first = parseInt(firstReminderMins, 10);
+        const second = parseInt(secondReminderMins, 10);
+        const interval = parseInt(overdueIntervalMins, 10);
+
+        if (isNaN(first) || first <= 0) {
+            toast.error(
+                "First reminder minutes must be a positive number",
+                "Validation Error",
+                true
+            );
+            return;
+        }
+        if (isNaN(second) || second <= 0) {
+            toast.error(
+                "Second reminder minutes must be a positive number",
+                "Validation Error",
+                true
+            );
+            return;
+        }
+        if (isNaN(interval) || interval <= 0) {
+            toast.error(
+                "Overdue interval minutes must be a positive number",
+                "Validation Error",
+                true
+            );
+            return;
+        }
+        if (first <= second) {
+            toast.error(
+                "First reminder minutes must be greater than second reminder minutes",
+                "Validation Error",
+                true
+            );
+            return;
+        }
+
+        setSavingOvertime(true);
+        try {
+            const res = await apiService.put("config/overtime-settings", {
+                first_reminder_mins: first,
+                second_reminder_mins: second,
+                overdue_reminder_interval_mins: interval,
+                enabled: notificationsEnabled,
+            });
+
+            if (res && res.success) {
+                toast.success(
+                    "Overtime notification settings updated successfully!",
+                    "Success",
+                    true
+                );
+            } else {
+                toast.error(
+                    res?.message || "Failed to update overtime settings",
+                    "Error",
+                    true
+                );
+            }
+        } catch (error) {
+            console.error("Error saving overtime settings:", error);
+            toast.error("Failed to save overtime settings", "Error", true);
+        } finally {
+            setSavingOvertime(false);
+        }
+    };
+
     if (loading) {
         return (
             <View className="flex-1 justify-center items-center bg-slate-50">
@@ -234,6 +327,109 @@ export default function SuperAdminSettings() {
                             Save UPI Configuration
                         </Button>
                     </View>
+                </Card.Content>
+            </Card>
+
+            {/* Overtime & Expiry Notification Settings Card */}
+            <Card className="bg-white border border-slate-100 rounded-3xl elevation-1 overflow-hidden mb-6">
+                <Card.Content className="p-6">
+                    <View className="flex-row items-center mb-2">
+                        <Avatar.Icon
+                            size={34}
+                            icon="bell-ring-outline"
+                            style={{ backgroundColor: "#e0f2fe" }}
+                            color="#0284c7"
+                        />
+                        <View className="ml-3 flex-1">
+                            <Text className="text-base font-bold text-slate-800">
+                                Overtime & Expiry Notification Settings
+                            </Text>
+                            <Text className="text-xs text-slate-400">
+                                Configure notification windows and overdue reminder intervals
+                            </Text>
+                        </View>
+                    </View>
+
+                    <View className="flex-row items-center justify-between py-3 my-2 border-b border-slate-100">
+                        <View className="flex-1 pr-4">
+                            <Text className="text-sm font-semibold text-slate-700">
+                                Enable Overtime Notifications
+                            </Text>
+                            <Text className="text-xs text-slate-400">
+                                Send push notifications for expiring and overdue bookings
+                            </Text>
+                        </View>
+                        <Switch
+                            value={notificationsEnabled}
+                            onValueChange={setNotificationsEnabled}
+                            color="#0284c7"
+                        />
+                    </View>
+
+                    <View className="gap-4 mt-2">
+                        <View>
+                            <Text className="text-xs font-semibold text-slate-600 mb-1">
+                                1st Expiry Warning (Mins before end)
+                            </Text>
+                            <TextInput
+                                mode="outlined"
+                                keyboardType="numeric"
+                                placeholder="60"
+                                value={firstReminderMins}
+                                onChangeText={setFirstReminderMins}
+                                activeOutlineColor="#0284c7"
+                                outlineColor="#cbd5e1"
+                                className="bg-white"
+                                left={<TextInput.Icon icon="clock-outline" />}
+                            />
+                        </View>
+
+                        <View>
+                            <Text className="text-xs font-semibold text-slate-600 mb-1">
+                                2nd Expiry Warning (Mins before end)
+                            </Text>
+                            <TextInput
+                                mode="outlined"
+                                keyboardType="numeric"
+                                placeholder="15"
+                                value={secondReminderMins}
+                                onChangeText={setSecondReminderMins}
+                                activeOutlineColor="#0284c7"
+                                outlineColor="#cbd5e1"
+                                className="bg-white"
+                                left={<TextInput.Icon icon="clock-alert-outline" />}
+                            />
+                        </View>
+
+                        <View>
+                            <Text className="text-xs font-semibold text-slate-600 mb-1">
+                                Overdue Notification Interval (Mins)
+                            </Text>
+                            <TextInput
+                                mode="outlined"
+                                keyboardType="numeric"
+                                placeholder="15"
+                                value={overdueIntervalMins}
+                                onChangeText={setOverdueIntervalMins}
+                                activeOutlineColor="#0284c7"
+                                outlineColor="#cbd5e1"
+                                className="bg-white mb-2"
+                                left={<TextInput.Icon icon="timer-sync-outline" />}
+                            />
+                        </View>
+                    </View>
+
+                    <Button
+                        mode="contained"
+                        onPress={handleSaveOvertimeSettings}
+                        loading={savingOvertime}
+                        disabled={savingOvertime}
+                        buttonColor="#0284c7"
+                        className="rounded-xl py-0.5 mt-4"
+                        labelStyle={{ fontWeight: "bold", fontSize: 14 }}
+                    >
+                        Save Overtime Settings
+                    </Button>
                 </Card.Content>
             </Card>
 
