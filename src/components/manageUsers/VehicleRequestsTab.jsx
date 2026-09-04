@@ -35,7 +35,7 @@ export default function VehicleRequestsTab({
                                         style={{
                                             backgroundColor: "#e0e7ff",
                                         }}
-                                        color="#4338ca"
+                                        color="#ff9933"
                                     />
                                     <View className="ml-3 flex-1">
                                         <Text
@@ -92,15 +92,15 @@ export default function VehicleRequestsTab({
                                                         Linking.openURL(getImageUrl(doc.url));
                                                     }
                                                 }}
-                                                className="flex-row items-center bg-indigo-50 border border-indigo-200 px-2.5 py-1.5 rounded-lg mr-1 mb-1"
+                                                className="flex-row items-center bg-carrot-50 border border-carrot-200 px-2.5 py-1.5 rounded-lg mr-1 mb-1"
                                             >
                                                 <MaterialDesignIcons
                                                     name="file-document-outline"
                                                     size={15}
-                                                    color="#4338ca"
+                                                    color="#ff9933"
                                                 />
                                                 <Text
-                                                    className="text-indigo-800 text-xs font-semibold ml-1.5 mr-1 max-w-[170px]"
+                                                    className="text-carrot-800 text-xs font-semibold ml-1.5 mr-1 max-w-[170px]"
                                                     numberOfLines={1}
                                                 >
                                                     {doc.name || `Document ${dIdx + 1}`}
@@ -108,7 +108,7 @@ export default function VehicleRequestsTab({
                                                 <MaterialDesignIcons
                                                     name="open-in-new"
                                                     size={13}
-                                                    color="#4338ca"
+                                                    color="#ff9933"
                                                 />
                                             </TouchableOpacity>
                                         ))}

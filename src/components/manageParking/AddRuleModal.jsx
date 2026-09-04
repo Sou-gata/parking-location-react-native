@@ -121,7 +121,7 @@ export default function AddRuleModal({
                     keyboardType="numeric"
                     mode="outlined"
                     outlineColor="#e2e8f0"
-                    activeOutlineColor="#4338ca"
+                    activeOutlineColor="#ff9933"
                     className="flex-1 bg-white"
                 />
                 <View className="flex-row gap-1.5 items-center">
@@ -177,7 +177,7 @@ export default function AddRuleModal({
                             onPress={() =>
                                 updateForm("chargeType", "percentage")
                             }
-                            selectedColor="#4338ca"
+                            selectedColor="#ff9933"
                             showSelectedOverlay
                         >
                             Percentage (%)
@@ -185,7 +185,7 @@ export default function AddRuleModal({
                         <Chip
                             selected={form.chargeType === "fixed"}
                             onPress={() => updateForm("chargeType", "fixed")}
-                            selectedColor="#4338ca"
+                            selectedColor="#ff9933"
                             showSelectedOverlay
                         >
                             Fixed Amount (₹)
@@ -203,7 +203,7 @@ export default function AddRuleModal({
                         keyboardType="numeric"
                         mode="outlined"
                         outlineColor="#e2e8f0"
-                        activeOutlineColor="#4338ca"
+                        activeOutlineColor="#ff9933"
                         className="bg-white"
                         left={
                             <TextInput.Icon
@@ -231,7 +231,7 @@ export default function AddRuleModal({
                 <Button
                     mode="contained"
                     onPress={handleAdd}
-                    buttonColor="#4338ca"
+                    buttonColor="#ff9933"
                     labelStyle={{ fontWeight: "700" }}
                 >
                     Add Rule

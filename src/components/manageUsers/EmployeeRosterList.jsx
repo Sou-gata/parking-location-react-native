@@ -42,7 +42,7 @@ export default function EmployeeRosterList({
                                         labelStyle={{
                                             color: isBlocked
                                                 ? "#64748b"
-                                                : "#4338ca",
+                                                : "#ff9933",
                                             fontWeight: "bold",
                                         }}
                                     />
@@ -67,7 +67,7 @@ export default function EmployeeRosterList({
                                         </Text>
                                     </View>
                                 </View>
-                                <View className="bg-indigo-100 px-2 py-0.5 rounded"><Text className="text-indigo-800 font-bold text-xs">{String("                                     " + (ROLE_DISPLAY_NAMES[item.role] || "Customer") + "                                 ").trim()}</Text></View>
+                                <View className="bg-carrot-100 px-2 py-0.5 rounded"><Text className="text-carrot-800 font-bold text-xs">{String("                                     " + (ROLE_DISPLAY_NAMES[item.role] || "Customer") + "                                 ").trim()}</Text></View>
                             </View>
 
                             <Divider className="my-3 bg-slate-100" />
@@ -120,7 +120,7 @@ export default function EmployeeRosterList({
                                         role === ROLES.SUPER_ADMIN) && (
                                         <IconButton
                                             icon="account-edit-outline"
-                                            iconColor="#4338ca"
+                                            iconColor="#ff9933"
                                             size={18}
                                             style={{ margin: 0 }}
                                             onPress={() => onEditEmployee(item)}
@@ -166,10 +166,10 @@ export default function EmployeeRosterList({
                     className="mb-4 bg-white border border-slate-100 rounded-xl"
                     elevation={0}
                 >
-                    <Card.Content className="py-3 bg-indigo-50/50 rounded-xl border border-indigo-100/50">
+                    <Card.Content className="py-3 bg-carrot-50/50 rounded-xl border border-carrot-100/50">
                         <View className="flex-row justify-between items-start">
                             <View style={{ flex: 1 }}>
-                                <Text className="text-xs font-bold text-indigo-800 uppercase tracking-wider mb-1">
+                                <Text className="text-xs font-bold text-carrot-800 uppercase tracking-wider mb-1">
                                     {role === ROLES.SUPER_ADMIN
                                         ? "Selected Agency Profile"
                                         : "My Agency Profile"}
@@ -192,14 +192,14 @@ export default function EmployeeRosterList({
                                     <View className="flex-row">
                                         <IconButton
                                             icon="eye-outline"
-                                            iconColor="#4338ca"
+                                            iconColor="#ff9933"
                                             size={20}
                                             style={{ marginRight: -4 }}
                                             onPress={() => onOpenAgencyDetails(currentSelectedAgency)}
                                         />
                                         <IconButton
                                             icon="pencil-outline"
-                                            iconColor="#4338ca"
+                                            iconColor="#ff9933"
                                             size={20}
                                             onPress={() => onOpenEditAgency(currentSelectedAgency)}
                                         />
@@ -211,7 +211,7 @@ export default function EmployeeRosterList({
                                         mode="contained"
                                         compact
                                         onPress={onOpenAddEmployee}
-                                        buttonColor="#4338ca"
+                                        buttonColor="#ff9933"
                                         className="rounded-lg self-center"
                                         labelStyle={{
                                             color: "white",

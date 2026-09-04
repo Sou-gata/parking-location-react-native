@@ -295,7 +295,7 @@ export default function SuperAdminRegisterComplaintModal({
                                 {loadingTargets ? (
                                     <ActivityIndicator
                                         style={{ marginVertical: 12 }}
-                                        color="#3b82f6"
+                                        color="#ff9933"
                                     />
                                 ) : (
                                     <View style={styles.dropdownList}>
@@ -455,8 +455,8 @@ const styles = StyleSheet.create({
         marginRight: 8,
     },
     typeButtonActive: {
-        backgroundColor: "#2563eb",
-        borderColor: "#2563eb",
+        backgroundColor: "#ef6207",
+        borderColor: "#ef6207",
     },
     typeButtonText: {
         fontSize: 14,

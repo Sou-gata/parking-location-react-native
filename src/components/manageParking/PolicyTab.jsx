@@ -125,7 +125,7 @@ export default function PolicyTab({ currentAgency, onRefresh }) {
                                 onPress={() => setPolicyModalVisible(true)}
                                 icon="plus"
                                 compact
-                                textColor="#4338ca"
+                                textColor="#ff9933"
                                 style={{ borderColor: "#a5b4fc" }}
                                 labelStyle={{ fontWeight: "700" }}
                             >
@@ -236,7 +236,7 @@ export default function PolicyTab({ currentAgency, onRefresh }) {
                         mode="contained"
                         onPress={handleSavePolicy}
                         style={{ flex: 2 }}
-                        buttonColor="#4338ca"
+                        buttonColor="#ff9933"
                         loading={savingPolicy}
                         disabled={savingPolicy}
                         labelStyle={{ fontWeight: "700" }}

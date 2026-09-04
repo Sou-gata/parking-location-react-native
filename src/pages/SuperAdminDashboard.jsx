@@ -40,7 +40,8 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
     const profilePhotoUrl = getImageUrl(userPhotoPath);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [sendNotificationVisible, setSendNotificationVisible] = useState(false);
+    const [sendNotificationVisible, setSendNotificationVisible] =
+        useState(false);
     const [stats, setStats] = useState({
         totalUsers: 0,
         totalAgencies: 0,
@@ -119,13 +120,13 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                 <RefreshControl
                     refreshing={refreshing}
                     onRefresh={onRefresh}
-                    colors={["#4338ca"]}
+                    colors={["#ff9933"]}
                 />
             }
         >
             {loading && !refreshing ? (
                 <View className="py-12 items-center justify-center">
-                    <ActivityIndicator size="large" color="#4338ca" />
+                    <ActivityIndicator size="large" color="#ff9933" />
                     <Text className="text-slate-500 mt-3 font-semibold">
                         Loading Platform Statistics...
                     </Text>
@@ -134,7 +135,7 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                 <View className="px-4 mt-4">
                     {/* Revenue Hero Card */}
                     <Surface
-                        className="bg-indigo-950 rounded-3xl p-5 mb-5 border border-indigo-800/50 shadow-lg"
+                        className="bg-carrot-950 rounded-3xl p-5 mb-5 border border-carrot-800/50 shadow-lg"
                         elevation={4}
                     >
                         {/* Profile & Full Name Header */}
@@ -145,12 +146,16 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                                 activeOpacity={0.8}
                             >
                                 <View className="relative">
-                                    <View className="w-[46px] h-[46px] rounded-full border border-white/80 items-center justify-center overflow-hidden bg-indigo-900/80 shadow-sm">
+                                    <View className="w-[46px] h-[46px] rounded-full border border-white/80 items-center justify-center overflow-hidden bg-carrot-900/80 shadow-sm">
                                         {profilePhotoUrl ? (
                                             <Avatar.Image
                                                 size={44}
-                                                source={{ uri: profilePhotoUrl }}
-                                                style={{ backgroundColor: "#312e81" }}
+                                                source={{
+                                                    uri: profilePhotoUrl,
+                                                }}
+                                                style={{
+                                                    backgroundColor: "#441706",
+                                                }}
                                             />
                                         ) : (
                                             <MaterialDesignIcons
@@ -160,7 +165,7 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                                             />
                                         )}
                                     </View>
-                                    <View className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-indigo-950" />
+                                    <View className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-carrot-950" />
                                 </View>
                                 <View className="ml-3.5 flex-1 justify-center">
                                     <Text
@@ -172,7 +177,7 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                                             "Super Admin"}
                                     </Text>
                                     {Boolean(reduxUser?.username) && (
-                                        <Text className="text-indigo-300 text-[11px] font-bold tracking-wider">
+                                        <Text className="text-carrot-300 text-[11px] font-bold tracking-wider">
                                             @{reduxUser?.username}
                                         </Text>
                                     )}
@@ -180,7 +185,7 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                             </TouchableOpacity>
 
                             <TouchableOpacity
-                                className="w-9 h-9 rounded-full bg-indigo-900/80 items-center justify-center border border-indigo-700/60"
+                                className="w-9 h-9 rounded-full bg-carrot-900/80 items-center justify-center border border-carrot-700/60"
                                 onPress={() => navigation.navigate("Profile")}
                             >
                                 <MaterialDesignIcons
@@ -192,24 +197,24 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                         </View>
 
                         {/* Subtle Divider Line */}
-                        <View className="h-[1px] bg-indigo-800/60 my-4" />
+                        <View className="h-[1px] bg-carrot-800/60 my-4" />
 
                         {/* Platform Commission Revenue & Action */}
                         <View className="flex-row items-center justify-between">
                             <View>
-                                <Text className="text-indigo-300 text-[11px] font-bold tracking-wider uppercase">
+                                <Text className="text-carrot-300 text-[11px] font-bold tracking-wider uppercase">
                                     PLATFORM COMMISSION REVENUE
                                 </Text>
                                 <Text className="text-white text-3xl font-extrabold mt-1">
                                     {formatCurrency(stats.totalAdminRevenue)}
                                 </Text>
-                                <Text className="text-indigo-300 text-xs mt-1">
+                                <Text className="text-carrot-300 text-xs mt-1">
                                     Total Volume:{" "}
                                     {formatCurrency(stats.totalVolume)}
                                 </Text>
                             </View>
                             <TouchableOpacity
-                                className="bg-indigo-600/90 px-4 py-2.5 rounded-2xl flex-row items-center border border-indigo-400/30 shadow-sm"
+                                className="bg-carrot-500 px-4 py-2.5 rounded-2xl flex-row items-center border border-carrot-400/30 shadow-sm"
                                 onPress={() =>
                                     navigation.navigate("ManageUsers", {
                                         initialTab: "history",
@@ -281,7 +286,7 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
 
                             {stats.pendingWorkingHoursCount > 0 && (
                                 <TouchableOpacity
-                                    className="rounded-2xl p-3.5 mb-2.5 flex-row items-center justify-between border bg-blue-50 border-blue-200"
+                                    className="rounded-2xl p-3.5 mb-2.5 flex-row items-center justify-between border bg-carrot-50 border-carrot-200"
                                     onPress={() =>
                                         navigation.navigate("ManageUsers", {
                                             initialTab: "working_hours",
@@ -289,15 +294,15 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                                     }
                                 >
                                     <View className="flex-row items-center flex-1 mr-2.5">
-                                        <View className="w-9.5 h-9.5 rounded-xl justify-center items-center mr-3 bg-blue-200">
+                                        <View className="w-9.5 h-9.5 rounded-xl justify-center items-center mr-3 bg-carrot-200">
                                             <MaterialDesignIcons
                                                 name="clock-alert-outline"
                                                 size={20}
-                                                color="#1d4ed8"
+                                                color="#c64908"
                                             />
                                         </View>
                                         <View className="flex-1">
-                                            <Text className="font-bold text-xs text-blue-950">
+                                            <Text className="font-bold text-xs text-carrot-950">
                                                 {stats.pendingWorkingHoursCount}{" "}
                                                 Pending Working Hours Change
                                                 {stats.pendingWorkingHoursCount >
@@ -305,7 +310,7 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                                                     ? "s"
                                                     : ""}
                                             </Text>
-                                            <Text className="text-[11px] mt-0.5 text-blue-800">
+                                            <Text className="text-[11px] mt-0.5 text-carrot-800">
                                                 Review operating hours & holiday
                                                 schedule updates
                                             </Text>
@@ -314,7 +319,7 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                                     <MaterialDesignIcons
                                         name="chevron-right"
                                         size={20}
-                                        color="#1d4ed8"
+                                        color="#c64908"
                                     />
                                 </TouchableOpacity>
                             )}
@@ -360,7 +365,7 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
 
                             {stats.pendingTopupsCount > 0 && (
                                 <TouchableOpacity
-                                    className="rounded-2xl p-3.5 mb-2.5 flex-row items-center justify-between border bg-indigo-50 border-indigo-200"
+                                    className="rounded-2xl p-3.5 mb-2.5 flex-row items-center justify-between border bg-carrot-50 border-carrot-200"
                                     onPress={() =>
                                         navigation.navigate("ManageUsers", {
                                             initialTab: "user_wallets",
@@ -368,22 +373,22 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                                     }
                                 >
                                     <View className="flex-row items-center flex-1 mr-2.5">
-                                        <View className="w-9.5 h-9.5 rounded-xl justify-center items-center mr-3 bg-indigo-200">
+                                        <View className="w-9.5 h-9.5 rounded-xl justify-center items-center mr-3 bg-carrot-200">
                                             <MaterialDesignIcons
                                                 name="wallet-plus-outline"
                                                 size={20}
-                                                color="#4338ca"
+                                                color="#ff9933"
                                             />
                                         </View>
                                         <View className="flex-1">
-                                            <Text className="font-bold text-xs text-indigo-950">
+                                            <Text className="font-bold text-xs text-carrot-950">
                                                 {stats.pendingTopupsCount}{" "}
                                                 Pending Wallet Topup
                                                 {stats.pendingTopupsCount > 1
                                                     ? "s"
                                                     : ""}
                                             </Text>
-                                            <Text className="text-[11px] mt-0.5 text-indigo-900">
+                                            <Text className="text-[11px] mt-0.5 text-carrot-900">
                                                 Verify payment reference &
                                                 approve balance
                                             </Text>
@@ -392,7 +397,7 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                                     <MaterialDesignIcons
                                         name="chevron-right"
                                         size={20}
-                                        color="#4338ca"
+                                        color="#ff9933"
                                     />
                                 </TouchableOpacity>
                             )}
@@ -446,11 +451,11 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                             className="w-[48%] bg-white p-3.5 rounded-2xl mb-3 items-center border border-slate-100"
                             elevation={1}
                         >
-                            <View className="w-10 h-10 rounded-full justify-center items-center mb-2 bg-indigo-100">
+                            <View className="w-10 h-10 rounded-full justify-center items-center mb-2 bg-carrot-100">
                                 <MaterialDesignIcons
                                     name="account-group"
                                     size={22}
-                                    color="#4338ca"
+                                    color="#ff9933"
                                 />
                             </View>
                             <Text className="text-slate-500 text-[11px] font-semibold">
@@ -484,11 +489,11 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                             className="w-[48%] bg-white p-3.5 rounded-2xl mb-3 items-center border border-slate-100"
                             elevation={1}
                         >
-                            <View className="w-10 h-10 rounded-full justify-center items-center mb-2 bg-blue-100">
+                            <View className="w-10 h-10 rounded-full justify-center items-center mb-2 bg-carrot-100">
                                 <MaterialDesignIcons
                                     name="calendar-check"
                                     size={22}
-                                    color="#2563eb"
+                                    color="#ef6207"
                                 />
                             </View>
                             <Text className="text-slate-500 text-[11px] font-semibold">
@@ -543,7 +548,7 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                     </Text>
                     <View className="flex-row flex-wrap justify-between mb-2">
                         <TouchableOpacity
-                            className="w-[48%] p-3.5 rounded-2xl mb-3 flex-row items-center bg-indigo-700"
+                            className="w-[48%] p-3.5 rounded-2xl mb-3 flex-row items-center bg-carrot-500"
                             onPress={() =>
                                 navigation.navigate("ManageUsers", {
                                     initialTab: "active",
@@ -561,7 +566,7 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                                 <Text className="text-white font-bold text-xs">
                                     Manage Users
                                 </Text>
-                                <Text className="text-indigo-200 text-[11px]">
+                                <Text className="text-carrot-200 text-[11px]">
                                     Agencies & Staff
                                 </Text>
                             </View>
@@ -615,7 +620,6 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                             </View>
                         </TouchableOpacity>
 
-
                         <TouchableOpacity
                             className="w-[48%] p-3.5 rounded-2xl mb-3 flex-row items-center bg-white border border-slate-200"
                             onPress={() =>
@@ -643,11 +647,11 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                             className="w-[48%] p-3.5 rounded-2xl mb-3 flex-row items-center bg-white border border-slate-200"
                             onPress={() => setSendNotificationVisible(true)}
                         >
-                            <View className="w-10 h-10 rounded-xl justify-center items-center mr-2.5 bg-indigo-100">
+                            <View className="w-10 h-10 rounded-xl justify-center items-center mr-2.5 bg-carrot-100">
                                 <MaterialDesignIcons
                                     name="bell-ring-outline"
                                     size={24}
-                                    color="#4338ca"
+                                    color="#ff9933"
                                 />
                             </View>
                             <View className="flex-1">
@@ -668,7 +672,7 @@ const SuperAdminDashboard = ({ navigation, onOpenMap }) => {
                         <TouchableOpacity
                             onPress={() => navigation.navigate("ManageUsers")}
                         >
-                            <Text className="text-indigo-700 font-semibold text-xs">
+                            <Text className="text-carrot-700 font-semibold text-xs">
                                 View All
                             </Text>
                         </TouchableOpacity>

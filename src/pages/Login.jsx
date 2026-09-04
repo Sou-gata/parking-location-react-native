@@ -435,7 +435,7 @@ export default function Login({ navigation }) {
                                     }
                                     mode="outlined"
                                     outlineColor="#e2e8f0"
-                                    activeOutlineColor="#4338ca"
+                                    activeOutlineColor="#ff9933"
                                     left={<TextInput.Icon icon="account" />}
                                 />
 
@@ -451,7 +451,7 @@ export default function Login({ navigation }) {
                                         }
                                         mode="outlined"
                                         outlineColor="#e2e8f0"
-                                        activeOutlineColor="#4338ca"
+                                        activeOutlineColor="#ff9933"
                                         secureTextEntry
                                         left={<TextInput.Icon icon="lock" />}
                                     />
@@ -526,7 +526,7 @@ export default function Login({ navigation }) {
                                         {loading.google ? (
                                             <ActivityIndicator
                                                 size="small"
-                                                color="#4338ca"
+                                                color="#ff9933"
                                             />
                                         ) : (
                                             <>
@@ -602,13 +602,13 @@ export default function Login({ navigation }) {
                                 setSignupModalVisible(false);
                                 navigation.replace("UserSignup");
                             }}
-                            className="flex-row items-center p-4 mb-3 border border-slate-100 bg-slate-50/50 rounded-2xl active:bg-indigo-50/40 active:border-indigo-200"
+                            className="flex-row items-center p-4 mb-3 border border-slate-100 bg-slate-50/50 rounded-2xl active:bg-carrot-50/40 active:border-carrot-200"
                         >
                             <Avatar.Icon
                                 size={44}
                                 icon="car"
                                 style={{ backgroundColor: "#e0e7ff" }}
-                                color="#4338ca"
+                                color="#ff9933"
                             />
                             <View className="ml-3 flex-1">
                                 <Text className="text-sm font-bold text-slate-800">
@@ -620,7 +620,7 @@ export default function Login({ navigation }) {
                             </View>
                             <IconButton
                                 icon="chevron-right"
-                                iconColor="#4338ca"
+                                iconColor="#ff9933"
                                 size={20}
                                 className="m-0"
                             />
@@ -632,13 +632,13 @@ export default function Login({ navigation }) {
                                 setSignupModalVisible(false);
                                 navigation.replace("OrgSignup");
                             }}
-                            className="flex-row items-center p-4 mb-6 border border-slate-100 bg-slate-50/50 rounded-2xl active:bg-indigo-50/40 active:border-indigo-200"
+                            className="flex-row items-center p-4 mb-6 border border-slate-100 bg-slate-50/50 rounded-2xl active:bg-carrot-50/40 active:border-carrot-200"
                         >
                             <Avatar.Icon
                                 size={44}
                                 icon="office-building"
                                 style={{ backgroundColor: "#e0e7ff" }}
-                                color="#4338ca"
+                                color="#ff9933"
                             />
                             <View className="ml-3 flex-1">
                                 <Text className="text-sm font-bold text-slate-800">
@@ -650,7 +650,7 @@ export default function Login({ navigation }) {
                             </View>
                             <IconButton
                                 icon="chevron-right"
-                                iconColor="#4338ca"
+                                iconColor="#ff9933"
                                 size={20}
                                 className="m-0"
                             />
@@ -687,7 +687,7 @@ export default function Login({ navigation }) {
                                 size={52}
                                 icon="lock-reset"
                                 style={{ backgroundColor: "#e0e7ff" }}
-                                color="#4338ca"
+                                color="#ff9933"
                             />
                             <Text className="text-xl font-bold text-slate-800 text-center mt-2">
                                 Reset Password
@@ -713,7 +713,7 @@ export default function Login({ navigation }) {
                                     }
                                     mode="outlined"
                                     outlineColor="#e2e8f0"
-                                    activeOutlineColor="#4338ca"
+                                    activeOutlineColor="#ff9933"
                                     keyboardType="phone-pad"
                                     left={<TextInput.Icon icon="phone" />}
                                 />
@@ -751,7 +751,7 @@ export default function Login({ navigation }) {
                                     }
                                     mode="outlined"
                                     outlineColor="#e2e8f0"
-                                    activeOutlineColor="#4338ca"
+                                    activeOutlineColor="#ff9933"
                                     keyboardType="number-pad"
                                     left={<TextInput.Icon icon="shield-key" />}
                                 />
@@ -809,7 +809,7 @@ export default function Login({ navigation }) {
                                     }
                                     mode="outlined"
                                     outlineColor="#e2e8f0"
-                                    activeOutlineColor="#4338ca"
+                                    activeOutlineColor="#ff9933"
                                     secureTextEntry
                                     left={<TextInput.Icon icon="lock" />}
                                 />
@@ -823,7 +823,7 @@ export default function Login({ navigation }) {
                                     }
                                     mode="outlined"
                                     outlineColor="#e2e8f0"
-                                    activeOutlineColor="#4338ca"
+                                    activeOutlineColor="#ff9933"
                                     secureTextEntry
                                     left={<TextInput.Icon icon="lock-check" />}
                                 />
@@ -873,7 +873,7 @@ export default function Login({ navigation }) {
 
 const styles = StyleSheet.create({
     header: {
-        backgroundColor: "#4338ca",
+        backgroundColor: "#ff9933",
     },
     card: {
         backgroundColor: "white",
@@ -881,7 +881,7 @@ const styles = StyleSheet.create({
         paddingBottom: 4,
     },
     submitButton: {
-        backgroundColor: "#4338ca",
+        backgroundColor: "#ff9933",
         borderRadius: 12,
         elevation: 4,
     },

@@ -357,18 +357,18 @@ const UserSignup = ({ navigation, route }) => {
                     {googleData && (
                         <Surface
                             elevation={1}
-                            className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 flex-row items-center"
+                            className="bg-carrot-50 border border-carrot-100 rounded-2xl p-4 flex-row items-center"
                         >
                             <MaterialDesignIcons
                                 name="google"
                                 size={22}
-                                color="#4338ca"
+                                color="#ff9933"
                             />
                             <View className="ml-3 flex-1">
-                                <Text className="text-xs font-bold text-indigo-900">
+                                <Text className="text-xs font-bold text-carrot-900">
                                     Google Account Connected
                                 </Text>
-                                <Text className="text-[11px] text-indigo-700">
+                                <Text className="text-[11px] text-carrot-700">
                                     Details prefilled from {googleData.email}.
                                     Please complete the remaining fields.
                                 </Text>
@@ -400,7 +400,7 @@ const UserSignup = ({ navigation, route }) => {
                                 }
                                 mode="outlined"
                                 outlineColor="#e2e8f0"
-                                activeOutlineColor="#4338ca"
+                                activeOutlineColor="#ff9933"
                                 left={<TextInput.Icon icon="account" />}
                             />
                             <TextInput
@@ -418,7 +418,7 @@ const UserSignup = ({ navigation, route }) => {
                                 }
                                 mode="outlined"
                                 outlineColor="#e2e8f0"
-                                activeOutlineColor="#4338ca"
+                                activeOutlineColor="#ff9933"
                                 keyboardType="email-address"
                                 left={<TextInput.Icon icon="email" />}
                             />
@@ -446,7 +446,7 @@ const UserSignup = ({ navigation, route }) => {
                                             disabled={otpVerified}
                                             mode="outlined"
                                             outlineColor="#e2e8f0"
-                                            activeOutlineColor="#4338ca"
+                                            activeOutlineColor="#ff9933"
                                             keyboardType="phone-pad"
                                             left={<TextInput.Icon icon="phone" />}
                                         />
@@ -477,7 +477,7 @@ const UserSignup = ({ navigation, route }) => {
                                                 onChangeText={setOtp}
                                                 mode="outlined"
                                                 outlineColor="#e2e8f0"
-                                                activeOutlineColor="#4338ca"
+                                                activeOutlineColor="#ff9933"
                                                 keyboardType="number-pad"
                                                 maxLength={6}
                                                 left={<TextInput.Icon icon="shield-check" />}
@@ -530,7 +530,7 @@ const UserSignup = ({ navigation, route }) => {
                                 }
                                 mode="outlined"
                                 outlineColor="#e2e8f0"
-                                activeOutlineColor="#4338ca"
+                                activeOutlineColor="#ff9933"
                                 left={<TextInput.Icon icon="account-circle" />}
                             />
                             <TextInput
@@ -548,7 +548,7 @@ const UserSignup = ({ navigation, route }) => {
                                 }
                                 mode="outlined"
                                 outlineColor="#e2e8f0"
-                                activeOutlineColor="#4338ca"
+                                activeOutlineColor="#ff9933"
                                 secureTextEntry
                                 left={<TextInput.Icon icon="lock" />}
                             />
@@ -570,7 +570,7 @@ const UserSignup = ({ navigation, route }) => {
                                 }
                                 mode="outlined"
                                 outlineColor="#e2e8f0"
-                                activeOutlineColor="#4338ca"
+                                activeOutlineColor="#ff9933"
                                 secureTextEntry
                                 left={<TextInput.Icon icon="lock-check" />}
                             />
@@ -583,7 +583,7 @@ const UserSignup = ({ navigation, route }) => {
                         <Checkbox
                             status={acceptedTerms ? "checked" : "unchecked"}
                             onPress={() => setAcceptedTerms(!acceptedTerms)}
-                            color="#4338ca"
+                            color="#ff9933"
                         />
                         <View className="flex-1 ml-1 flex-row flex-wrap items-center">
                             <Text className="text-slate-700 text-xs font-semibold">
@@ -592,7 +592,7 @@ const UserSignup = ({ navigation, route }) => {
                             <TouchableOpacity
                                 onPress={() => setTermsModalVisible(true)}
                             >
-                                <Text className="text-indigo-700 font-bold text-xs underline">
+                                <Text className="text-carrot-700 font-bold text-xs underline">
                                     Terms & Conditions
                                 </Text>
                             </TouchableOpacity>
@@ -666,7 +666,7 @@ const UserSignup = ({ navigation, route }) => {
                                             setAcceptedTerms(true);
                                             setTermsModalVisible(false);
                                         }}
-                                        buttonColor="#4338ca"
+                                        buttonColor="#ff9933"
                                         className="rounded-xl"
                                     >
                                         I Accept Terms
@@ -683,7 +683,7 @@ const UserSignup = ({ navigation, route }) => {
 
 const styles = StyleSheet.create({
     header: {
-        backgroundColor: "#4338ca",
+        backgroundColor: "#ff9933",
     },
     card: {
         backgroundColor: "white",
@@ -691,7 +691,7 @@ const styles = StyleSheet.create({
         paddingBottom: 4,
     },
     submitButton: {
-        backgroundColor: "#4338ca",
+        backgroundColor: "#ff9933",
         borderRadius: 12,
         marginTop: 8,
         elevation: 4,

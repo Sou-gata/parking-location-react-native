@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View, Animated, StyleSheet, Easing, Text } from "react-native";
 
-const BRAND = "Pointo Park";
+const BRAND = "PointOPark";
 
 export default function AnimatedTagline() {
     // ── Animation refs ──────────────────────────────────────────────────────

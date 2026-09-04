@@ -117,13 +117,13 @@ const AgencyAdminDashboard = ({ navigation, onOpenMap }) => {
                 <RefreshControl
                     refreshing={refreshing}
                     onRefresh={onRefresh}
-                    colors={["#4338ca"]}
+                    colors={["#ff9933"]}
                 />
             }
         >
             {loading && !refreshing ? (
                 <View className="py-12 items-center justify-center">
-                    <ActivityIndicator size="large" color="#4338ca" />
+                    <ActivityIndicator size="large" color="#ff9933" />
                     <Text className="text-slate-500 mt-3 font-semibold">
                         Loading Agency Statistics...
                     </Text>
@@ -235,7 +235,7 @@ const AgencyAdminDashboard = ({ navigation, onOpenMap }) => {
                             <Text className="text-slate-800 text-sm font-bold">
                                 Parking Lot Occupancy
                             </Text>
-                            <Text className="text-indigo-700 text-sm font-extrabold">
+                            <Text className="text-carrot-700 text-sm font-extrabold">
                                 {stats.activeBookings} / {stats.totalCapacity}{" "}
                                 Spots
                             </Text>
@@ -244,7 +244,7 @@ const AgencyAdminDashboard = ({ navigation, onOpenMap }) => {
                         {/* Progress Bar Container */}
                         <View className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden mb-2">
                             <View
-                                className="h-full bg-indigo-700 rounded-full"
+                                className="h-full bg-carrot-700 rounded-full"
                                 style={{
                                     width: `${calculateOccupancyPercent()}%`,
                                 }}
@@ -270,11 +270,11 @@ const AgencyAdminDashboard = ({ navigation, onOpenMap }) => {
                             className="flex-1 bg-white p-3.5 rounded-2xl items-center mx-1 border border-slate-100"
                             elevation={1}
                         >
-                            <View className="w-10 h-10 rounded-full justify-center items-center mb-2 bg-blue-100">
+                            <View className="w-10 h-10 rounded-full justify-center items-center mb-2 bg-carrot-100">
                                 <MaterialDesignIcons
                                     name="calendar-today"
                                     size={22}
-                                    color="#2563eb"
+                                    color="#ef6207"
                                 />
                             </View>
                             <Text className="text-slate-500 text-[11px] font-semibold text-center">
@@ -349,7 +349,7 @@ const AgencyAdminDashboard = ({ navigation, onOpenMap }) => {
                     </Text>
                     <View className="flex-row flex-wrap justify-between mb-2">
                         <TouchableOpacity
-                            className="w-[48%] p-3.5 rounded-2xl mb-3 flex-row items-center bg-indigo-700"
+                            className="w-[48%] p-3.5 rounded-2xl mb-3 flex-row items-center bg-carrot-700"
                             onPress={() => navigation.navigate("ManageParking")}
                         >
                             <View className="w-10 h-10 rounded-xl justify-center items-center mr-2.5 bg-white/20">
@@ -415,11 +415,11 @@ const AgencyAdminDashboard = ({ navigation, onOpenMap }) => {
                             className="w-[48%] p-3.5 rounded-2xl mb-3 flex-row items-center bg-white border border-slate-200"
                             onPress={() => navigation.navigate("WorkingHours")}
                         >
-                            <View className="w-10 h-10 rounded-xl justify-center items-center mr-2.5 bg-blue-100">
+                            <View className="w-10 h-10 rounded-xl justify-center items-center mr-2.5 bg-carrot-100">
                                 <MaterialDesignIcons
                                     name="clock-outline"
                                     size={24}
-                                    color="#2563eb"
+                                    color="#ef6207"
                                 />
                             </View>
                             <View className="flex-1">
@@ -503,7 +503,7 @@ const AgencyAdminDashboard = ({ navigation, onOpenMap }) => {
                             <MaterialDesignIcons
                                 name="motorbike"
                                 size={26}
-                                color="#4338ca"
+                                color="#ff9933"
                             />
                             <View className="ml-3">
                                 <Text className="text-slate-500 text-[11px] font-medium">
@@ -560,7 +560,7 @@ const AgencyAdminDashboard = ({ navigation, onOpenMap }) => {
                             <MaterialDesignIcons
                                 name="ev-station"
                                 size={26}
-                                color="#2563eb"
+                                color="#ef6207"
                             />
                             <View className="ml-3">
                                 <Text className="text-slate-500 text-[11px] font-medium">
@@ -581,7 +581,7 @@ const AgencyAdminDashboard = ({ navigation, onOpenMap }) => {
                         <TouchableOpacity
                             onPress={() => navigation.navigate("CheckInOut")}
                         >
-                            <Text className="text-indigo-700 font-semibold text-xs">
+                            <Text className="text-carrot-700 font-semibold text-xs">
                                 Manage All
                             </Text>
                         </TouchableOpacity>

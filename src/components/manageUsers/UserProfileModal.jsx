@@ -129,11 +129,11 @@ export default function UserProfileModal({
                                 {/* Header */}
                                 <View className="flex-row items-center justify-between mb-3 pb-2 border-b border-slate-100">
                                     <View className="flex-row items-center gap-2 flex-1">
-                                        <View className="w-8 h-8 rounded-full bg-indigo-50 items-center justify-center">
+                                        <View className="w-8 h-8 rounded-full bg-carrot-50 items-center justify-center">
                                             <MaterialDesignIcons
                                                 name="account-details"
                                                 size={20}
-                                                color="#4338ca"
+                                                color="#ff9933"
                                             />
                                         </View>
                                         <Text
@@ -155,7 +155,7 @@ export default function UserProfileModal({
                                     <View className="py-12 items-center justify-center">
                                         <ActivityIndicator
                                             size="large"
-                                            color="#4338ca"
+                                            color="#ff9933"
                                         />
                                         <Text className="text-sm font-semibold text-slate-500 mt-3">
                                             Fetching profile & rating details...
@@ -197,7 +197,7 @@ export default function UserProfileModal({
                                                             }
                                                             style={{
                                                                 backgroundColor:
-                                                                    "#6366f1",
+                                                                    "#ff9933",
                                                             }}
                                                             labelStyle={{
                                                                 color: "white",
@@ -257,11 +257,11 @@ export default function UserProfileModal({
                                         </Card>
 
                                         {/* Overall Rating Overview Card */}
-                                        <Card className="mb-4 bg-indigo-900 rounded-2xl border-0 overflow-hidden">
+                                        <Card className="mb-4 bg-carrot-900 rounded-2xl border-0 overflow-hidden">
                                             <Card.Content className="p-4">
                                                 <View className="flex-row items-center justify-between">
                                                     <View className="flex-1">
-                                                        <Text className="text-xs font-semibold text-indigo-200 uppercase tracking-wider">
+                                                        <Text className="text-xs font-semibold text-carrot-200 uppercase tracking-wider">
                                                             Average Owner Rating
                                                         </Text>
                                                         <View className="flex-row items-baseline mt-1 gap-2">
@@ -273,7 +273,7 @@ export default function UserProfileModal({
                                                                     : "N/A"}
                                                             </Text>
                                                             {avgRating > 0 && (
-                                                                <Text className="text-sm font-semibold text-indigo-200">
+                                                                <Text className="text-sm font-semibold text-carrot-200">
                                                                     / 5.0
                                                                 </Text>
                                                             )}
@@ -286,11 +286,11 @@ export default function UserProfileModal({
                                                         </View>
                                                     </View>
 
-                                                    <View className="items-end bg-indigo-800 px-3 py-2 rounded-xl">
+                                                    <View className="items-end bg-carrot-800 px-3 py-2 rounded-xl">
                                                         <Text className="text-lg font-bold text-white w-full text-center">
                                                             {totalCount}
                                                         </Text>
-                                                        <Text className="text-[10px] font-medium text-indigo-200 uppercase">
+                                                        <Text className="text-[10px] font-medium text-carrot-200 uppercase">
                                                             {totalCount === 1
                                                                 ? "Review"
                                                                 : "Reviews"}

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
     View,
     ScrollView,
@@ -14,6 +14,7 @@ import {
     Avatar,
     Menu,
     Provider,
+    Surface,
 } from "react-native-paper";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useDispatch } from "react-redux";
@@ -66,6 +67,49 @@ const formatTime = (d) => {
     return `${hours}:${minutes}`;
 };
 
+const formatTime12h = (time24) => {
+    if (!time24) return "";
+    const [hStr, mStr] = time24.split(":");
+    let h = parseInt(hStr, 10);
+    const m = mStr || "00";
+    if (isNaN(h)) return time24;
+    const ampm = h >= 12 ? "PM" : "AM";
+    h = h % 12 || 12;
+    const hFormatted = String(h).padStart(2, "0");
+    return `${hFormatted}:${m} ${ampm}`;
+};
+
+const formatNextAvailableTime = (isoString) => {
+    if (!isoString) return "";
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) return "";
+
+    const today = new Date();
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const isToday = date.toDateString() === today.toDateString();
+    const isTomorrow = date.toDateString() === tomorrow.toDateString();
+
+    const h = date.getHours();
+    const m = String(date.getMinutes()).padStart(2, "0");
+    const ampm = h >= 12 ? "PM" : "AM";
+    const h12 = String(h % 12 || 12).padStart(2, "0");
+    const timeFormatted = `${h12}:${m} ${ampm}`;
+
+    if (isToday) {
+        return `Today at ${timeFormatted}`;
+    } else if (isTomorrow) {
+        return `Tomorrow at ${timeFormatted}`;
+    } else {
+        const months = [
+            "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+        ];
+        return `${months[date.getMonth()]} ${date.getDate()} at ${timeFormatted}`;
+    }
+};
+
 const BookingModal = ({
     visible,
     onClose,
@@ -82,6 +126,7 @@ const BookingModal = ({
     const [bookingDialogTab, setBookingDialogTab] = useState("details");
     const [selectedVehicleOption, setSelectedVehicleOption] = useState("");
     const [vehicleMenuVisible, setVehicleMenuVisible] = useState(false);
+    const [serverAvailability, setServerAvailability] = useState(null);
 
     const [pickerState, setPickerState] = useState({
         visible: false,
@@ -302,30 +347,308 @@ const BookingModal = ({
 
         const targetAgencyId = String(agency.id || agency.org_id || "");
 
-        const activeCount = (bookings || []).filter((b) => {
+        // Determine requested booking interval
+        let reqStart = null;
+        let reqEnd = null;
+        if (bookingState.fromDate && bookingState.fromTime) {
+            const s = new Date(`${bookingState.fromDate}T${bookingState.fromTime}`);
+            if (!isNaN(s.getTime())) reqStart = s;
+        }
+        if (bookingState.toDate && bookingState.toTime) {
+            const e = new Date(`${bookingState.toDate}T${bookingState.toTime}`);
+            if (!isNaN(e.getTime())) reqEnd = e;
+        }
+
+        const now = new Date();
+
+        const parsedMatchingBookings = [];
+        (bookings || []).forEach((b) => {
             const bAgencyId = String(
                 b.agencyId || b.agency_id || b.org_id || ""
             );
             const bVehicleType = b.vehicleType || b.vehicle_type;
             const bStatus = b.status;
-            return (
-                bAgencyId === targetAgencyId &&
-                bVehicleType === selectedType &&
-                (bStatus === "booked" || bStatus === "checked_in")
-            );
-        }).length;
 
+            if (bAgencyId !== targetAgencyId) return;
+
+            // Match vehicle type flexibly (e.g. twoWheeler / two_wheeler)
+            const normSelected = selectedType.toLowerCase().replace(/[-_\s]/g, "");
+            const normBType = (bVehicleType || "").toLowerCase().replace(/[-_\s]/g, "");
+            const isTypeMatch =
+                normSelected === normBType ||
+                ((normSelected.includes("twowheeler") || normSelected === "bike") &&
+                    (normBType.includes("twowheeler") || normBType === "bike")) ||
+                ((normSelected.includes("threewheeler") || normSelected === "auto") &&
+                    (normBType.includes("threewheeler") || normBType === "auto"));
+
+            if (!isTypeMatch) return;
+
+            if (!["booked", "checked_in", "pending_approval"].includes(bStatus)) {
+                return;
+            }
+
+            const bStartRaw =
+                b.bookingStartTime ||
+                b.booking_start_time ||
+                b.startTime ||
+                b.start_time ||
+                b.checkinTime;
+            if (!bStartRaw) return;
+
+            const bStart = new Date(bStartRaw);
+            if (isNaN(bStart.getTime())) return;
+
+            let bEnd;
+            const bEndRaw =
+                b.bookingEndTime ||
+                b.booking_end_time ||
+                b.endTime ||
+                b.end_time;
+            if (bEndRaw) {
+                bEnd = new Date(bEndRaw);
+            } else {
+                const durHours =
+                    parseFloat(b.bookedDuration || b.booked_duration) || 1;
+                bEnd = new Date(bStart.getTime() + durHours * 3600000);
+            }
+
+            if (bStatus === "checked_in" && bEnd < now) {
+                bEnd = now;
+            }
+
+            parsedMatchingBookings.push({ id: b.id, start: bStart, end: bEnd });
+        });
+
+        const overlappingBookings = parsedMatchingBookings.filter(
+            (b) => !reqStart || !reqEnd || (b.start < reqEnd && b.end > reqStart)
+        );
+
+        const activeCount = overlappingBookings.length;
         const availableSpots = Math.max(0, capacity - activeCount);
+        const isAvailable = capacity > 0 && availableSpots > 0;
+
+        let nextAvailableFrom = null;
+        let nextAvailableWindow = null;
+
+        if (!isAvailable && capacity > 0 && reqStart && reqEnd) {
+            const durationMs = reqEnd.getTime() - reqStart.getTime();
+
+            const getLocalOccupancy = (t) => {
+                let count = 0;
+                for (const b of parsedMatchingBookings) {
+                    if (b.start <= t && b.end > t) count++;
+                }
+                return count;
+            };
+
+            const isWindowFree = (wStart, wEnd) => {
+                const points = [wStart, wEnd];
+                for (const b of parsedMatchingBookings) {
+                    if (b.start > wStart && b.start < wEnd) points.push(b.start);
+                    if (b.end > wStart && b.end < wEnd) points.push(b.end);
+                }
+                points.sort((a, b) => a.getTime() - b.getTime());
+
+                for (let i = 0; i < points.length - 1; i++) {
+                    const mid = new Date(
+                        (points[i].getTime() + points[i + 1].getTime()) / 2
+                    );
+                    if (getLocalOccupancy(mid) >= capacity) return false;
+                }
+                return true;
+            };
+
+            const rawCands = [
+                new Date(Math.max(reqStart.getTime(), now.getTime())),
+            ];
+            for (const b of parsedMatchingBookings) {
+                if (b.end >= reqStart) {
+                    rawCands.push(new Date(b.end.getTime()));
+                }
+            }
+            rawCands.sort((a, b) => a.getTime() - b.getTime());
+
+            const uniqueCands = [];
+            for (const cand of rawCands) {
+                if (
+                    !uniqueCands.some(
+                        (u) => Math.abs(u.getTime() - cand.getTime()) < 1000
+                    )
+                ) {
+                    uniqueCands.push(cand);
+                }
+            }
+
+            for (const cand of uniqueCands) {
+                if (getLocalOccupancy(cand) < capacity) {
+                    nextAvailableFrom = cand.toISOString();
+                    break;
+                }
+            }
+
+            for (const cand of uniqueCands) {
+                const candEnd = new Date(cand.getTime() + durationMs);
+                if (isWindowFree(cand, candEnd)) {
+                    nextAvailableWindow = {
+                        startTime: cand.toISOString(),
+                        endTime: candEnd.toISOString(),
+                    };
+                    if (!nextAvailableFrom) {
+                        nextAvailableFrom = cand.toISOString();
+                    }
+                    break;
+                }
+            }
+
+            if (!nextAvailableWindow && parsedMatchingBookings.length > 0) {
+                const latestEndMs = Math.max(
+                    reqStart.getTime(),
+                    now.getTime(),
+                    ...parsedMatchingBookings.map((b) => b.end.getTime())
+                );
+                const fallbackStart = new Date(latestEndMs);
+                const fallbackEnd = new Date(latestEndMs + durationMs);
+                nextAvailableFrom =
+                    nextAvailableFrom || fallbackStart.toISOString();
+                nextAvailableWindow = {
+                    startTime: fallbackStart.toISOString(),
+                    endTime: fallbackEnd.toISOString(),
+                };
+            }
+        }
 
         return {
             capacity,
             booked: activeCount,
             availableSpots,
-            isAvailable: availableSpots > 0,
+            isAvailable,
+            nextAvailableFrom,
+            nextAvailableWindow,
         };
-    }, [agency, bookingState.vehicleType, bookings]);
+    }, [
+        agency,
+        bookingState.vehicleType,
+        bookingState.fromDate,
+        bookingState.fromTime,
+        bookingState.toDate,
+        bookingState.toTime,
+        bookings,
+    ]);
 
-    const availability = getAvailabilityInfo();
+    // Query backend real-time availability whenever vehicle or dates change
+    useEffect(() => {
+        if (
+            !visible ||
+            !agency ||
+            !bookingState.fromDate ||
+            !bookingState.fromTime ||
+            !bookingState.toDate ||
+            !bookingState.toTime
+        ) {
+            setServerAvailability(null);
+            return;
+        }
+
+        let isMounted = true;
+        const fetchAvailability = async () => {
+            try {
+                const s = new Date(
+                    `${bookingState.fromDate}T${bookingState.fromTime}`
+                );
+                const e = new Date(
+                    `${bookingState.toDate}T${bookingState.toTime}`
+                );
+                if (isNaN(s.getTime()) || isNaN(e.getTime()) || e <= s) {
+                    return;
+                }
+
+                const res = await apiService.get("bookings/availability", {
+                    params: {
+                        agencyId: agency.id || agency.org_id,
+                        vehicleType: bookingState.vehicleType || "car",
+                        startTime: s.toISOString(),
+                        endTime: e.toISOString(),
+                    },
+                });
+
+                if (isMounted && res && res.success && res.data) {
+                    setServerAvailability(res.data);
+                }
+            } catch (err) {
+                // If remote query fails, local calculation serves as fallback
+                console.log(
+                    "Remote availability query note:",
+                    err?.message || err
+                );
+            }
+        };
+
+        const timer = setTimeout(fetchAvailability, 250);
+        return () => {
+            isMounted = false;
+            clearTimeout(timer);
+        };
+    }, [
+        visible,
+        agency,
+        bookingState.vehicleType,
+        bookingState.fromDate,
+        bookingState.fromTime,
+        bookingState.toDate,
+        bookingState.toTime,
+    ]);
+
+    const localAvailability = getAvailabilityInfo();
+    const availability = serverAvailability || localAvailability;
+
+    const applyNextAvailableTime = () => {
+        const targetWindow =
+            availability?.nextAvailableWindow ||
+            (availability?.nextAvailableFrom
+                ? {
+                      startTime: availability.nextAvailableFrom,
+                      endTime: new Date(
+                          new Date(availability.nextAvailableFrom).getTime() +
+                              (calculatedDuration > 0
+                                  ? calculatedDuration
+                                  : 1) *
+                                  3600000
+                      ).toISOString(),
+                  }
+                : null);
+
+        if (!targetWindow || !targetWindow.startTime) return;
+
+        const s = new Date(targetWindow.startTime);
+        const e = new Date(targetWindow.endTime);
+
+        const pad = (n) => String(n).padStart(2, "0");
+
+        const fromDateStr = `${s.getFullYear()}-${pad(s.getMonth() + 1)}-${pad(
+            s.getDate()
+        )}`;
+        const fromTimeStr = `${pad(s.getHours())}:${pad(s.getMinutes())}`;
+
+        const toDateStr = `${e.getFullYear()}-${pad(e.getMonth() + 1)}-${pad(
+            e.getDate()
+        )}`;
+        const toTimeStr = `${pad(e.getHours())}:${pad(e.getMinutes())}`;
+
+        setBooking({
+            fromDate: fromDateStr,
+            fromTime: fromTimeStr,
+            toDate: toDateStr,
+            toTime: toTimeStr,
+        });
+
+        toast.info(
+            `Adjusted booking time to next available slot (${formatTime12h(
+                fromTimeStr
+            )} - ${formatTime12h(toTimeStr)})`,
+            "Slot Selected",
+            true
+        );
+    };
 
     const currentHourlyRate =
         (agency?.[`${bookingState.vehicleType}_rate`] ??
@@ -370,7 +693,7 @@ const BookingModal = ({
 
         if (!availability.isAvailable) {
             toast.error(
-                "No parking spots are available for this vehicle type.",
+                "No parking spots are available for this vehicle type during the selected time slot.",
                 "Unavailable",
                 true
             );
@@ -743,7 +1066,7 @@ const BookingModal = ({
                                         fontWeight: "bold",
                                         color:
                                             bookingDialogTab === "details"
-                                                ? "#4338ca"
+                                                ? "#ff9933"
                                                 : "#475569",
                                     }}
                                 >
@@ -776,7 +1099,7 @@ const BookingModal = ({
                                         fontWeight: "bold",
                                         color:
                                             bookingDialogTab === "cancellation"
-                                                ? "#4338ca"
+                                                ? "#ff9933"
                                                 : "#475569",
                                     }}
                                 >
@@ -835,14 +1158,14 @@ const BookingModal = ({
                                                             mode="outlined"
                                                             dense
                                                             className="bg-white"
-                                                            outlineColor="#4338ca"
-                                                            activeOutlineColor="#4338ca"
+                                                            outlineColor="#ff9933"
+                                                            activeOutlineColor="#ff9933"
                                                             editable={false}
                                                             textColor="#0f172a"
                                                             theme={{
                                                                 colors: {
                                                                     onSurfaceVariant:
-                                                                        "#4338ca",
+                                                                        "#ff9933",
                                                                 },
                                                             }}
                                                             left={
@@ -930,7 +1253,7 @@ const BookingModal = ({
                                                 className={`flex-row items-center px-3 py-1.5 rounded-full border ${
                                                     bookingState.vehicleType ===
                                                     key
-                                                        ? "bg-indigo-50 border-indigo-600"
+                                                        ? "bg-carrot-50 border-carrot-600"
                                                         : "bg-white border-slate-200"
                                                 }`}
                                             >
@@ -946,7 +1269,7 @@ const BookingModal = ({
                                                     color={
                                                         bookingState.vehicleType ===
                                                         key
-                                                            ? "#4338ca"
+                                                            ? "#ff9933"
                                                             : "#64748b"
                                                     }
                                                 />
@@ -954,7 +1277,7 @@ const BookingModal = ({
                                                     className={`text-xs ml-1 font-bold ${
                                                         bookingState.vehicleType ===
                                                         key
-                                                            ? "text-indigo-800"
+                                                            ? "text-carrot-800"
                                                             : "text-slate-600"
                                                     }`}
                                                 >
@@ -985,15 +1308,15 @@ const BookingModal = ({
                                                 mode="outlined"
                                                 dense
                                                 className="bg-white"
-                                                outlineColor="#4338ca"
-                                                activeOutlineColor="#4338ca"
+                                                outlineColor="#ff9933"
+                                                activeOutlineColor="#ff9933"
                                                 placeholder="YYYY-MM-DD"
                                                 editable={false}
                                                 textColor="#0f172a"
                                                 theme={{
                                                     colors: {
                                                         onSurfaceVariant:
-                                                            "#4338ca",
+                                                            "#ff9933",
                                                     },
                                                 }}
                                                 right={
@@ -1018,15 +1341,15 @@ const BookingModal = ({
                                                 mode="outlined"
                                                 dense
                                                 className="bg-white"
-                                                outlineColor="#4338ca"
-                                                activeOutlineColor="#4338ca"
+                                                outlineColor="#ff9933"
+                                                activeOutlineColor="#ff9933"
                                                 placeholder="HH:MM"
                                                 editable={false}
                                                 textColor="#0f172a"
                                                 theme={{
                                                     colors: {
                                                         onSurfaceVariant:
-                                                            "#4338ca",
+                                                            "#ff9933",
                                                     },
                                                 }}
                                                 right={
@@ -1055,15 +1378,15 @@ const BookingModal = ({
                                                 mode="outlined"
                                                 dense
                                                 className="bg-white"
-                                                outlineColor="#4338ca"
-                                                activeOutlineColor="#4338ca"
+                                                outlineColor="#ff9933"
+                                                activeOutlineColor="#ff9933"
                                                 placeholder="YYYY-MM-DD"
                                                 editable={false}
                                                 textColor="#0f172a"
                                                 theme={{
                                                     colors: {
                                                         onSurfaceVariant:
-                                                            "#4338ca",
+                                                            "#ff9933",
                                                     },
                                                 }}
                                                 right={
@@ -1086,15 +1409,15 @@ const BookingModal = ({
                                                 mode="outlined"
                                                 dense
                                                 className="bg-white"
-                                                outlineColor="#4338ca"
-                                                activeOutlineColor="#4338ca"
+                                                outlineColor="#ff9933"
+                                                activeOutlineColor="#ff9933"
                                                 placeholder="HH:MM"
                                                 editable={false}
                                                 textColor="#0f172a"
                                                 theme={{
                                                     colors: {
                                                         onSurfaceVariant:
-                                                            "#4338ca",
+                                                            "#ff9933",
                                                     },
                                                 }}
                                                 right={
@@ -1108,7 +1431,7 @@ const BookingModal = ({
                                     </TouchableOpacity>
                                 </View>
 
-                                <View className="flex-row justify-between mb-3 px-1">
+                                <View className="flex-row justify-between mb-2 px-1">
                                     <Text className="text-xs text-slate-500">
                                         Duration:{" "}
                                         {calculatedDuration > 0
@@ -1128,6 +1451,75 @@ const BookingModal = ({
                                     </Text>
                                 </View>
 
+                                {/* Next Slot Available Banner when full */}
+                                {!availability.isAvailable && (
+                                    <Surface
+                                        elevation={1}
+                                        className="my-2 p-3.5 rounded-2xl bg-amber-50 border border-amber-200"
+                                    >
+                                        <View className="flex-row items-center mb-1">
+                                            <MaterialDesignIcons
+                                                name="clock-alert-outline"
+                                                size={18}
+                                                color="#b45309"
+                                            />
+                                            <Text className="text-amber-900 font-bold text-xs ml-1.5">
+                                                No spots available at this time
+                                            </Text>
+                                        </View>
+                                        <Text className="text-amber-800 text-[11px] mt-0.5 leading-4">
+                                            All {availability.capacity}{" "}
+                                            {bookingState.vehicleType || "vehicle"}{" "}
+                                            parking{" "}
+                                            {availability.capacity === 1
+                                                ? "spot is"
+                                                : "spots are"}{" "}
+                                            booked for your selected time window.
+                                        </Text>
+                                        {Boolean(
+                                            availability.nextAvailableWindow
+                                                ?.startTime ||
+                                                availability.nextAvailableFrom
+                                        ) ? (
+                                            <View className="mt-2.5 pt-2.5 border-t border-amber-200/80 flex-row items-center justify-between">
+                                                <View className="flex-1 mr-2">
+                                                    <Text className="text-[10px] text-amber-700 font-semibold uppercase tracking-wider">
+                                                        Slot will be available:
+                                                    </Text>
+                                                    <Text className="text-amber-950 font-bold text-xs mt-0.5">
+                                                        {formatNextAvailableTime(
+                                                            availability
+                                                                .nextAvailableWindow
+                                                                ?.startTime ||
+                                                                availability.nextAvailableFrom
+                                                        )}
+                                                    </Text>
+                                                </View>
+                                                <TouchableOpacity
+                                                    onPress={
+                                                        applyNextAvailableTime
+                                                    }
+                                                    className="bg-carrot-500 active:bg-carrot-600 px-3 py-1.5 rounded-xl flex-row items-center shadow-sm"
+                                                >
+                                                    <MaterialDesignIcons
+                                                        name="calendar-sync"
+                                                        size={14}
+                                                        color="#ffffff"
+                                                    />
+                                                    <Text className="text-white text-xs font-bold ml-1">
+                                                        Use Slot
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        ) : (
+                                            <Text className="text-amber-700 text-[11px] italic mt-2">
+                                                No upcoming slots currently
+                                                scheduled to free up.
+                                            </Text>
+                                        )}
+                                    </Surface>
+                                )}
+
                                 <Divider className="my-2 bg-slate-100" />
 
                                 {Boolean(availability.isAvailable) && (
@@ -1135,7 +1527,7 @@ const BookingModal = ({
                                         <Text className="font-bold text-slate-700 text-sm">
                                             Estimated Cost:
                                         </Text>
-                                        <Text className="font-bold text-indigo-700 text-xl">
+                                        <Text className="font-bold text-carrot-700 text-xl">
                                             ₹{estimatedCost}
                                         </Text>
                                     </View>
@@ -1347,7 +1739,7 @@ const BookingModal = ({
                             <Button
                                 mode="contained"
                                 onPress={handleConfirmBooking}
-                                buttonColor="#4338ca"
+                                buttonColor="#ff9933"
                                 labelStyle={{ color: "white" }}
                                 disabled={
                                     !availability.isAvailable ||
@@ -1368,7 +1760,7 @@ const BookingModal = ({
                                 mode={pickerState.mode}
                                 display="default"
                                 onChange={handlePickerChange}
-                                accentColor="#4338ca"
+                                accentColor="#ff9933"
                                 minimumDate={getMinimumDateForPicker()}
                             />
                         )}
@@ -1401,7 +1793,7 @@ const BookingModal = ({
                                                 mode={pickerState.mode}
                                                 display="spinner"
                                                 onChange={handlePickerChange}
-                                                accentColor="#4338ca"
+                                                accentColor="#ff9933"
                                                 minimumDate={getMinimumDateForPicker()}
                                             />
                                         </View>
@@ -1413,7 +1805,7 @@ const BookingModal = ({
                                                     visible: false,
                                                 }))
                                             }
-                                            buttonColor="#4338ca"
+                                            buttonColor="#ff9933"
                                             textColor="white"
                                         >
                                             Done

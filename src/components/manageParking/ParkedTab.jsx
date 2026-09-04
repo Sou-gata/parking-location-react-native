@@ -45,7 +45,7 @@ export default function ParkedTab({ currentAgency, activeBookings }) {
                     mode="outlined"
                     dense
                     outlineColor="#e2e8f0"
-                    activeOutlineColor="#4338ca"
+                    activeOutlineColor="#ff9933"
                     left={<TextInput.Icon icon="magnify" />}
                     style={{
                         flex: 1,
@@ -101,7 +101,7 @@ export default function ParkedTab({ currentAgency, activeBookings }) {
                                     }}
                                     textStyle={{
                                         fontSize: 11,
-                                        color: "#4338ca",
+                                        color: "#ff9933",
                                         fontWeight: "bold",
                                     }}
                                     compact

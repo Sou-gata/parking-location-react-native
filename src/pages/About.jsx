@@ -120,7 +120,7 @@ export default function About({ navigation }) {
 
     return (
         <View className="flex-1 bg-slate-50">
-            <StatusBar backgroundColor="#4338ca" barStyle="light-content" />
+            <StatusBar backgroundColor="#ff9933" barStyle="light-content" />
 
             <ScrollView
                 contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
@@ -129,7 +129,7 @@ export default function About({ navigation }) {
                 {/* Brand Header Banner */}
                 <Surface
                     elevation={2}
-                    className="bg-indigo-700 rounded-3xl p-6 items-center mb-4"
+                    className="bg-carrot-700 rounded-3xl p-6 items-center mb-4"
                 >
                     <View className="w-20 h-20 rounded-xl bg-white/50 items-center justify-center mb-1 p-1.5 border border-white shadow-sm">
                         <Image
@@ -146,7 +146,7 @@ export default function About({ navigation }) {
                         style={{ width: 180, height: 30 }}
                         resizeMode="contain"
                     /> */}
-                    <Text className="text-xs text-indigo-200 text-center mb-3.5">
+                    <Text className="text-xs text-carrot-200 text-center mb-3.5">
                         Smart Parking & Space Management System
                     </Text>
                     {/* <View className="flex-row items-center bg-white/20 border border-white/30 px-3.5 py-1.5 rounded-full">
@@ -169,7 +169,7 @@ export default function About({ navigation }) {
                             <MaterialDesignIcons
                                 name="update"
                                 size={26}
-                                color="#4338ca"
+                                color="#ff9933"
                             />
                             <Text className="text-base font-bold text-slate-800 ml-2.5">
                                 Software Update
@@ -193,7 +193,7 @@ export default function About({ navigation }) {
                             onPress={handleCheckForUpdate}
                             disabled={checking}
                             className="rounded-xl mt-1 py-0.5"
-                            buttonColor="#4338ca"
+                            buttonColor="#ff9933"
                             contentStyle={{ paddingVertical: 4 }}
                             icon={({ size, color }) =>
                                 checking ? (
@@ -224,7 +224,7 @@ export default function About({ navigation }) {
                             <MaterialDesignIcons
                                 name="cellphone-information"
                                 size={26}
-                                color="#4338ca"
+                                color="#ff9933"
                             />
                             <Text className="text-base font-bold text-slate-800 ml-2.5">
                                 Application Specs
@@ -322,11 +322,11 @@ export default function About({ navigation }) {
                             shadowRadius: 12,
                         }}
                     >
-                        <View className="w-16 h-16 rounded-full bg-indigo-100 items-center justify-center mb-3">
+                        <View className="w-16 h-16 rounded-full bg-carrot-100 items-center justify-center mb-3">
                             <MaterialDesignIcons
                                 name="cloud-download-outline"
                                 size={38}
-                                color="#4338ca"
+                                color="#ff9933"
                             />
                         </View>
 
@@ -334,13 +334,13 @@ export default function About({ navigation }) {
                             Update Available!
                         </Text>
 
-                        <View className="flex-row items-center bg-indigo-100 px-3.5 py-1.5 rounded-full mb-4">
+                        <View className="flex-row items-center bg-carrot-100 px-3.5 py-1.5 rounded-full mb-4">
                             <MaterialDesignIcons
                                 name="star"
                                 size={16}
-                                color="#4338ca"
+                                color="#ff9933"
                             />
-                            <Text className="text-xs font-bold text-indigo-700 ml-1.5">
+                            <Text className="text-xs font-bold text-carrot-700 ml-1.5">
                                 Version {updateInfo?.versionName || "New"}
                             </Text>
                         </View>
@@ -373,7 +373,7 @@ export default function About({ navigation }) {
                                     mode="contained"
                                     onPress={handleDownloadApk}
                                     className="rounded-xl"
-                                    buttonColor="#4338ca"
+                                    buttonColor="#ff9933"
                                     icon={({ size, color }) => (
                                         <MaterialDesignIcons
                                             name="download"

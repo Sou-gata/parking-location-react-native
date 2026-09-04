@@ -16,8 +16,11 @@ const theme = {
     ...MD3LightTheme,
     colors: {
         ...MD3LightTheme.colors,
-        primary: "#4338ca",
-        primaryContainer: "#4338ca",
+        primary: "#ff9933",
+        primaryContainer: "#ffdba8",
+
+        // primary: "#4338ca",
+        // primaryContainer: "#4338ca",
     },
 };
 
@@ -30,7 +33,7 @@ function App() {
                         <View style={styles.container}>
                             <AuthInitializer>
                                 <StatusBar
-                                    backgroundColor="#4338ca"
+                                    backgroundColor="#ff9933"
                                     barStyle="light-content"
                                 />
                                 <Screens />

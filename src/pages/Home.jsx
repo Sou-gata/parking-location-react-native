@@ -150,13 +150,13 @@ const Home = ({ navigation }) => {
     };
 
     return (
-        <View className="flex-1 bg-gray-50">
-            <StatusBar backgroundColor="#4338ca" barStyle="light-content" />
+        <View className="flex-1 bg-white">
+            <StatusBar backgroundColor="#ff9933" barStyle="light-content" />
 
             {/* Top Navigation Bar */}
             <Surface
                 elevation={4}
-                className="bg-indigo-700 rounded-b-3xl flex-row items-center justify-between px-2"
+                className="bg-carrot-400 rounded-b-3xl flex-row items-center justify-between px-2"
                 style={{ height: 110, paddingTop: StatusBar.currentHeight }}
             >
                 <IconButton
@@ -201,7 +201,9 @@ const Home = ({ navigation }) => {
                             icon="bell-outline"
                             iconColor="white"
                             size={24}
-                            onPress={() => navigation.navigate("NotificationScreen")}
+                            onPress={() =>
+                                navigation.navigate("NotificationScreen")
+                            }
                         />
                         {unreadCount > 0 && (
                             <View
@@ -217,7 +219,7 @@ const Home = ({ navigation }) => {
                                     justifyContent: "center",
                                     paddingHorizontal: 4,
                                     borderWidth: 1.5,
-                                    borderColor: "#4338ca",
+                                    borderColor: "#ff9933",
                                 }}
                             >
                                 <Text
@@ -297,7 +299,7 @@ const Home = ({ navigation }) => {
                                 user?.name?.substring(0, 2).toUpperCase() ||
                                 "US"
                             }
-                            style={{ backgroundColor: "#4338ca" }}
+                            style={{ backgroundColor: "#ff9933" }}
                         />
                         <View className="ml-4 flex-1">
                             <Text
@@ -307,8 +309,8 @@ const Home = ({ navigation }) => {
                                 {user?.name || "User"}
                             </Text>
                             <View className="flex-row items-center mt-1">
-                                <View className="bg-indigo-100 px-2 py-0.5 rounded self-start">
-                                    <Text className="text-indigo-800 font-bold text-xs">
+                                <View className="bg-carrot-100 px-2 py-0.5 rounded self-start">
+                                    <Text className="text-carrot-800 font-bold text-xs">
                                         {String(
                                             "                                     " +
                                                 (ROLE_DISPLAY_NAMES[role] ||
@@ -367,10 +369,16 @@ const Home = ({ navigation }) => {
                             >
                                 <Drawer.Item
                                     icon="bell-outline"
-                                    label={unreadCount > 0 ? `Notifications (${unreadCount})` : "Notifications"}
+                                    label={
+                                        unreadCount > 0
+                                            ? `Notifications (${unreadCount})`
+                                            : "Notifications"
+                                    }
                                     onPress={() => {
                                         toggleDrawer(false);
-                                        navigation.navigate("NotificationScreen");
+                                        navigation.navigate(
+                                            "NotificationScreen"
+                                        );
                                     }}
                                 />
 

@@ -73,10 +73,10 @@ function getTypeDetails(type) {
             return {
                 icon: "car",
                 bgColor: "#e0e7ff",
-                iconColor: "#4338ca",
+                iconColor: "#ff9933",
                 badgeText: "Booking",
                 badgeBg: "#eef2ff",
-                badgeColor: "#4338ca",
+                badgeColor: "#ff9933",
                 actionLabel: "View Booking",
                 actionRoute: "MyBookings",
             };
@@ -421,7 +421,7 @@ export default function NotificationScreen({ navigation }) {
                             <IconButton
                                 icon="check-all"
                                 size={16}
-                                iconColor="#4338ca"
+                                iconColor="#ff9933"
                                 style={{
                                     margin: 0,
                                     padding: 0,
@@ -576,7 +576,7 @@ export default function NotificationScreen({ navigation }) {
 
         return (
             <View style={styles.footerLoader}>
-                <ActivityIndicator size="small" color="#4338ca" />
+                <ActivityIndicator size="small" color="#ff9933" />
                 <Text style={styles.footerLoaderText}>
                     Loading more notifications...
                 </Text>
@@ -588,7 +588,7 @@ export default function NotificationScreen({ navigation }) {
         if (loading && !refreshing) {
             return (
                 <View style={styles.emptyContainer}>
-                    <ActivityIndicator size="large" color="#4338ca" />
+                    <ActivityIndicator size="large" color="#ff9933" />
                     <Text style={styles.loadingText}>
                         Loading your notifications...
                     </Text>
@@ -608,7 +608,7 @@ export default function NotificationScreen({ navigation }) {
                                 : "bell-check-outline"
                         }
                         size={46}
-                        iconColor="#6366f1"
+                        iconColor="#ff9933"
                         style={{ margin: 0 }}
                     />
                 </View>
@@ -628,7 +628,7 @@ export default function NotificationScreen({ navigation }) {
                         mode="outlined"
                         onPress={() => setActiveFilter("all")}
                         style={styles.resetFilterBtn}
-                        textColor="#4338ca"
+                        textColor="#ff9933"
                     >
                         Show All Notifications
                     </Button>
@@ -639,7 +639,7 @@ export default function NotificationScreen({ navigation }) {
 
     return (
         <View style={styles.container}>
-            <StatusBar backgroundColor="#4338ca" barStyle="light-content" />
+            <StatusBar backgroundColor="#ff9933" barStyle="light-content" />
 
             {/* Top Fixed Header with Filter Chips & Actions */}
             {renderHeader()}
@@ -664,7 +664,7 @@ export default function NotificationScreen({ navigation }) {
                     <RefreshControl
                         refreshing={refreshing}
                         onRefresh={onRefresh}
-                        colors={["#4338ca"]}
+                        colors={["#ff9933"]}
                     />
                 }
             />
@@ -771,7 +771,7 @@ export default function NotificationScreen({ navigation }) {
                                             )
                                         }
                                         style={styles.detailActionBtn}
-                                        buttonColor="#4338ca"
+                                        buttonColor="#ff9933"
                                         textColor="#ffffff"
                                         icon="arrow-right"
                                     >
@@ -874,7 +874,7 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     unreadBadgePill: {
-        backgroundColor: "#4338ca",
+        backgroundColor: "#ff9933",
         paddingHorizontal: 9,
         paddingVertical: 3,
         borderRadius: 12,
@@ -905,7 +905,7 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     actionButtonText: {
-        color: "#4338ca",
+        color: "#ff9933",
         fontSize: 12,
         fontWeight: "700",
     },
@@ -930,8 +930,8 @@ const styles = StyleSheet.create({
         height: 32,
     },
     filterChipActive: {
-        backgroundColor: "#4338ca",
-        borderColor: "#4338ca",
+        backgroundColor: "#ff9933",
+        borderColor: "#ff9933",
     },
     filterChipText: {
         color: "#475569",
@@ -992,7 +992,7 @@ const styles = StyleSheet.create({
         top: 0,
         bottom: 0,
         width: 4,
-        backgroundColor: "#4338ca",
+        backgroundColor: "#ff9933",
         borderTopLeftRadius: 16,
         borderBottomLeftRadius: 16,
     },
@@ -1059,7 +1059,7 @@ const styles = StyleSheet.create({
         width: 8,
         height: 8,
         borderRadius: 4,
-        backgroundColor: "#4338ca",
+        backgroundColor: "#ff9933",
         alignSelf: "center",
         marginLeft: 4,
     },
@@ -1104,7 +1104,7 @@ const styles = StyleSheet.create({
     },
     resetFilterBtn: {
         marginTop: 18,
-        borderColor: "#4338ca",
+        borderColor: "#ff9933",
         borderRadius: 12,
     },
     modalOverlay: {

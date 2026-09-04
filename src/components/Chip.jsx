@@ -7,10 +7,10 @@ const hexToRgba = (hex, alpha) => {
     let c = hex.toLowerCase().trim();
     if (c === "green") c = "#16a34a";
     else if (c === "red") c = "#dc2626";
-    else if (c === "blue") c = "#2563eb";
+    else if (c === "blue") c = "#ef6207";
     else if (c === "yellow") c = "#ca8a04";
     else if (c === "orange") c = "#ea580c";
-    else if (c === "indigo") c = "#4f46e5";
+    else if (c === "indigo") c = "#ef6207";
     else if (c === "gray") c = "#475569";
 
     if (c.startsWith("#")) {
@@ -28,14 +28,14 @@ const hexToRgba = (hex, alpha) => {
 };
 
 const getPastelTheme = (color, selected) => {
-    const baseColor = color || (selected ? "#4f46e5" : "#475569");
+    const baseColor = color || (selected ? "#ef6207" : "#475569");
     let resolvedColor = baseColor.toLowerCase().trim();
     if (resolvedColor === "green") resolvedColor = "#16a34a";
     else if (resolvedColor === "red") resolvedColor = "#dc2626";
-    else if (resolvedColor === "blue") resolvedColor = "#2563eb";
+    else if (resolvedColor === "blue") resolvedColor = "#ef6207";
     else if (resolvedColor === "yellow") resolvedColor = "#ca8a04";
     else if (resolvedColor === "orange") resolvedColor = "#ea580c";
-    else if (resolvedColor === "indigo") resolvedColor = "#4f46e5";
+    else if (resolvedColor === "indigo") resolvedColor = "#ef6207";
     else if (resolvedColor === "gray") resolvedColor = "#475569";
 
     if (
@@ -74,26 +74,26 @@ const getPastelTheme = (color, selected) => {
         };
     }
     if (
-        resolvedColor === "#3b82f6" ||
-        resolvedColor === "#2563eb" ||
-        resolvedColor === "#1d4ed8"
+        resolvedColor === "#ff9933" ||
+        resolvedColor === "#ef6207" ||
+        resolvedColor === "#c64908"
     ) {
         return {
             bg: "rgba(37, 99, 235, 0.07)",
-            text: "#2563eb",
-            border: "#2563eb",
+            text: "#ef6207",
+            border: "#ef6207",
         };
     }
     if (
-        resolvedColor === "#4338ca" ||
-        resolvedColor === "#4f46e5" ||
+        resolvedColor === "#ff9933" ||
+        resolvedColor === "#ef6207" ||
         resolvedColor === "#3730a3" ||
-        resolvedColor === "#6366f1"
+        resolvedColor === "#ff9933"
     ) {
         return {
             bg: "rgba(79, 70, 229, 0.07)",
-            text: "#4f46e5",
-            border: "#4f46e5",
+            text: "#ef6207",
+            border: "#ef6207",
         };
     }
     if (
@@ -151,8 +151,8 @@ function Chip({
     const defaultBgColor = selected
         ? "rgba(79, 70, 229, 0.07)"
         : "rgba(71, 85, 105, 0.06)";
-    const defaultTextColor = selected ? "#4f46e5" : "#475569";
-    const defaultBorderColor = selected ? "#4f46e5" : "#475569";
+    const defaultTextColor = selected ? "#ef6207" : "#475569";
+    const defaultBorderColor = selected ? "#ef6207" : "#475569";
 
     const finalBgColor = flattenedStyle.backgroundColor
         ? flattenedStyle.backgroundColor

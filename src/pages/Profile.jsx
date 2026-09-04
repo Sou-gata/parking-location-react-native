@@ -805,7 +805,7 @@ export default function Profile({ navigation }) {
     if (loading && !profile) {
         return (
             <View className="flex-1 justify-center items-center bg-slate-50">
-                <ActivityIndicator size="large" color="#4338ca" />
+                <ActivityIndicator size="large" color="#ff9933" />
             </View>
         );
     }
@@ -816,12 +816,12 @@ export default function Profile({ navigation }) {
             showsVerticalScrollIndicator={false}
         >
             {/* Header Hero section with Avatar + Camera Edit */}
-            <View className="bg-indigo-700 pt-10 pb-8 px-6 items-center rounded-b-[32px] shadow-md">
+            <View className="bg-carrot-400 pt-4 pb-8 px-6 items-center">
                 <View className="relative">
                     {photoUrl ? (
                         <Image
                             source={{ uri: photoUrl }}
-                            className="w-24 h-24 rounded-full border-4 border-indigo-400 bg-white"
+                            className="w-24 h-24 rounded-full border-4 border-carrot-400 bg-white"
                             resizeMode="cover"
                         />
                     ) : (
@@ -831,14 +831,14 @@ export default function Profile({ navigation }) {
                                 profile?.name?.substring(0, 2).toUpperCase() ||
                                 "US"
                             }
-                            style={{ backgroundColor: "#818cf8" }}
+                            style={{ backgroundColor: "#c64908" }}
                             labelStyle={{ color: "white", fontWeight: "bold" }}
                         />
                     )}
                     <TouchableOpacity
                         onPress={handleChangeProfilePhoto}
                         activeOpacity={0.8}
-                        className="absolute bottom-0 right-0 bg-indigo-900 rounded-full border-2 border-white p-1.5 shadow"
+                        className="absolute bottom-0 right-0 bg-carrot-900 rounded-full border-2 border-white p-1.5 shadow"
                     >
                         <MaterialDesignIcons
                             name="camera"
@@ -852,8 +852,8 @@ export default function Profile({ navigation }) {
                     {profile?.name || "User Profile"}
                 </Text>
 
-                <View className="bg-indigo-900 px-3 py-0.5 rounded-full mt-2 self-center border border-indigo-500/30">
-                    <Text className="text-indigo-200 font-bold text-xs">
+                <View className="bg-carrot-900 px-3 py-0.5 rounded-full mt-2 self-center border border-carrot-500/30">
+                    <Text className="text-carrot-200 font-bold text-xs">
                         {String(
                             ROLE_DISPLAY_NAMES[role || profile?.role] ||
                                 (isAgencyAdmin ? "Parking Owner" : "Customer")
@@ -866,7 +866,7 @@ export default function Profile({ navigation }) {
                 {/* 2. Basic Contact / Account Information */}
                 <Card className="bg-white border border-slate-100 rounded-2xl elevation-1">
                     <Card.Content className="p-4">
-                        <Text className="text-sm font-bold text-indigo-700 uppercase tracking-wider mb-3">
+                        <Text className="text-sm font-bold text-carrot-700 uppercase tracking-wider mb-3">
                             Account Information
                         </Text>
 
@@ -930,7 +930,7 @@ export default function Profile({ navigation }) {
                 {/* 3. Address & Location Details */}
                 <Card className="bg-white border border-slate-100 rounded-2xl elevation-1">
                     <Card.Content className="p-4 gap-3">
-                        <Text className="text-sm font-bold text-indigo-700 uppercase tracking-wider">
+                        <Text className="text-sm font-bold text-carrot-700 uppercase tracking-wider">
                             Location & Contact Details
                         </Text>
 
@@ -944,7 +944,7 @@ export default function Profile({ navigation }) {
                                     dense
                                     multiline
                                     outlineColor="#e2e8f0"
-                                    activeOutlineColor="#4338ca"
+                                    activeOutlineColor="#ff9933"
                                     className="bg-white"
                                 />
                                 <TextInput
@@ -954,7 +954,7 @@ export default function Profile({ navigation }) {
                                     mode="outlined"
                                     dense
                                     outlineColor="#e2e8f0"
-                                    activeOutlineColor="#4338ca"
+                                    activeOutlineColor="#ff9933"
                                     className="bg-white"
                                 />
                                 <TextInput
@@ -965,7 +965,7 @@ export default function Profile({ navigation }) {
                                     dense
                                     keyboardType="phone-pad"
                                     outlineColor="#e2e8f0"
-                                    activeOutlineColor="#4338ca"
+                                    activeOutlineColor="#ff9933"
                                     className="bg-white"
                                 />
                                 <View className="w-full overflow-hidden rounded-xl border border-slate-200 mt-1 mb-1">
@@ -981,7 +981,7 @@ export default function Profile({ navigation }) {
                                     onPress={handleSaveAddress}
                                     loading={savingAddress}
                                     disabled={savingAddress}
-                                    buttonColor="#4338ca"
+                                    buttonColor="#ff9933"
                                     className="rounded-xl mt-1"
                                 >
                                     Save Location Details
@@ -1039,23 +1039,28 @@ export default function Profile({ navigation }) {
                         <Card.Content className="p-4 gap-3.5">
                             <View className="flex-row justify-between items-center">
                                 <View className="flex-1 mr-2">
-                                    <Text className="text-sm font-bold text-indigo-700 uppercase tracking-wider">
+                                    <Text className="text-sm font-bold text-carrot-700 uppercase tracking-wider">
                                         Parking Dimensions
                                     </Text>
                                     <Text className="text-xs text-slate-400 mt-0.5">
-                                        Specify 3D space measurements of your facility
+                                        Specify 3D space measurements of your
+                                        facility
                                     </Text>
                                 </View>
                                 <Badge
                                     style={{
                                         backgroundColor:
-                                            parkingLength && parkingWidth && parkingHeight
+                                            parkingLength &&
+                                            parkingWidth &&
+                                            parkingHeight
                                                 ? "#16a34a"
                                                 : "#f59e0b",
                                         fontWeight: "bold",
                                     }}
                                 >
-                                    {parkingLength && parkingWidth && parkingHeight
+                                    {parkingLength &&
+                                    parkingWidth &&
+                                    parkingHeight
                                         ? "Configured"
                                         : "Incomplete"}
                                 </Badge>
@@ -1067,24 +1072,36 @@ export default function Profile({ navigation }) {
                                     Measurement Unit
                                 </Text>
                                 <RadioButton.Group
-                                    onValueChange={(val) => setDimensionUnit(val)}
+                                    onValueChange={(val) =>
+                                        setDimensionUnit(val)
+                                    }
                                     value={dimensionUnit}
                                 >
                                     <View className="flex-row items-center justify-around">
                                         <TouchableOpacity
                                             className="flex-row items-center"
-                                            onPress={() => setDimensionUnit("meters")}
+                                            onPress={() =>
+                                                setDimensionUnit("meters")
+                                            }
                                         >
-                                            <RadioButton value="meters" color="#4338ca" />
+                                            <RadioButton
+                                                value="meters"
+                                                color="#ff9933"
+                                            />
                                             <Text className="text-xs font-bold text-slate-700">
                                                 Meters (m)
                                             </Text>
                                         </TouchableOpacity>
                                         <TouchableOpacity
                                             className="flex-row items-center"
-                                            onPress={() => setDimensionUnit("feet")}
+                                            onPress={() =>
+                                                setDimensionUnit("feet")
+                                            }
                                         >
-                                            <RadioButton value="feet" color="#4338ca" />
+                                            <RadioButton
+                                                value="feet"
+                                                color="#ff9933"
+                                            />
                                             <Text className="text-xs font-bold text-slate-700">
                                                 Feet (ft)
                                             </Text>
@@ -1096,7 +1113,9 @@ export default function Profile({ navigation }) {
                             {/* 3 Dimensions Inputs */}
                             <View className="gap-2.5">
                                 <TextInput
-                                    label={`Length (${dimensionUnit === "meters" ? "m" : "ft"}) *`}
+                                    label={`Length (${
+                                        dimensionUnit === "meters" ? "m" : "ft"
+                                    }) *`}
                                     value={parkingLength}
                                     onChangeText={setParkingLength}
                                     mode="outlined"
@@ -1104,13 +1123,15 @@ export default function Profile({ navigation }) {
                                     keyboardType="numeric"
                                     placeholder="e.g. 50.0"
                                     outlineColor="#e2e8f0"
-                                    activeOutlineColor="#4338ca"
+                                    activeOutlineColor="#ff9933"
                                     className="bg-white"
                                     left={<TextInput.Icon icon="ruler" />}
                                 />
 
                                 <TextInput
-                                    label={`Width / Breadth (${dimensionUnit === "meters" ? "m" : "ft"}) *`}
+                                    label={`Width / Breadth (${
+                                        dimensionUnit === "meters" ? "m" : "ft"
+                                    }) *`}
                                     value={parkingWidth}
                                     onChangeText={setParkingWidth}
                                     mode="outlined"
@@ -1118,13 +1139,17 @@ export default function Profile({ navigation }) {
                                     keyboardType="numeric"
                                     placeholder="e.g. 30.0"
                                     outlineColor="#e2e8f0"
-                                    activeOutlineColor="#4338ca"
+                                    activeOutlineColor="#ff9933"
                                     className="bg-white"
-                                    left={<TextInput.Icon icon="arrow-expand-horizontal" />}
+                                    left={
+                                        <TextInput.Icon icon="arrow-expand-horizontal" />
+                                    }
                                 />
 
                                 <TextInput
-                                    label={`Height / Max Clearance (${dimensionUnit === "meters" ? "m" : "ft"}) *`}
+                                    label={`Height / Max Clearance (${
+                                        dimensionUnit === "meters" ? "m" : "ft"
+                                    }) *`}
                                     value={parkingHeight}
                                     onChangeText={setParkingHeight}
                                     mode="outlined"
@@ -1132,35 +1157,43 @@ export default function Profile({ navigation }) {
                                     keyboardType="numeric"
                                     placeholder="e.g. 4.5"
                                     outlineColor="#e2e8f0"
-                                    activeOutlineColor="#4338ca"
+                                    activeOutlineColor="#ff9933"
                                     className="bg-white"
-                                    left={<TextInput.Icon icon="arrow-expand-vertical" />}
+                                    left={
+                                        <TextInput.Icon icon="arrow-expand-vertical" />
+                                    }
                                 />
                             </View>
 
                             {/* Calculated Metrics Summary */}
                             {(calculatedArea || calculatedVolume) && (
-                                <View className="flex-row items-center justify-around py-2.5 px-3 bg-indigo-50/60 rounded-xl border border-indigo-100 mt-1">
+                                <View className="flex-row items-center justify-around py-2.5 px-3 bg-carrot-50/60 rounded-xl border border-carrot-100 mt-1">
                                     {calculatedArea && (
                                         <View className="items-center">
-                                            <Text className="text-xs text-indigo-500 font-semibold">
+                                            <Text className="text-xs text-carrot-500 font-semibold">
                                                 Total Area
                                             </Text>
-                                            <Text className="text-sm font-bold text-indigo-900 mt-0.5">
-                                                {calculatedArea} {dimensionUnit === "meters" ? "m²" : "sq ft"}
+                                            <Text className="text-sm font-bold text-carrot-900 mt-0.5">
+                                                {calculatedArea}{" "}
+                                                {dimensionUnit === "meters"
+                                                    ? "m²"
+                                                    : "sq ft"}
                                             </Text>
                                         </View>
                                     )}
                                     {calculatedArea && calculatedVolume && (
-                                        <View className="h-6 w-[1px] bg-indigo-200" />
+                                        <View className="h-6 w-[1px] bg-carrot-200" />
                                     )}
                                     {calculatedVolume && (
                                         <View className="items-center">
-                                            <Text className="text-xs text-indigo-500 font-semibold">
+                                            <Text className="text-xs text-carrot-500 font-semibold">
                                                 Total Volume
                                             </Text>
-                                            <Text className="text-sm font-bold text-indigo-900 mt-0.5">
-                                                {calculatedVolume} {dimensionUnit === "meters" ? "m³" : "cu ft"}
+                                            <Text className="text-sm font-bold text-carrot-900 mt-0.5">
+                                                {calculatedVolume}{" "}
+                                                {dimensionUnit === "meters"
+                                                    ? "m³"
+                                                    : "cu ft"}
                                             </Text>
                                         </View>
                                     )}
@@ -1172,7 +1205,7 @@ export default function Profile({ navigation }) {
                                 onPress={handleSaveDimensions}
                                 loading={savingDimensions}
                                 disabled={savingDimensions}
-                                buttonColor="#4338ca"
+                                buttonColor="#ff9933"
                                 className="rounded-xl mt-1"
                             >
                                 Save Dimensions
@@ -1185,7 +1218,7 @@ export default function Profile({ navigation }) {
                 {Boolean(isAgencyAdmin) && (
                     <Card className="bg-white border border-slate-100 rounded-2xl elevation-1">
                         <Card.Content className="p-4 gap-3">
-                            <Text className="text-sm font-bold text-indigo-700 uppercase tracking-wider">
+                            <Text className="text-sm font-bold text-carrot-700 uppercase tracking-wider">
                                 Compliance & Clearances
                             </Text>
 
@@ -1240,7 +1273,7 @@ export default function Profile({ navigation }) {
                                                 >
                                                     <RadioButton
                                                         value="yes"
-                                                        color="#4338ca"
+                                                        color="#ff9933"
                                                     />
                                                     <Text className="text-xs font-bold text-slate-700">
                                                         Yes
@@ -1260,7 +1293,7 @@ export default function Profile({ navigation }) {
                                                 >
                                                     <RadioButton
                                                         value="no"
-                                                        color="#4338ca"
+                                                        color="#ff9933"
                                                     />
                                                     <Text className="text-xs font-bold text-slate-700">
                                                         No
@@ -1280,7 +1313,7 @@ export default function Profile({ navigation }) {
                                 onPress={handleSaveCompliance}
                                 loading={savingCompliance}
                                 disabled={savingCompliance}
-                                buttonColor="#4338ca"
+                                buttonColor="#ff9933"
                                 className="rounded-xl mt-1"
                             >
                                 Save Compliance
@@ -1293,7 +1326,7 @@ export default function Profile({ navigation }) {
                 {Boolean(isAgencyAdmin) && (
                     <Card className="bg-white border border-slate-100 rounded-2xl elevation-1">
                         <Card.Content className="p-4 gap-3">
-                            <Text className="text-sm font-bold text-indigo-700 uppercase tracking-wider">
+                            <Text className="text-sm font-bold text-carrot-700 uppercase tracking-wider">
                                 Verification Documents
                             </Text>
                             <Text className="text-xs text-slate-500">
@@ -1308,7 +1341,7 @@ export default function Profile({ navigation }) {
                                         <MaterialDesignIcons
                                             name="card-account-details-outline"
                                             size={22}
-                                            color="#4338ca"
+                                            color="#ff9933"
                                         />
                                         <Text className="font-bold text-slate-800 text-sm ml-2">
                                             Aadhaar Card
@@ -1344,9 +1377,9 @@ export default function Profile({ navigation }) {
                                             <MaterialDesignIcons
                                                 name="open-in-new"
                                                 size={16}
-                                                color="#4338ca"
+                                                color="#ff9933"
                                             />
-                                            <Text className="text-indigo-700 font-semibold text-xs ml-1 underline">
+                                            <Text className="text-carrot-700 font-semibold text-xs ml-1 underline">
                                                 View Uploaded File
                                             </Text>
                                         </TouchableOpacity>
@@ -1366,7 +1399,7 @@ export default function Profile({ navigation }) {
                                         onPress={() =>
                                             handleUploadDocument("aadhaar_card")
                                         }
-                                        className="rounded-lg border-indigo-300"
+                                        className="rounded-lg border-carrot-300"
                                         labelStyle={{ fontSize: 11 }}
                                     >
                                         {profile?.aadhaar_card_path
@@ -1383,7 +1416,7 @@ export default function Profile({ navigation }) {
                                         <MaterialDesignIcons
                                             name="file-document-outline"
                                             size={22}
-                                            color="#4338ca"
+                                            color="#ff9933"
                                         />
                                         <Text className="font-bold text-slate-800 text-sm ml-2">
                                             Address Proof Document
@@ -1419,9 +1452,9 @@ export default function Profile({ navigation }) {
                                             <MaterialDesignIcons
                                                 name="open-in-new"
                                                 size={16}
-                                                color="#4338ca"
+                                                color="#ff9933"
                                             />
-                                            <Text className="text-indigo-700 font-semibold text-xs ml-1 underline">
+                                            <Text className="text-carrot-700 font-semibold text-xs ml-1 underline">
                                                 View Uploaded File
                                             </Text>
                                         </TouchableOpacity>
@@ -1444,7 +1477,7 @@ export default function Profile({ navigation }) {
                                                 "verification_document"
                                             )
                                         }
-                                        className="rounded-lg border-indigo-300"
+                                        className="rounded-lg border-carrot-300"
                                         labelStyle={{ fontSize: 11 }}
                                     >
                                         {profile?.verification_document_path
@@ -1462,7 +1495,7 @@ export default function Profile({ navigation }) {
                                             <MaterialDesignIcons
                                                 name="certificate-outline"
                                                 size={22}
-                                                color="#4338ca"
+                                                color="#ff9933"
                                             />
                                             <Text className="font-bold text-slate-800 text-sm ml-2">
                                                 Trade License Document
@@ -1498,9 +1531,9 @@ export default function Profile({ navigation }) {
                                                 <MaterialDesignIcons
                                                     name="open-in-new"
                                                     size={16}
-                                                    color="#4338ca"
+                                                    color="#ff9933"
                                                 />
-                                                <Text className="text-indigo-700 font-semibold text-xs ml-1 underline">
+                                                <Text className="text-carrot-700 font-semibold text-xs ml-1 underline">
                                                     View Uploaded File
                                                 </Text>
                                             </TouchableOpacity>
@@ -1523,7 +1556,7 @@ export default function Profile({ navigation }) {
                                                     "trade_license_document"
                                                 )
                                             }
-                                            className="rounded-lg border-indigo-300"
+                                            className="rounded-lg border-carrot-300"
                                             labelStyle={{ fontSize: 11 }}
                                         >
                                             {profile?.trade_license_document_path
@@ -1543,7 +1576,7 @@ export default function Profile({ navigation }) {
                         <Card.Content className="p-4">
                             <View className="flex-row justify-between items-center mb-2">
                                 <View>
-                                    <Text className="text-sm font-bold text-indigo-700 uppercase tracking-wider">
+                                    <Text className="text-sm font-bold text-carrot-700 uppercase tracking-wider">
                                         Organization Media
                                     </Text>
                                     <Text className="text-xs text-slate-400">
@@ -1551,7 +1584,7 @@ export default function Profile({ navigation }) {
                                         10)
                                     </Text>
                                 </View>
-                                <Badge style={{ backgroundColor: "#4338ca" }}>
+                                <Badge style={{ backgroundColor: "#ff9933" }}>
                                     {`${agencyMediaList.length}/10`}
                                 </Badge>
                             </View>
@@ -1563,15 +1596,15 @@ export default function Profile({ navigation }) {
                                     agencyMediaList.length >= 10
                                 }
                                 activeOpacity={0.7}
-                                className="items-center justify-center py-4 bg-indigo-50/50 border-dashed border-2 border-indigo-200 rounded-xl my-2"
+                                className="items-center justify-center py-4 bg-carrot-50/50 border-dashed border-2 border-carrot-200 rounded-xl my-2"
                             >
                                 <View className="items-center gap-1">
                                     <MaterialDesignIcons
                                         name="cloud-upload"
                                         size={26}
-                                        color="#4338ca"
+                                        color="#ff9933"
                                     />
-                                    <Text className="text-indigo-900 font-bold text-xs text-center">
+                                    <Text className="text-carrot-900 font-bold text-xs text-center">
                                         + Add Photo or Video (Max 45s)
                                     </Text>
                                 </View>
@@ -1580,7 +1613,7 @@ export default function Profile({ navigation }) {
                             {loadingMedia && (
                                 <ActivityIndicator
                                     size="small"
-                                    color="#4338ca"
+                                    color="#ff9933"
                                     className="my-2"
                                 />
                             )}
@@ -1660,7 +1693,7 @@ export default function Profile({ navigation }) {
                 <Card className="bg-white border border-slate-100 rounded-2xl elevation-1">
                     <Card.Content className="p-4">
                         <View className="flex-row items-center justify-between mb-3">
-                            <Text className="text-sm font-bold text-indigo-700 uppercase tracking-wider">
+                            <Text className="text-sm font-bold text-carrot-700 uppercase tracking-wider">
                                 {isAgencyAdmin
                                     ? "Agency Ratings & Reviews"
                                     : "Customer Rating Score"}
@@ -1680,23 +1713,23 @@ export default function Profile({ navigation }) {
                             )}
                         </View>
 
-                        <View className="flex-row items-center justify-around py-3 bg-indigo-50/50 rounded-xl border border-indigo-100 mb-3">
+                        <View className="flex-row items-center justify-around py-3 bg-carrot-50/50 rounded-xl border border-carrot-100 mb-3">
                             <View className="items-center">
-                                <Text className="text-2xl font-bold text-indigo-900">
+                                <Text className="text-2xl font-bold text-carrot-900">
                                     {ratingStats?.averageRating
                                         ? `${ratingStats.averageRating} ★`
                                         : "New"}
                                 </Text>
-                                <Text className="text-xs text-indigo-600 font-semibold mt-0.5">
+                                <Text className="text-xs text-carrot-600 font-semibold mt-0.5">
                                     Average Score
                                 </Text>
                             </View>
-                            <View className="h-8 w-[1px] bg-indigo-200" />
+                            <View className="h-8 w-[1px] bg-carrot-200" />
                             <View className="items-center">
-                                <Text className="text-2xl font-bold text-indigo-900">
+                                <Text className="text-2xl font-bold text-carrot-900">
                                     {ratingStats?.totalCount || 0}
                                 </Text>
-                                <Text className="text-xs text-indigo-600 font-semibold mt-0.5">
+                                <Text className="text-xs text-carrot-600 font-semibold mt-0.5">
                                     Total Reviews
                                 </Text>
                             </View>
@@ -1746,7 +1779,7 @@ export default function Profile({ navigation }) {
                     Boolean(hasPermission(PERMISSIONS.BOOK_PARKING)) && (
                         <Card className="bg-white border border-slate-100 rounded-2xl elevation-1">
                             <Card.Content className="p-4">
-                                <Text className="text-sm font-bold text-indigo-700 uppercase tracking-wider mb-4">
+                                <Text className="text-sm font-bold text-carrot-700 uppercase tracking-wider mb-4">
                                     Vehicles & License Details
                                 </Text>
 
@@ -1759,7 +1792,7 @@ export default function Profile({ navigation }) {
                                     autoCapitalize="characters"
                                     className="bg-white mb-4"
                                     outlineColor="#e2e8f0"
-                                    activeOutlineColor="#4338ca"
+                                    activeOutlineColor="#ff9933"
                                     left={
                                         <TextInput.Icon icon="card-account-details-outline" />
                                     }
@@ -1834,9 +1867,9 @@ export default function Profile({ navigation }) {
                                                         <View className="flex-row items-center flex-1 pr-2">
                                                             <IconButton
                                                                 icon="car"
-                                                                iconColor="#4338ca"
+                                                                iconColor="#ff9933"
                                                                 size={20}
-                                                                className="m-0 mr-1.5 bg-indigo-50"
+                                                                className="m-0 mr-1.5 bg-carrot-50"
                                                             />
                                                             <View className="flex-1">
                                                                 <Text className="text-sm text-slate-800 font-bold tracking-wide">
@@ -1926,17 +1959,17 @@ export default function Profile({ navigation }) {
                                                                                     )
                                                                                 )
                                                                             }
-                                                                            className="flex-row items-center bg-indigo-50 border border-indigo-100 rounded-md px-2 py-1 mr-1.5 mb-1"
+                                                                            className="flex-row items-center bg-carrot-50 border border-carrot-100 rounded-md px-2 py-1 mr-1.5 mb-1"
                                                                         >
                                                                             <MaterialDesignIcons
                                                                                 name="file-document-outline"
                                                                                 size={
                                                                                     13
                                                                                 }
-                                                                                color="#4338ca"
+                                                                                color="#ff9933"
                                                                             />
                                                                             <Text
-                                                                                className="text-indigo-700 text-xs font-semibold ml-1 mr-1 max-w-[160px]"
+                                                                                className="text-carrot-700 text-xs font-semibold ml-1 mr-1 max-w-[160px]"
                                                                                 numberOfLines={
                                                                                     1
                                                                                 }
@@ -1955,7 +1988,7 @@ export default function Profile({ navigation }) {
                                                                                     size={
                                                                                         11
                                                                                     }
-                                                                                    color="#4338ca"
+                                                                                    color="#ff9933"
                                                                                 />
                                                                             )}
                                                                         </TouchableOpacity>
@@ -1984,7 +2017,7 @@ export default function Profile({ navigation }) {
                                         autoCapitalize="characters"
                                         className="bg-white"
                                         outlineColor="#e2e8f0"
-                                        activeOutlineColor="#4338ca"
+                                        activeOutlineColor="#ff9933"
                                     />
 
                                     <View className="flex-row justify-between items-center mt-0.5">
@@ -2005,7 +2038,7 @@ export default function Profile({ navigation }) {
                                             disabled={
                                                 newVehicleDocs.length >= 3
                                             }
-                                            className="rounded-lg border-indigo-300"
+                                            className="rounded-lg border-carrot-300"
                                             labelStyle={{ fontSize: 11 }}
                                         >
                                             Attach ({newVehicleDocs.length}/3)
@@ -2063,7 +2096,7 @@ export default function Profile({ navigation }) {
                                     <Button
                                         mode="contained"
                                         onPress={handleAddVehicle}
-                                        buttonColor="#4338ca"
+                                        buttonColor="#ff9933"
                                         className="rounded-xl h-[40px] justify-center mt-1"
                                     >
                                         Add Vehicle to List
@@ -2080,7 +2113,7 @@ export default function Profile({ navigation }) {
                                     buttonColor={
                                         savingCustomer || !hasCustomerChanges
                                             ? "#cbd5e1"
-                                            : "#4338ca"
+                                            : "#ff9933"
                                     }
                                     className="rounded-xl py-1"
                                     labelStyle={{
@@ -2102,8 +2135,13 @@ export default function Profile({ navigation }) {
                 <Button
                     mode="outlined"
                     onPress={() => navigation.navigate("About")}
-                    style={{ borderColor: "#4338ca", borderRadius: 12, marginBottom: 10, marginTop: 8 }}
-                    textColor="#4338ca"
+                    style={{
+                        borderColor: "#ff9933",
+                        borderRadius: 12,
+                        marginBottom: 10,
+                        marginTop: 8,
+                    }}
+                    textColor="#ff9933"
                     icon="information-outline"
                 >
                     About App & Check Updates

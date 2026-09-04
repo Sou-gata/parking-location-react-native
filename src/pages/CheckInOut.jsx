@@ -120,8 +120,20 @@ const mapBookingFromApi = (b) => {
         vehicleType: b.vehicleType || b.vehicle_type || "car",
         vehicleNumber: b.vehicleNumber || b.vehicle_number || "",
         status: b.status || "booked",
-        startTime: b.startTime || b.start_time || b.check_in_time || null,
-        endTime: b.endTime || b.end_time || b.check_out_time || null,
+        startTime:
+            b.startTime ||
+            b.start_time ||
+            b.check_in_time ||
+            b.checkin_time ||
+            b.checkinTime ||
+            null,
+        endTime:
+            b.endTime ||
+            b.end_time ||
+            b.check_out_time ||
+            b.checkout_time ||
+            b.checkoutTime ||
+            null,
         bookingStartTime: b.bookingStartTime || b.booking_start_time || null,
         bookingEndTime: b.bookingEndTime || b.booking_end_time || null,
         bookedDuration: b.bookedDuration ?? b.booked_duration ?? 0,
@@ -974,7 +986,7 @@ export default function CheckInOut({ navigation, route }) {
         <View className="flex-1 bg-slate-50">
             {/* Dashboard Headers */}
             <View className="flex-row px-4 pt-4 gap-3">
-                <Card className="flex-1 bg-indigo-600 rounded-xl" elevation={2}>
+                <Card className="flex-1 bg-carrot-600 rounded-xl" elevation={2}>
                     <Card.Content className="items-center py-3">
                         <Text className="text-white text-xs font-semibold opacity-80 uppercase">
                             Total Income
@@ -1024,7 +1036,7 @@ export default function CheckInOut({ navigation, route }) {
                     mode="outlined"
                     dense
                     outlineColor="#e2e8f0"
-                    activeOutlineColor="#4338ca"
+                    activeOutlineColor="#ff9933"
                     left={
                         <TextInput.Icon
                             icon="magnify"
@@ -1058,7 +1070,7 @@ export default function CheckInOut({ navigation, route }) {
                             vehicleType: "car",
                         })
                     }
-                    buttonColor="#4338ca"
+                    buttonColor="#ff9933"
                     className="h-10 justify-center rounded-lg"
                     icon="plus"
                     labelStyle={{ color: "white", fontWeight: "700" }}
@@ -1072,7 +1084,7 @@ export default function CheckInOut({ navigation, route }) {
                 <Pressable
                     className={`flex-1 py-3.5 items-center justify-center border-b-2 ${
                         tab === "pending_approval"
-                            ? "border-indigo-600"
+                            ? "border-carrot-600"
                             : "border-transparent"
                     }`}
                     onPress={() => setTab("pending_approval")}
@@ -1080,7 +1092,7 @@ export default function CheckInOut({ navigation, route }) {
                     <Text
                         className={`text-xs font-bold ${
                             tab === "pending_approval"
-                                ? "text-indigo-600"
+                                ? "text-carrot-600"
                                 : "text-slate-500"
                         }`}
                     >
@@ -1099,7 +1111,7 @@ export default function CheckInOut({ navigation, route }) {
                 <Pressable
                     className={`flex-1 py-3.5 items-center justify-center border-b-2 ${
                         tab === "booked"
-                            ? "border-indigo-600"
+                            ? "border-carrot-600"
                             : "border-transparent"
                     }`}
                     onPress={() => setTab("booked")}
@@ -1107,7 +1119,7 @@ export default function CheckInOut({ navigation, route }) {
                     <Text
                         className={`text-xs font-bold ${
                             tab === "booked"
-                                ? "text-indigo-600"
+                                ? "text-carrot-600"
                                 : "text-slate-500"
                         }`}
                     >
@@ -1124,7 +1136,7 @@ export default function CheckInOut({ navigation, route }) {
                 <Pressable
                     className={`flex-1 py-3.5 items-center justify-center border-b-2 ${
                         tab === "checked_in"
-                            ? "border-indigo-600"
+                            ? "border-carrot-600"
                             : "border-transparent"
                     }`}
                     onPress={() => setTab("checked_in")}
@@ -1132,7 +1144,7 @@ export default function CheckInOut({ navigation, route }) {
                     <Text
                         className={`text-xs font-bold ${
                             tab === "checked_in"
-                                ? "text-indigo-600"
+                                ? "text-carrot-600"
                                 : "text-slate-500"
                         }`}
                     >
@@ -1143,7 +1155,7 @@ export default function CheckInOut({ navigation, route }) {
                 <Pressable
                     className={`flex-1 py-3.5 items-center justify-center border-b-2 ${
                         tab === "completed"
-                            ? "border-indigo-600"
+                            ? "border-carrot-600"
                             : "border-transparent"
                     }`}
                     onPress={() => setTab("completed")}
@@ -1151,7 +1163,7 @@ export default function CheckInOut({ navigation, route }) {
                     <Text
                         className={`text-xs font-bold ${
                             tab === "completed"
-                                ? "text-indigo-600"
+                                ? "text-carrot-600"
                                 : "text-slate-500"
                         }`}
                     >
@@ -1169,7 +1181,7 @@ export default function CheckInOut({ navigation, route }) {
 
             {/* Bulk Action Header for Pending Approvals */}
             {tab === "pending_approval" && (
-                <View className="px-4 py-2 bg-indigo-50/80 flex-row items-center justify-between border-b border-indigo-100 mb-2">
+                <View className="px-4 py-2 bg-carrot-50/80 flex-row items-center justify-between border-b border-carrot-100 mb-2">
                     <Pressable
                         onPress={() => {
                             const pendingIds = myAgencyBookings
@@ -1203,9 +1215,9 @@ export default function CheckInOut({ navigation, route }) {
                                     : "checkbox-blank-outline"
                             }
                             style={{ backgroundColor: "transparent" }}
-                            color="#4338ca"
+                            color="#ff9933"
                         />
-                        <Text className="text-xs font-bold text-indigo-900 ml-1">
+                        <Text className="text-xs font-bold text-carrot-900 ml-1">
                             Select All (
                             {
                                 myAgencyBookings.filter(
@@ -1293,7 +1305,7 @@ export default function CheckInOut({ navigation, route }) {
                 ListFooterComponent={
                     tab === "completed" && completedLoadingMore ? (
                         <View className="py-4 items-center flex-row justify-center gap-2">
-                            <ActivityIndicator size="small" color="#4338ca" />
+                            <ActivityIndicator size="small" color="#ff9933" />
                             <Text className="text-xs text-slate-500 font-semibold">
                                 Loading more completed vehicles...
                             </Text>
@@ -1346,7 +1358,7 @@ export default function CheckInOut({ navigation, route }) {
                                                         selectedPendingIds.includes(
                                                             item.id
                                                         )
-                                                            ? "#4338ca"
+                                                            ? "#ff9933"
                                                             : "#f1f5f9",
                                                 }}
                                                 color={
@@ -1367,7 +1379,7 @@ export default function CheckInOut({ navigation, route }) {
                                             ] || "car"
                                         }
                                         style={{ backgroundColor: "#f1f5f9" }}
-                                        color="#4338ca"
+                                        color="#ff9933"
                                     />
                                     <View className="ml-3 flex-1">
                                         <Text
@@ -1410,7 +1422,7 @@ export default function CheckInOut({ navigation, route }) {
                                                 userPhone: item.userPhone,
                                             })
                                         }
-                                        className="flex-row items-center bg-indigo-50 px-2 py-0.5 rounded-md active:opacity-70"
+                                        className="flex-row items-center bg-carrot-50 px-2 py-0.5 rounded-md active:opacity-70"
                                     >
                                         <Avatar.Icon
                                             size={18}
@@ -1418,9 +1430,9 @@ export default function CheckInOut({ navigation, route }) {
                                             style={{
                                                 backgroundColor: "transparent",
                                             }}
-                                            color="#4338ca"
+                                            color="#ff9933"
                                         />
-                                        <Text className="text-sm font-bold text-indigo-700 underline ml-1">
+                                        <Text className="text-sm font-bold text-carrot-700 underline ml-1">
                                             {item.userName || "View Profile"}
                                         </Text>
                                     </Pressable>
@@ -1455,25 +1467,40 @@ export default function CheckInOut({ navigation, route }) {
                                         </Text>
                                     </>
                                 )}
-                                {(item.status === "checked_in" ||
-                                    item.status === "completed" ||
-                                    Boolean(item.startTime)) && (
+                                {Boolean(item.startTime || item.checkinTime || item.checkin_time || item.check_in_time) && (
                                     <Text className="text-sm text-slate-600">
                                         <Text className="font-semibold">
                                             Checked In At:
                                         </Text>{" "}
-                                        {formatDateTime(item.startTime)}
+                                        {formatDateTime(
+                                            item.startTime ||
+                                                item.checkinTime ||
+                                                item.checkin_time ||
+                                                item.check_in_time
+                                        )}
                                     </Text>
                                 )}
 
                                 {item.status === "completed" && (
                                     <>
-                                        <Text className="text-sm text-slate-600">
-                                            <Text className="font-semibold">
-                                                Checked Out At:
-                                            </Text>{" "}
-                                            {formatDateTime(item.endTime)}
-                                        </Text>
+                                        {Boolean(
+                                            item.endTime ||
+                                                item.checkoutTime ||
+                                                item.checkout_time ||
+                                                item.check_out_time
+                                        ) && (
+                                            <Text className="text-sm text-slate-600">
+                                                <Text className="font-semibold">
+                                                    Checked Out At:
+                                                </Text>{" "}
+                                                {formatDateTime(
+                                                    item.endTime ||
+                                                        item.checkoutTime ||
+                                                        item.checkout_time ||
+                                                        item.check_out_time
+                                                )}
+                                            </Text>
+                                        )}
                                         {(() => {
                                             const itemBookedDur = parseFloat(item.bookedDuration || item.booked_duration || 0);
                                             const itemHourlyRate = parseFloat(item.hourlyRate || item.hourly_rate || 0);
@@ -1631,7 +1658,7 @@ export default function CheckInOut({ navigation, route }) {
                                         <Button
                                             mode="contained-tonal"
                                             icon="star-outline"
-                                            textColor="#4338ca"
+                                            textColor="#ff9933"
                                             buttonColor="#e0e7ff"
                                             onPress={() =>
                                                 handleOpenRateCustomer(item)
@@ -1794,7 +1821,7 @@ export default function CheckInOut({ navigation, route }) {
                         autoCapitalize="characters"
                         className="bg-white mb-3"
                         outlineColor="#e2e8f0"
-                        activeOutlineColor="#4338ca"
+                        activeOutlineColor="#ff9933"
                     />
 
                     <TextInput
@@ -1805,7 +1832,7 @@ export default function CheckInOut({ navigation, route }) {
                         dense
                         className="bg-white mb-3"
                         outlineColor="#e2e8f0"
-                        activeOutlineColor="#4338ca"
+                        activeOutlineColor="#ff9933"
                     />
 
                     <TextInput
@@ -1817,7 +1844,7 @@ export default function CheckInOut({ navigation, route }) {
                         keyboardType="phone-pad"
                         className="bg-white mb-4"
                         outlineColor="#e2e8f0"
-                        activeOutlineColor="#4338ca"
+                        activeOutlineColor="#ff9933"
                     />
 
                     <Text className="text-sm font-semibold text-slate-700 mb-2">
@@ -1832,7 +1859,7 @@ export default function CheckInOut({ navigation, route }) {
                                 }
                                 className={`flex-row items-center px-3 py-1.5 rounded-full border ${
                                     walkinForm?.vehicleType === key
-                                        ? "bg-indigo-50 border-indigo-600"
+                                        ? "bg-carrot-50 border-carrot-600"
                                         : "bg-white border-slate-200"
                                 }`}
                             >
@@ -1842,14 +1869,14 @@ export default function CheckInOut({ navigation, route }) {
                                     style={{ backgroundColor: "transparent" }}
                                     color={
                                         walkinForm?.vehicleType === key
-                                            ? "#4338ca"
+                                            ? "#ff9933"
                                             : "#64748b"
                                     }
                                 />
                                 <Text
                                     className={`text-xs ml-1.5 font-bold ${
                                         walkinForm?.vehicleType === key
-                                            ? "text-indigo-800"
+                                            ? "text-carrot-800"
                                             : "text-slate-600"
                                     }`}
                                 >
@@ -1872,7 +1899,7 @@ export default function CheckInOut({ navigation, route }) {
                         <Button
                             mode="contained"
                             onPress={handleRegisterWalkin}
-                            buttonColor="#4338ca"
+                            buttonColor="#ff9933"
                             labelStyle={{ color: "white" }}
                         >
                             Register & Check In
@@ -1989,7 +2016,7 @@ export default function CheckInOut({ navigation, route }) {
                                         <Text className="font-bold text-slate-800 text-lg">
                                             Total Bill Amount:
                                         </Text>
-                                        <Text className="font-bold text-indigo-700 text-2xl">
+                                        <Text className="font-bold text-carrot-700 text-2xl">
                                             ₹{calculatedBill}
                                         </Text>
                                     </View>
@@ -2073,7 +2100,7 @@ export default function CheckInOut({ navigation, route }) {
                                         maxLength={6}
                                         className="bg-white mb-4 text-center text-lg tracking-widest font-mono"
                                         outlineColor="#e2e8f0"
-                                        activeOutlineColor="#4338ca"
+                                        activeOutlineColor="#ff9933"
                                     />
 
                                     <View className="flex-row gap-2 mt-2">
@@ -2095,7 +2122,7 @@ export default function CheckInOut({ navigation, route }) {
                                             mode="contained"
                                             onPress={handleVerifyOtpAndCheckIn}
                                             className="flex-1 rounded-lg"
-                                            buttonColor="#4338ca"
+                                            buttonColor="#ff9933"
                                             textColor="white"
                                         >
                                             Verify & Check-In

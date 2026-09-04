@@ -184,8 +184,8 @@ const SignupMap = ({ onLocationSelect, initialLocation }) => {
                             coordinate={userLocation}
                         >
                             <View className="items-center justify-center w-8 h-8">
-                                <View className="w-6 h-6 rounded-full bg-indigo-500/30 items-center justify-center border border-indigo-400">
-                                    <View className="w-3.5 h-3.5 rounded-full bg-indigo-600 border-2 border-white" />
+                                <View className="w-6 h-6 rounded-full bg-carrot-500/30 items-center justify-center border border-carrot-400">
+                                    <View className="w-3.5 h-3.5 rounded-full bg-carrot-600 border-2 border-white" />
                                 </View>
                             </View>
                         </MarkerView>
@@ -223,7 +223,7 @@ const SignupMap = ({ onLocationSelect, initialLocation }) => {
                     >
                         <IconButton
                             icon={loadingLocation ? "loading" : "crosshairs-gps"}
-                            iconColor="#4338ca"
+                            iconColor="#ff9933"
                             size={20}
                             onPress={handleLocateMe}
                             disabled={loadingLocation}

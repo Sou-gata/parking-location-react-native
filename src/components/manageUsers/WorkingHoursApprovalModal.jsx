@@ -109,7 +109,7 @@ export default function WorkingHoursApprovalModal({
                             <Text className="text-slate-800 text-lg font-bold">
                                 Working Hours Request
                             </Text>
-                            <Text className="text-indigo-700 text-xs font-bold mt-0.5">
+                            <Text className="text-carrot-700 text-xs font-bold mt-0.5">
                                 {request.orgName || "Agency"} ({request.orgOwner || "Owner"})
                             </Text>
                         </View>
@@ -130,7 +130,7 @@ export default function WorkingHoursApprovalModal({
                                 return (
                                     <View key={day} className="flex-row items-center justify-between py-1 border-b border-slate-200/60">
                                         <Text className="text-slate-800 font-bold text-xs w-24">{day}</Text>
-                                        <Text className={`text-xs font-semibold ${s.isOpen ? "text-indigo-700" : "text-rose-600"}`}>
+                                        <Text className={`text-xs font-semibold ${s.isOpen ? "text-carrot-700" : "text-rose-600"}`}>
                                             {!s.isOpen ? "Closed" : s.is247 ? "Open 24/7" : `${formatTime12h(s.openTime || "08:00")} - ${formatTime12h(s.closeTime || "20:00")}`}
                                         </Text>
                                     </View>
@@ -139,8 +139,8 @@ export default function WorkingHoursApprovalModal({
                         ) : (
                             <View className="flex-row flex-wrap mb-1">
                                 {proposedDays.map((d) => (
-                                    <View key={d} className="bg-indigo-100 px-2.5 py-1 rounded-lg mr-1.5 mb-1.5 border border-indigo-200">
-                                        <Text className="text-indigo-900 font-bold text-xs">{d}</Text>
+                                    <View key={d} className="bg-carrot-100 px-2.5 py-1 rounded-lg mr-1.5 mb-1.5 border border-carrot-200">
+                                        <Text className="text-carrot-900 font-bold text-xs">{d}</Text>
                                     </View>
                                 ))}
                             </View>

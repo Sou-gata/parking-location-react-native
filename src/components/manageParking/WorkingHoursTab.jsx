@@ -5,6 +5,7 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     Platform,
+    RefreshControl,
 } from "react-native";
 import { Text, Surface, Switch, TextInput, Button, Portal, Modal } from "react-native-paper";
 import { MaterialDesignIcons } from "@react-native-vector-icons/material-design-icons";
@@ -50,7 +51,8 @@ const formatTime12h = (time24) => {
 const WorkingHoursTab = ({ agencyId, onRefresh }) => {
     const toast = useToast();
 
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(Boolean(agencyId));
+    const [refreshing, setRefreshing] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [workingHoursData, setWorkingHoursData] = useState(null);
 
@@ -111,9 +113,17 @@ const WorkingHoursTab = ({ agencyId, onRefresh }) => {
         return compiled;
     };
 
-    const fetchWorkingHours = async () => {
-        if (!agencyId) return;
-        setLoading(true);
+    const fetchWorkingHours = async (isManualRefresh = false) => {
+        if (!agencyId) {
+            setLoading(false);
+            setRefreshing(false);
+            return;
+        }
+        if (isManualRefresh) {
+            setRefreshing(true);
+        } else {
+            setLoading(true);
+        }
         try {
             const res = await apiService.get(`working-hours/agency/${agencyId}`);
             if (res && res.success && res.data) {
@@ -125,17 +135,24 @@ const WorkingHoursTab = ({ agencyId, onRefresh }) => {
                 setSpecialVacations(
                     (isPending ? data.pendingSpecialVacations : data.specialVacations) || []
                 );
+            } else {
+                setWorkingHoursData(null);
             }
         } catch (error) {
             console.error("Error fetching working hours:", error);
             toast.error("Failed to load working hours schedule", "Error", true);
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
     };
 
     useEffect(() => {
-        fetchWorkingHours();
+        if (agencyId) {
+            fetchWorkingHours();
+        } else {
+            setLoading(false);
+        }
     }, [agencyId]);
 
     const toggleDayOpen = (day) => {
@@ -389,9 +406,27 @@ const WorkingHoursTab = ({ agencyId, onRefresh }) => {
     if (loading) {
         return (
             <View className="py-12 items-center justify-center flex-1 bg-slate-50">
-                <ActivityIndicator size="large" color="#4338ca" />
+                <ActivityIndicator size="large" color="#ff9933" />
                 <Text className="text-slate-500 mt-3 font-semibold text-xs">
                     Loading Working Hours Policy...
+                </Text>
+            </View>
+        );
+    }
+
+    if (!agencyId) {
+        return (
+            <View className="py-12 items-center justify-center flex-1 bg-slate-50 px-6">
+                <MaterialDesignIcons
+                    name="clock-alert-outline"
+                    size={52}
+                    color="#94a3b8"
+                />
+                <Text className="text-slate-700 font-bold text-base mt-3">
+                    No Agency Selected
+                </Text>
+                <Text className="text-slate-400 text-xs text-center mt-1">
+                    Please select an agency to view and configure its working hours schedule.
                 </Text>
             </View>
         );
@@ -400,7 +435,18 @@ const WorkingHoursTab = ({ agencyId, onRefresh }) => {
     const status = workingHoursData?.status || "approved";
 
     return (
-        <ScrollView className="flex-1 bg-slate-50 p-4" contentContainerStyle={{ paddingBottom: 40 }}>
+        <ScrollView
+            className="flex-1 bg-slate-50 p-4"
+            contentContainerStyle={{ paddingBottom: 40 }}
+            refreshControl={
+                <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={() => fetchWorkingHours(true)}
+                    colors={["#ff9933"]}
+                    tintColor="#ff9933"
+                />
+            }
+        >
             {/* Status Banner */}
             {status === "pending" && (
                 <Surface elevation={1} className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-4 flex-row items-center">
@@ -438,7 +484,7 @@ const WorkingHoursTab = ({ agencyId, onRefresh }) => {
             <Surface elevation={1} className="bg-white rounded-2xl p-4 mb-4 border border-slate-100">
                 <View className="flex-row items-center justify-between mb-2">
                     <View className="flex-row items-center">
-                        <MaterialDesignIcons name="calendar-clock" size={24} color="#4338ca" />
+                        <MaterialDesignIcons name="calendar-clock" size={24} color="#ff9933" />
                         <Text className="text-slate-800 text-base font-bold ml-2">
                             Daily Schedule & Hours
                         </Text>
@@ -452,10 +498,10 @@ const WorkingHoursTab = ({ agencyId, onRefresh }) => {
                 <View className="flex-row flex-wrap gap-2 pt-1 border-t border-slate-100">
                     <TouchableOpacity
                         onPress={copyMondayToAll}
-                        className="bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-200 flex-row items-center mr-2 mb-1"
+                        className="bg-carrot-50 px-3 py-1.5 rounded-xl border border-carrot-200 flex-row items-center mr-2 mb-1"
                     >
-                        <MaterialDesignIcons name="content-copy" size={14} color="#4338ca" />
-                        <Text className="text-indigo-700 font-bold text-xs ml-1">
+                        <MaterialDesignIcons name="content-copy" size={14} color="#ff9933" />
+                        <Text className="text-carrot-700 font-bold text-xs ml-1">
                             Copy Monday to All
                         </Text>
                     </TouchableOpacity>
@@ -511,7 +557,7 @@ const WorkingHoursTab = ({ agencyId, onRefresh }) => {
                                 <Switch
                                     value={sched.isOpen}
                                     onValueChange={() => toggleDayOpen(day)}
-                                    color="#4338ca"
+                                    color="#ff9933"
                                 />
                             </View>
                         </View>
@@ -564,7 +610,7 @@ const WorkingHoursTab = ({ agencyId, onRefresh }) => {
                                                     {formatTime12h(sched.closeTime)}
                                                 </Text>
                                             </View>
-                                            <MaterialDesignIcons name="weather-night" size={18} color="#4338ca" />
+                                            <MaterialDesignIcons name="weather-night" size={18} color="#ff9933" />
                                         </TouchableOpacity>
                                     </View>
                                 ) : (
@@ -591,17 +637,17 @@ const WorkingHoursTab = ({ agencyId, onRefresh }) => {
             <Surface elevation={1} className="bg-white rounded-2xl p-4 mb-5 border border-slate-100">
                 <View className="flex-row items-center justify-between mb-2">
                     <View className="flex-row items-center">
-                        <MaterialDesignIcons name="beach" size={22} color="#4338ca" />
+                        <MaterialDesignIcons name="beach" size={22} color="#ff9933" />
                         <Text className="text-slate-800 text-base font-bold ml-2">
                             Special Vacations & Holidays
                         </Text>
                     </View>
                     <TouchableOpacity
-                        className="bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-200 flex-row items-center"
+                        className="bg-carrot-50 px-3 py-1.5 rounded-xl border border-carrot-200 flex-row items-center"
                         onPress={() => setVacationModalVisible(true)}
                     >
-                        <MaterialDesignIcons name="plus" size={16} color="#4338ca" />
-                        <Text className="text-indigo-700 font-bold text-xs ml-1">Add Holiday</Text>
+                        <MaterialDesignIcons name="plus" size={16} color="#ff9933" />
+                        <Text className="text-carrot-700 font-bold text-xs ml-1">Add Holiday</Text>
                     </TouchableOpacity>
                 </View>
                 <Text className="text-slate-500 text-xs mb-3">
@@ -640,7 +686,7 @@ const WorkingHoursTab = ({ agencyId, onRefresh }) => {
             {/* Submit Button */}
             <TouchableOpacity
                 className={`py-3.5 rounded-2xl flex-row items-center justify-center ${
-                    submitting ? "bg-indigo-400" : "bg-indigo-700"
+                    submitting ? "bg-carrot-400" : "bg-carrot-700"
                 }`}
                 onPress={handleSubmitForApproval}
                 disabled={submitting}
@@ -680,7 +726,7 @@ const WorkingHoursTab = ({ agencyId, onRefresh }) => {
                         mode="outlined"
                         placeholder="e.g. Diwali Break / Maintenance"
                         outlineColor="#e2e8f0"
-                        activeOutlineColor="#4338ca"
+                        activeOutlineColor="#ff9933"
                         className="mb-3 bg-white"
                     />
 
@@ -721,7 +767,7 @@ const WorkingHoursTab = ({ agencyId, onRefresh }) => {
                         <Button
                             mode="contained"
                             onPress={handleAddVacation}
-                            buttonColor="#4338ca"
+                            buttonColor="#ff9933"
                             className="ml-2 rounded-xl"
                         >
                             Add Vacation

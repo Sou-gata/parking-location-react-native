@@ -128,7 +128,7 @@ export default function RefundBookingModal({
                 {/* Booking Summary Box */}
                 <Surface className="bg-slate-50 p-3 rounded-2xl border border-slate-100 mb-3 gap-1" elevation={0}>
                     <View className="flex-row justify-between items-center">
-                        <Text className="text-xs font-mono font-bold text-indigo-700">
+                        <Text className="text-xs font-mono font-bold text-carrot-700">
                             Booking #{bookingCode}
                         </Text>
                         <View className="px-2 py-0.5 rounded bg-slate-200">

@@ -200,8 +200,8 @@ export default function ManageComplaints({ navigation, route }) {
         if (item.complainant_type === "agency_to_user") {
             typeBadgeConfig = {
                 label: "Agency Complaint",
-                bg: "bg-indigo-100",
-                text: "text-indigo-800",
+                bg: "bg-carrot-100",
+                text: "text-carrot-800",
             };
         } else if (item.complainant_type === "admin_to_user") {
             typeBadgeConfig = {
@@ -374,15 +374,15 @@ export default function ManageComplaints({ navigation, route }) {
                         mode="contained-tonal"
                         compact
                         icon="timeline-text-outline"
-                        className="rounded-lg bg-indigo-50"
-                        textColor="#4338ca"
+                        className="rounded-lg bg-carrot-50"
+                        textColor="#ff9933"
                         onPress={() => handleOpenTimeline(item)}
                     >{String("                         Timeline (" + (item.steps?.length || 1) + ")                     ")}</Button>
                     {item.status !== "under_review" && (
                         <Button
                             mode="outlined"
                             compact
-                            className="rounded-lg border-indigo-200"
+                            className="rounded-lg border-carrot-200"
                             textColor="#1e40af"
                             onPress={() =>
                                 handleOpenStatusModal(item, "under_review")
@@ -463,7 +463,7 @@ export default function ManageComplaints({ navigation, route }) {
                 mode="outlined"
                 dense
                 outlineColor="#e2e8f0"
-                activeOutlineColor="#4338ca"
+                activeOutlineColor="#ff9933"
                 className="bg-white mb-3"
                 right={
                     searchQuery ? (
@@ -495,7 +495,7 @@ export default function ManageComplaints({ navigation, route }) {
                         onPress={() => setFilterStatus(st)}
                         className={`px-4 py-2 rounded-full mr-2 justify-center ${
                             filterStatus === st
-                                ? "bg-indigo-700"
+                                ? "bg-carrot-700"
                                 : "bg-white border border-slate-200"
                         }`}
                     >
@@ -515,7 +515,7 @@ export default function ManageComplaints({ navigation, route }) {
             {/* Content List */}
             {loading && !refreshing ? (
                 <View className="py-20 items-center">
-                    <ActivityIndicator size="large" color="#4338ca" />
+                    <ActivityIndicator size="large" color="#ff9933" />
                     <Text className="mt-3 text-slate-500 font-semibold text-xs">
                         Loading complaints...
                     </Text>
@@ -530,7 +530,7 @@ export default function ManageComplaints({ navigation, route }) {
                         <RefreshControl
                             refreshing={refreshing}
                             onRefresh={onRefresh}
-                            colors={["#4338ca"]}
+                            colors={["#ff9933"]}
                         />
                     }
                     ListEmptyComponent={
@@ -579,7 +579,7 @@ export default function ManageComplaints({ navigation, route }) {
                             multiline
                             numberOfLines={3}
                             outlineColor="#cbd5e1"
-                            activeOutlineColor="#4338ca"
+                            activeOutlineColor="#ff9933"
                             className="mb-4 bg-slate-50"
                             placeholder="Enter details regarding status update or resolution..."
                         />
@@ -596,7 +596,7 @@ export default function ManageComplaints({ navigation, route }) {
                             <Button
                                 mode="contained"
                                 onPress={handleUpdateStatus}
-                                className="flex-1 rounded-xl bg-indigo-700"
+                                className="flex-1 rounded-xl bg-carrot-700"
                                 loading={updating}
                                 disabled={updating}
                             >

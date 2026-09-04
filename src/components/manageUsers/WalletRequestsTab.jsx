@@ -30,9 +30,9 @@ export default function WalletRequestsTab({
                 const titleName = isAgencyWithdrawal ? item.agencyName || item.userName : item.userName;
                 const iconName = isAgencyWithdrawal ? "cash-minus" : "wallet";
                 const iconBg = isAgencyWithdrawal ? "#fee2e2" : "#e0e7ff";
-                const iconColor = isAgencyWithdrawal ? "#dc2626" : "#4338ca";
+                const iconColor = isAgencyWithdrawal ? "#dc2626" : "#ff9933";
                 const badgeLabel = isAgencyWithdrawal ? "Agency Withdrawal" : "Pending Deposit";
-                const badgeClass = isAgencyWithdrawal ? "bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded text-xs" : "bg-indigo-100 text-indigo-800 font-bold px-2 py-0.5 rounded text-xs";
+                const badgeClass = isAgencyWithdrawal ? "bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded text-xs" : "bg-carrot-100 text-carrot-800 font-bold px-2 py-0.5 rounded text-xs";
 
                 return (
                     <Pressable onPress={() => onPressItem && onPressItem(item)}>
@@ -72,7 +72,7 @@ export default function WalletRequestsTab({
                                             <Text className="font-semibold">{isAgencyWithdrawal ? "Phone:" : "Tx ID:"}</Text> {isAgencyWithdrawal ? item.phoneNumber || "N/A" : item.transactionNumber || "N/A"}
                                         </Text>
                                     </View>
-                                    <Text className={`text-xl font-extrabold ${isAgencyWithdrawal ? "text-red-600" : "text-indigo-700"}`}>
+                                    <Text className={`text-xl font-extrabold ${isAgencyWithdrawal ? "text-red-600" : "text-carrot-700"}`}>
                                         ₹{parseFloat(item.amount || 0).toFixed(2)}
                                     </Text>
                                 </View>

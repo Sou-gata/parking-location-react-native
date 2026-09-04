@@ -26,7 +26,7 @@ const Screens = () => {
         <Stack.Navigator
             screenOptions={{
                 headerStyle: {
-                    backgroundColor: "#4338ca",
+                    backgroundColor: "#ff9933",
                 },
                 headerTintColor: "#fff",
                 headerTitleStyle: {
@@ -71,6 +71,7 @@ const Screens = () => {
                         options={{
                             title: "Manage Parking",
                             headerBackTitle: "Back",
+                            headerShadowVisible: false,
                         }}
                     />
                     <Stack.Screen
@@ -79,6 +80,7 @@ const Screens = () => {
                         options={{
                             title: "My Profile",
                             headerBackTitle: "Back",
+                            headerShadowVisible: false,
                         }}
                     />
                     <Stack.Screen
@@ -103,6 +105,7 @@ const Screens = () => {
                         options={{
                             title: "Working Hours",
                             headerBackTitle: "Back",
+                            headerShadowVisible: false,
                         }}
                     />
                     <Stack.Screen

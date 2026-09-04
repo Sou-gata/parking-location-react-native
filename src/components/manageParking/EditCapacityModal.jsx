@@ -219,7 +219,7 @@ export default function EditCapacityModal({
                                         updateForm("customVehicleName", "");
                                     }}
                                     className="mr-2"
-                                    selectedColor="#4338ca"
+                                    selectedColor="#ff9933"
                                     showSelectedOverlay
                                 >
                                     {STANDARD_VEHICLES[type].label}
@@ -231,7 +231,7 @@ export default function EditCapacityModal({
                             selected={form.selectedVehicleType === "custom"}
                             onPress={() => updateForm("selectedVehicleType", "custom")}
                             className="mr-2"
-                            selectedColor="#4338ca"
+                            selectedColor="#ff9933"
                             showSelectedOverlay
                         >
                             Custom...
@@ -246,7 +246,7 @@ export default function EditCapacityModal({
                             mode="outlined"
                             dense
                             outlineColor="#e2e8f0"
-                            activeOutlineColor="#4338ca"
+                            activeOutlineColor="#ff9933"
                             className="bg-white mb-2"
                         />
                     )}
@@ -257,7 +257,7 @@ export default function EditCapacityModal({
                         size={40}
                         icon={getVehicleIcon(form.selectedVehicleType)}
                         style={{ backgroundColor: "#e0e7ff" }}
-                        color="#4338ca"
+                        color="#ff9933"
                     />
                     <Text className="text-base font-bold text-slate-700 ml-3">
                         {getVehicleLabel(form.selectedVehicleType)}
@@ -272,7 +272,7 @@ export default function EditCapacityModal({
                 keyboardType="numeric"
                 mode="outlined"
                 outlineColor="#e2e8f0"
-                activeOutlineColor="#4338ca"
+                activeOutlineColor="#ff9933"
                 className="bg-white mb-4"
                 left={<TextInput.Icon icon="counter" />}
             />
@@ -284,7 +284,7 @@ export default function EditCapacityModal({
                 keyboardType="numeric"
                 mode="outlined"
                 outlineColor="#e2e8f0"
-                activeOutlineColor="#4338ca"
+                activeOutlineColor="#ff9933"
                 className="bg-white mb-6"
                 left={<TextInput.Icon icon="currency-inr" />}
             />
@@ -301,7 +301,7 @@ export default function EditCapacityModal({
                 <Button
                     mode="contained"
                     onPress={handleSave}
-                    buttonColor="#4338ca"
+                    buttonColor="#ff9933"
                     labelStyle={{ fontWeight: "700" }}
                 >
                     Save

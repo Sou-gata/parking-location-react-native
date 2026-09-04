@@ -20,7 +20,7 @@ const TOAST_TYPES: Record<ToastType, ToastConfig> = {
         title: "Success",
     },
     info: {
-        color: "#3b82f6",
+        color: "#ff9933",
         icon: "information",
         title: "Information",
     },

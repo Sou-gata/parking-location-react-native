@@ -101,13 +101,13 @@ const UserDashboard = ({ navigation, onOpenMap }) => {
                 <RefreshControl
                     refreshing={refreshing}
                     onRefresh={onRefresh}
-                    colors={["#4338ca"]}
+                    colors={["#ff9933"]}
                 />
             }
         >
             {loading && !refreshing ? (
                 <View className="py-12 items-center justify-center">
-                    <ActivityIndicator size="large" color="#4338ca" />
+                    <ActivityIndicator size="large" color="#ff9933" />
                     <Text className="text-slate-500 mt-3 font-semibold">
                         Loading Dashboard...
                     </Text>
@@ -116,7 +116,7 @@ const UserDashboard = ({ navigation, onOpenMap }) => {
                 <View className="px-4 mt-4">
                     {/* Integrated User Header & Wallet Hero Card */}
                     <Surface
-                        className="bg-indigo-950 rounded-3xl p-5 mb-5 border border-indigo-800/50 shadow-lg"
+                        className="bg-carrot-950 rounded-3xl p-5 mb-5 border border-carrot-800/50 shadow-lg"
                         elevation={4}
                     >
                         {/* Profile & Full Name Header */}
@@ -127,7 +127,7 @@ const UserDashboard = ({ navigation, onOpenMap }) => {
                                 activeOpacity={0.8}
                             >
                                 <View className="relative">
-                                    <View className="w-[46px] h-[46px] rounded-full border border-white/80 items-center justify-center overflow-hidden bg-indigo-900/80 shadow-sm">
+                                    <View className="w-[46px] h-[46px] rounded-full border border-white/80 items-center justify-center overflow-hidden bg-carrot-900/80 shadow-sm">
                                         {profilePhotoUrl ? (
                                             <Avatar.Image
                                                 size={44}
@@ -135,7 +135,7 @@ const UserDashboard = ({ navigation, onOpenMap }) => {
                                                     uri: profilePhotoUrl,
                                                 }}
                                                 style={{
-                                                    backgroundColor: "#312e81",
+                                                    backgroundColor: "#441706",
                                                 }}
                                             />
                                         ) : (
@@ -146,7 +146,7 @@ const UserDashboard = ({ navigation, onOpenMap }) => {
                                             />
                                         )}
                                     </View>
-                                    <View className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-indigo-950" />
+                                    <View className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-carrot-950" />
                                 </View>
                                 <View className="ml-3.5 flex-1 justify-center">
                                     <Text
@@ -157,14 +157,14 @@ const UserDashboard = ({ navigation, onOpenMap }) => {
                                             user?.user?.name ||
                                             "User"}
                                     </Text>
-                                    <Text className="text-indigo-300 text-[11px] font-bold tracking-wider">
+                                    <Text className="text-carrot-300 text-[11px] font-bold tracking-wider">
                                         @{user?.user?.username}
                                     </Text>
                                 </View>
                             </TouchableOpacity>
 
                             <TouchableOpacity
-                                className="w-9 h-9 rounded-full bg-indigo-900/80 items-center justify-center border border-indigo-700/60"
+                                className="w-9 h-9 rounded-full bg-carrot-900/80 items-center justify-center border border-carrot-700/60"
                                 onPress={() => navigation.navigate("Profile")}
                             >
                                 <MaterialDesignIcons
@@ -176,12 +176,12 @@ const UserDashboard = ({ navigation, onOpenMap }) => {
                         </View>
 
                         {/* Subtle Divider Line */}
-                        <View className="h-[1px] bg-indigo-800/60 my-4" />
+                        <View className="h-[1px] bg-carrot-800/60 my-4" />
 
                         {/* Wallet Balance & Action */}
                         <View className="flex-row items-center justify-between">
                             <View>
-                                <Text className="text-indigo-300 text-[11px] font-bold tracking-wider uppercase">
+                                <Text className="text-carrot-300 text-[11px] font-bold tracking-wider uppercase">
                                     Wallet Balance
                                 </Text>
                                 <Text className="text-white text-3xl font-black mt-0.5">
@@ -190,7 +190,7 @@ const UserDashboard = ({ navigation, onOpenMap }) => {
                             </View>
 
                             <TouchableOpacity
-                                className="bg-indigo-600/90 px-4 py-2.5 rounded-2xl flex-row items-center border border-indigo-400/30 shadow-sm"
+                                className="bg-carrot-600/90 px-4 py-2.5 rounded-2xl flex-row items-center border border-carrot-400/30 shadow-sm"
                                 onPress={() => navigation.navigate("Wallet")}
                                 activeOpacity={0.8}
                             >
@@ -212,11 +212,11 @@ const UserDashboard = ({ navigation, onOpenMap }) => {
                             className="flex-1 bg-white p-3.5 rounded-2xl items-center mx-1 border border-slate-100"
                             elevation={1}
                         >
-                            <View className="w-10 h-10 rounded-full justify-center items-center mb-2 bg-indigo-100">
+                            <View className="w-10 h-10 rounded-full justify-center items-center mb-2 bg-carrot-100">
                                 <MaterialDesignIcons
                                     name="car-back"
                                     size={22}
-                                    color="#4338ca"
+                                    color="#ff9933"
                                 />
                             </View>
                             <Text className="text-slate-500 text-[11px] font-semibold">
@@ -269,7 +269,7 @@ const UserDashboard = ({ navigation, onOpenMap }) => {
                     {/* Active Booking Banner */}
                     {Boolean(stats.activeBooking) && (
                         <Surface
-                            className="bg-white rounded-2xl p-4 mb-4 border-l-4 border-l-indigo-700 border border-slate-100"
+                            className="bg-white rounded-2xl p-4 mb-4 border-l-4 border-l-carrot-700 border border-slate-100"
                             elevation={2}
                         >
                             <View className="flex-row justify-between items-start">
@@ -317,11 +317,11 @@ const UserDashboard = ({ navigation, onOpenMap }) => {
                             </View>
 
                             {Boolean(stats.activeBooking.otp) && (
-                                <View className="bg-indigo-100 p-2.5 rounded-xl flex-row justify-between items-center mt-3">
-                                    <Text className="text-indigo-900 text-xs font-semibold">
+                                <View className="bg-carrot-100 p-2.5 rounded-xl flex-row justify-between items-center mt-3">
+                                    <Text className="text-carrot-900 text-xs font-semibold">
                                         Check-In OTP Code:
                                     </Text>
-                                    <Text className="text-indigo-950 text-base font-extrabold tracking-widest">
+                                    <Text className="text-carrot-950 text-base font-extrabold tracking-widest">
                                         {stats.activeBooking.otp}
                                     </Text>
                                 </View>
@@ -335,7 +335,7 @@ const UserDashboard = ({ navigation, onOpenMap }) => {
                     </Text>
                     <View className="flex-row flex-wrap justify-between mb-2">
                         <TouchableOpacity
-                            className="w-[48%] p-3.5 rounded-2xl mb-3 flex-row items-center bg-indigo-700"
+                            className="w-[48%] p-3.5 rounded-2xl mb-3 flex-row items-center bg-carrot-700"
                             onPress={onOpenMap}
                         >
                             <View className="w-10 h-10 rounded-xl justify-center items-center mr-2.5 bg-white/20">
@@ -349,7 +349,7 @@ const UserDashboard = ({ navigation, onOpenMap }) => {
                                 <Text className="text-white font-bold text-xs">
                                     Find Parking
                                 </Text>
-                                <Text className="text-indigo-200 text-[11px]">
+                                <Text className="text-carrot-200 text-[11px]">
                                     Open Map View
                                 </Text>
                             </View>
@@ -427,7 +427,7 @@ const UserDashboard = ({ navigation, onOpenMap }) => {
                         <TouchableOpacity
                             onPress={() => navigation.navigate("MyBookings")}
                         >
-                            <Text className="text-indigo-700 font-semibold text-xs">
+                            <Text className="text-carrot-700 font-semibold text-xs">
                                 View All
                             </Text>
                         </TouchableOpacity>
@@ -497,7 +497,7 @@ const UserDashboard = ({ navigation, onOpenMap }) => {
                             <Button
                                 mode="contained"
                                 onPress={onOpenMap}
-                                className="mt-3 bg-indigo-700 rounded-xl"
+                                className="mt-3 bg-carrot-700 rounded-xl"
                                 labelStyle={{
                                     fontWeight: "bold",
                                     fontSize: 12,

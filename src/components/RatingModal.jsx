@@ -109,7 +109,7 @@ export default function RatingModal({
                     numberOfLines={3}
                     disabled={isReadOnly}
                     outlineColor="#cbd5e1"
-                    activeOutlineColor="#4338ca"
+                    activeOutlineColor="#ff9933"
                     className="bg-slate-50 mb-4"
                     placeholder="Share details of your experience..."
                 />
@@ -142,7 +142,7 @@ export default function RatingModal({
                         <Button
                             mode="contained"
                             onPress={handleSubmit}
-                            className="flex-1 rounded-xl bg-indigo-700"
+                            className="flex-1 rounded-xl bg-carrot-700"
                             loading={loading}
                             disabled={loading}
                             labelStyle={{ fontWeight: "700" }}

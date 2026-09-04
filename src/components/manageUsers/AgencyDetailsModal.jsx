@@ -73,7 +73,7 @@ export default function AgencyDetailsModal({
                 <Text className="text-xl font-bold text-slate-800 flex-1 mr-2" numberOfLines={1}>
                     {agency.name}
                 </Text>
-                <View className="bg-indigo-100 px-2 py-0.5 rounded"><Text className="text-indigo-800 font-bold text-xs uppercase">{String("                     " + (agency.status || "Active") + "                 ").trim()}</Text></View>
+                <View className="bg-carrot-100 px-2 py-0.5 rounded"><Text className="text-carrot-800 font-bold text-xs uppercase">{String("                     " + (agency.status || "Active") + "                 ").trim()}</Text></View>
             </View>
 
             <Divider className="mb-3 bg-slate-100" />
@@ -92,7 +92,7 @@ export default function AgencyDetailsModal({
                             size={64}
                             icon="office-building"
                             style={{ backgroundColor: "#e0e7ff" }}
-                            color="#4338ca"
+                            color="#ff9933"
                         />
                     )}
                     <View className="ml-4 flex-1">
@@ -123,7 +123,7 @@ export default function AgencyDetailsModal({
                         <View className="h-8 w-[1px] bg-emerald-200" />
                         <View className="items-center">
                             <Text className="text-xs font-semibold text-slate-500 uppercase">Agency Balance</Text>
-                            <Text className="text-lg font-bold text-indigo-900 mt-0.5">
+                            <Text className="text-lg font-bold text-carrot-900 mt-0.5">
                                 ₹{parseFloat(agency.wallet_balance || 0).toFixed(2)}
                             </Text>
                         </View>
@@ -206,9 +206,9 @@ export default function AgencyDetailsModal({
                             <Text className="text-base font-bold text-slate-800 mt-0.5">{cap.val || 0}</Text>
                         </View>
                     ))}
-                    <View className="w-[30%] bg-indigo-50 p-2 rounded-lg items-center mb-2 border border-indigo-100">
-                        <Text className="text-[10px] text-indigo-700 font-bold text-center">EV Charging</Text>
-                        <Text className="text-sm font-bold text-indigo-900 mt-1">
+                    <View className="w-[30%] bg-carrot-50 p-2 rounded-lg items-center mb-2 border border-carrot-100">
+                        <Text className="text-[10px] text-carrot-700 font-bold text-center">EV Charging</Text>
+                        <Text className="text-sm font-bold text-carrot-900 mt-1">
                             {agency.ev_charging_support ? "YES" : "NO"}
                         </Text>
                     </View>
@@ -395,7 +395,7 @@ export default function AgencyDetailsModal({
                 <Button
                     mode="contained"
                     onPress={onDismiss}
-                    buttonColor="#4338ca"
+                    buttonColor="#ff9933"
                     textColor="white"
                     className="w-full rounded-xl py-0.5"
                     labelStyle={{ fontWeight: "700" }}

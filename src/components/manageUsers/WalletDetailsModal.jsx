@@ -67,7 +67,7 @@ export default function WalletDetailsModal({
                 <View className="gap-3 mb-5 px-1">
                     <View className="flex-row justify-between items-center">
                         <Text className="text-sm font-semibold text-slate-500">Requested Amount</Text>
-                        <Text className="text-2xl font-extrabold text-indigo-600">₹{request.amount.toFixed(2)}</Text>
+                        <Text className="text-2xl font-extrabold text-carrot-600">₹{request.amount.toFixed(2)}</Text>
                     </View>
 
                     <Divider className="bg-slate-100 my-1" />

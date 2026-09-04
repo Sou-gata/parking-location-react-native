@@ -208,7 +208,7 @@ export default function MediaTab({ agencyId }) {
     if (loading) {
         return (
             <View className="py-12 items-center justify-center">
-                <ActivityIndicator size="large" color="#4338ca" />
+                <ActivityIndicator size="large" color="#ff9933" />
                 <Text className="text-gray-500 mt-2 text-xs font-semibold">Loading media gallery...</Text>
             </View>
         );
@@ -217,20 +217,20 @@ export default function MediaTab({ agencyId }) {
     return (
         <ScrollView className="flex-1 p-4 bg-slate-50">
             {/* Header info card */}
-            <Card className="mb-4 bg-indigo-50/70 border border-indigo-100 rounded-2xl" elevation={0}>
+            <Card className="mb-4 bg-carrot-50/70 border border-carrot-100 rounded-2xl" elevation={0}>
                 <Card.Content className="p-4">
                     <View className="flex-row justify-between items-center mb-2">
-                        <Text className="text-lg font-bold text-indigo-900">Organization Photos & Videos</Text>
-                        <View className="bg-indigo-600 px-2"><Text className="text-white font-bold">{String((mediaItems.length) + "/10").trim()}</Text></View>
+                        <Text className="text-lg font-bold text-carrot-900">Organization Photos & Videos</Text>
+                        <View className="bg-carrot-600 px-2"><Text className="text-white font-bold">{String((mediaItems.length) + "/10").trim()}</Text></View>
                     </View>
-                    <Text className="text-xs text-indigo-700 leading-5">
+                    <Text className="text-xs text-carrot-700 leading-5">
                         Upload up to 10 photos or videos (videos max 45s). Newly uploaded or edited items are set to{" "}
                         <Text className="font-bold text-amber-700">Pending</Text> until Super Admin approves them.
                     </Text>
                     {Boolean(uploading) && (
                         <View className="flex-row items-center mt-3 gap-2">
-                            <ActivityIndicator size="small" color="#4338ca" />
-                            <Text className="text-xs font-bold text-indigo-800">Processing & Compressing media...</Text>
+                            <ActivityIndicator size="small" color="#ff9933" />
+                            <Text className="text-xs font-bold text-carrot-800">Processing & Compressing media...</Text>
                         </View>
                     )}
                 </Card.Content>
@@ -241,10 +241,10 @@ export default function MediaTab({ agencyId }) {
                 onPress={handleAddMedia}
                 disabled={uploading || mediaItems.length >= 10}
                 activeOpacity={0.7}
-                className="mb-6 p-4 border-dashed border-2 border-indigo-300 bg-white rounded-2xl items-center justify-center flex-row gap-2"
+                className="mb-6 p-4 border-dashed border-2 border-carrot-300 bg-white rounded-2xl items-center justify-center flex-row gap-2"
             >
-                <IconButton icon="plus-circle-outline" iconColor="#4338ca" size={24} />
-                <Text className="font-bold text-indigo-900 text-sm">
+                <IconButton icon="plus-circle-outline" iconColor="#ff9933" size={24} />
+                <Text className="font-bold text-carrot-900 text-sm">
                     Upload New Photo / Video (Max 45s)
                 </Text>
             </TouchableOpacity>
@@ -312,8 +312,8 @@ export default function MediaTab({ agencyId }) {
                                         <Button
                                             mode="outlined"
                                             compact
-                                            className="flex-1 rounded-xl border-indigo-200"
-                                            textColor="#4338ca"
+                                            className="flex-1 rounded-xl border-carrot-200"
+                                            textColor="#ff9933"
                                             labelStyle={{ fontSize: 10, fontWeight: "bold" }}
                                             onPress={() => handleReplaceMedia(item.media_id, item.file_type)}
                                         >

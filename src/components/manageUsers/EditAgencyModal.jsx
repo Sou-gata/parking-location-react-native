@@ -39,7 +39,7 @@ export default function EditAgencyModal({
                                     dense
                                     className="bg-white mb-3"
                                     outlineColor="#e2e8f0"
-                                    activeOutlineColor="#4338ca"
+                                    activeOutlineColor="#ff9933"
                                 />
                                 <TextInput
                                     label="Owner Name *"
@@ -49,7 +49,7 @@ export default function EditAgencyModal({
                                     dense
                                     className="bg-white mb-3"
                                     outlineColor="#e2e8f0"
-                                    activeOutlineColor="#4338ca"
+                                    activeOutlineColor="#ff9933"
                                 />
                                 <TextInput
                                     label="Email Address"
@@ -60,7 +60,7 @@ export default function EditAgencyModal({
                                     keyboardType="email-address"
                                     className="bg-white mb-3"
                                     outlineColor="#e2e8f0"
-                                    activeOutlineColor="#4338ca"
+                                    activeOutlineColor="#ff9933"
                                 />
                                 <TextInput
                                     label="Phone Number"
@@ -70,7 +70,7 @@ export default function EditAgencyModal({
                                     dense
                                     className="bg-white mb-3"
                                     outlineColor="#e2e8f0"
-                                    activeOutlineColor="#4338ca"
+                                    activeOutlineColor="#ff9933"
                                 />
                                 <TextInput
                                     label="Address"
@@ -81,7 +81,7 @@ export default function EditAgencyModal({
                                     multiline
                                     className="bg-white mb-3"
                                     outlineColor="#e2e8f0"
-                                    activeOutlineColor="#4338ca"
+                                    activeOutlineColor="#ff9933"
                                 />
                                 <TextInput
                                     label="Commission Percentage (%)"
@@ -96,7 +96,7 @@ export default function EditAgencyModal({
                                     keyboardType="numeric"
                                     className="bg-white mb-4"
                                     outlineColor="#e2e8f0"
-                                    activeOutlineColor="#4338ca"
+                                    activeOutlineColor="#ff9933"
                                 />
 
                                 {/* Require Booking Approval Toggle */}
@@ -120,7 +120,7 @@ export default function EditAgencyModal({
                                                 requireBookingApproval: val,
                                             })
                                         }
-                                        color="#4338ca"
+                                        color="#ff9933"
                                     />
                                 </View>
 
@@ -135,7 +135,7 @@ export default function EditAgencyModal({
                                     <Button
                                         mode="contained"
                                         onPress={onSave}
-                                        buttonColor="#4338ca"
+                                        buttonColor="#ff9933"
                                         labelStyle={{ color: "white" }}
                                     >
                                         Save Changes

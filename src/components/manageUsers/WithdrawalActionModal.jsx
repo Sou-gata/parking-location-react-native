@@ -232,8 +232,8 @@ export default function WithdrawalActionModal({
                                                 mode="outlined"
                                                 icon="camera-plus"
                                                 onPress={handlePickScreenshot}
-                                                textColor="#4338ca"
-                                                className="border-indigo-200 rounded-xl py-1"
+                                                textColor="#ff9933"
+                                                className="border-carrot-200 rounded-xl py-1"
                                             >
                                                 Upload Payment Screenshot
                                             </Button>

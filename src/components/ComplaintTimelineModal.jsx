@@ -34,7 +34,7 @@ const STATUS_MAP = {
         label: "Under Review",
         bg: "#dbeafe",
         text: "#1e40af",
-        headerBg: "#2563eb",
+        headerBg: "#ef6207",
         icon: "file-search-outline",
     },
     waiting_for_user: {
@@ -194,7 +194,7 @@ export default function ComplaintTimelineModal({
                     <View
                         style={{
                             backgroundColor:
-                                currentStatusConfig?.headerBg || "#4338ca",
+                                currentStatusConfig?.headerBg || "#ff9933",
                         }}
                         className="flex-row items-center justify-between p-4"
                     >
@@ -229,7 +229,7 @@ export default function ComplaintTimelineModal({
                             <View className="py-12 items-center">
                                 <ActivityIndicator
                                     size="large"
-                                    color="#3b82f6"
+                                    color="#ff9933"
                                 />
                                 <Text className="text-slate-500 text-sm mt-3">
                                     Loading timeline history...
@@ -323,7 +323,7 @@ export default function ComplaintTimelineModal({
                                             >
                                                 {/* Timeline bar indicator */}
                                                 <View className="items-center mr-3">
-                                                    <View className="w-8 h-8 rounded-full bg-blue-600 items-center justify-center">
+                                                    <View className="w-8 h-8 rounded-full bg-carrot-600 items-center justify-center">
                                                         <Text className="text-white font-bold text-xs">
                                                             {step.step_number ||
                                                                 idx + 1}
@@ -429,7 +429,7 @@ export default function ComplaintTimelineModal({
                                             multiline
                                             numberOfLines={3}
                                             outlineColor="#cbd5e1"
-                                            activeOutlineColor="#3b82f6"
+                                            activeOutlineColor="#ff9933"
                                             style={{
                                                 backgroundColor: "#f8fafc",
                                                 marginBottom: 12,
@@ -511,7 +511,7 @@ export default function ComplaintTimelineModal({
                                                 submitting ||
                                                 !commentText.trim()
                                             }
-                                            buttonColor="#2563eb"
+                                            buttonColor="#ef6207"
                                             style={{
                                                 borderRadius: 10,
                                                 paddingVertical: 4,

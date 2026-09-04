@@ -53,8 +53,8 @@ export default function ApproveSettlementModal({
                                     Review and approve the earnings payout to the parking owner. You can override the total amount if needed.
                                 </Text>
 
-                                <Surface elevation={0} className="bg-indigo-50/60 p-3.5 rounded-xl mb-4 border border-indigo-100">
-                                    <Text className="text-xs font-bold text-indigo-900 uppercase mb-1">
+                                <Surface elevation={0} className="bg-carrot-50/60 p-3.5 rounded-xl mb-4 border border-carrot-100">
+                                    <Text className="text-xs font-bold text-carrot-900 uppercase mb-1">
                                         {settlement.agencyName}
                                     </Text>
                                     <Text className="text-xs text-slate-600">
@@ -96,7 +96,7 @@ export default function ApproveSettlementModal({
                                     </View>
                                     <View className="flex-row justify-between items-center">
                                         <Text className="text-xs text-slate-600 font-medium">Super Admin Share retained:</Text>
-                                        <Text className="text-xs font-bold text-indigo-700">₹{computedAdminShare.toFixed(2)}</Text>
+                                        <Text className="text-xs font-bold text-carrot-700">₹{computedAdminShare.toFixed(2)}</Text>
                                     </View>
                                     <Divider className="my-1 bg-emerald-200/60" />
                                     <View className="flex-row justify-between items-center">

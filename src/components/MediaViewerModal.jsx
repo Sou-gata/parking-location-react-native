@@ -91,7 +91,7 @@ export default function MediaViewerModal({ visible, onDismiss, media }) {
                         <MaterialDesignIcons
                             name={isVideo ? "video" : "image"}
                             size={24}
-                            color="#6366f1"
+                            color="#ff9933"
                         />
                         <Text className="text-white font-bold text-base" numberOfLines={1}>
                             {media.title || (isVideo ? "Video Player" : "Image Viewer")}
@@ -126,7 +126,7 @@ export default function MediaViewerModal({ visible, onDismiss, media }) {
                                 <MaterialDesignIcons
                                     name={isPlaying ? "file-video" : "pause-circle-outline"}
                                     size={80}
-                                    color="#6366f1"
+                                    color="#ff9933"
                                 />
                                 <Text className="text-slate-400 text-xs font-semibold mt-2">
                                     {isPlaying ? "Playing Video..." : "Video Paused"}
@@ -135,7 +135,7 @@ export default function MediaViewerModal({ visible, onDismiss, media }) {
                                 {/* Play Overlay Center Button */}
                                 <TouchableOpacity
                                     onPress={togglePlayPause}
-                                    className="absolute p-4 rounded-full bg-indigo-600/90 border-2 border-white/20"
+                                    className="absolute p-4 rounded-full bg-carrot-600/90 border-2 border-white/20"
                                 >
                                     <MaterialDesignIcons
                                         name={isPlaying ? "pause" : "play"}
@@ -156,7 +156,7 @@ export default function MediaViewerModal({ visible, onDismiss, media }) {
                             <View className="w-full gap-1">
                                 <View className="w-full h-1.5 rounded-full bg-slate-700 overflow-hidden">
                                     <View
-                                        className="h-full bg-indigo-500 rounded-full"
+                                        className="h-full bg-carrot-500 rounded-full"
                                         style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
                                     />
                                 </View>
@@ -191,7 +191,7 @@ export default function MediaViewerModal({ visible, onDismiss, media }) {
                                 {/* Play / Pause Main Toggle */}
                                 <TouchableOpacity
                                     onPress={togglePlayPause}
-                                    className="p-4 bg-indigo-600 rounded-full border-2 border-indigo-400"
+                                    className="p-4 bg-carrot-600 rounded-full border-2 border-carrot-400"
                                 >
                                     <MaterialDesignIcons
                                         name={isPlaying ? "pause" : "play"}

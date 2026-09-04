@@ -174,7 +174,7 @@ export default function ManageParking({ navigation }) {
             {/* Header info */}
             <Surface
                 elevation={2}
-                className="bg-indigo-700 px-5 pt-4 pb-5 rounded-b-3xl"
+                className="bg-carrot-400 px-5 pt-4 pb-5 rounded-b-3xl"
             >
                 <Text className="text-white text-2xl font-bold">
                     {currentAgency.name}
@@ -187,7 +187,7 @@ export default function ManageParking({ navigation }) {
                         color="#a5b4fc"
                     />
                     <Text
-                        className="text-indigo-200 text-xs ml-1"
+                        className="text-carrot-200 text-xs ml-1"
                         numberOfLines={1}
                     >
                         {currentAgency.address}
@@ -198,7 +198,7 @@ export default function ManageParking({ navigation }) {
             {Boolean(parkingState.loading) && (
                 <ActivityIndicator
                     animating={true}
-                    color="#4338ca"
+                    color="#ff9933"
                     style={{ marginVertical: 10 }}
                 />
             )}
@@ -223,7 +223,7 @@ export default function ManageParking({ navigation }) {
                                         setSelectedAgencyId(agency.id)
                                     }
                                     className="mr-2"
-                                    selectedColor="#4338ca"
+                                    selectedColor="#ff9933"
                                     showSelectedOverlay
                                 >
                                     {agency.name}
@@ -239,7 +239,7 @@ export default function ManageParking({ navigation }) {
                 <Pressable
                     className={`flex-1 py-3.5 items-center justify-center border-b-2 ${
                         activeTab === "capacities"
-                            ? "border-indigo-600"
+                            ? "border-carrot-600"
                             : "border-transparent"
                     }`}
                     onPress={() => setActiveTab("capacities")}
@@ -247,7 +247,7 @@ export default function ManageParking({ navigation }) {
                     <Text
                         className={`text-sm font-bold ${
                             activeTab === "capacities"
-                                ? "text-indigo-600"
+                                ? "text-carrot-600"
                                 : "text-slate-500"
                         }`}
                     >
@@ -273,7 +273,7 @@ export default function ManageParking({ navigation }) {
                 <Pressable
                     className={`flex-1 py-3.5 items-center justify-center border-b-2 ${
                         activeTab === "parked"
-                            ? "border-indigo-600"
+                            ? "border-carrot-600"
                             : "border-transparent"
                     }`}
                     onPress={() => setActiveTab("parked")}
@@ -281,7 +281,7 @@ export default function ManageParking({ navigation }) {
                     <Text
                         className={`text-sm font-bold ${
                             activeTab === "parked"
-                                ? "text-indigo-600"
+                                ? "text-carrot-600"
                                 : "text-slate-500"
                         }`}
                     >
@@ -300,7 +300,7 @@ export default function ManageParking({ navigation }) {
                 <Pressable
                     className={`flex-1 py-3.5 items-center justify-center border-b-2 ${
                         activeTab === "cancellation"
-                            ? "border-indigo-600"
+                            ? "border-carrot-600"
                             : "border-transparent"
                     }`}
                     onPress={() => setActiveTab("cancellation")}
@@ -308,7 +308,7 @@ export default function ManageParking({ navigation }) {
                     <Text
                         className={`text-sm font-bold ${
                             activeTab === "cancellation"
-                                ? "text-indigo-600"
+                                ? "text-carrot-600"
                                 : "text-slate-500"
                         }`}
                     >
@@ -318,7 +318,7 @@ export default function ManageParking({ navigation }) {
                 <Pressable
                     className={`flex-1 py-3.5 items-center justify-center border-b-2 ${
                         activeTab === "media"
-                            ? "border-indigo-600"
+                            ? "border-carrot-600"
                             : "border-transparent"
                     }`}
                     onPress={() => setActiveTab("media")}
@@ -326,7 +326,7 @@ export default function ManageParking({ navigation }) {
                     <Text
                         className={`text-sm font-bold ${
                             activeTab === "media"
-                                ? "text-indigo-600"
+                                ? "text-carrot-600"
                                 : "text-slate-500"
                         }`}
                     >
@@ -336,7 +336,7 @@ export default function ManageParking({ navigation }) {
                 <Pressable
                     className={`flex-1 py-3.5 items-center justify-center border-b-2 ${
                         activeTab === "working_hours"
-                            ? "border-indigo-600"
+                            ? "border-carrot-600"
                             : "border-transparent"
                     }`}
                     onPress={() => setActiveTab("working_hours")}
@@ -344,7 +344,7 @@ export default function ManageParking({ navigation }) {
                     <Text
                         className={`text-sm font-bold ${
                             activeTab === "working_hours"
-                                ? "text-indigo-600"
+                                ? "text-carrot-600"
                                 : "text-slate-500"
                         }`}
                     >

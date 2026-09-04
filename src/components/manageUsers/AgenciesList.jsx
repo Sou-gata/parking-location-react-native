@@ -19,7 +19,7 @@ export default function AgenciesList({ agencies, onPressAgency, onEditAgency, on
                                     style={{
                                         backgroundColor: "#e0e7ff",
                                     }}
-                                    color="#4338ca"
+                                    color="#ff9933"
                                 />
                                 <View className="ml-3 flex-1">
                                     <Text
@@ -44,7 +44,7 @@ export default function AgenciesList({ agencies, onPressAgency, onEditAgency, on
                             </View>
                             <View className="flex-row items-center">
                                 <View className="items-end gap-1">
-                                    <View className="bg-indigo-100 px-2 py-0.5 rounded"><Text className="text-indigo-800 font-bold text-xs">{String("                                         " + (item.users?.length || 0) + " Users                                     ").trim()}</Text></View>
+                                    <View className="bg-carrot-100 px-2 py-0.5 rounded"><Text className="text-carrot-800 font-bold text-xs">{String("                                         " + (item.users?.length || 0) + " Users                                     ").trim()}</Text></View>
                                     <View className="bg-emerald-100 px-2 py-0.5 rounded"><Text className="text-emerald-800 font-bold text-xs">{String("                                         " + (parseFloat(item.commission_percentage || 0).toFixed(1)) + "% Comm.                                     ").trim()}</Text></View>
                                     <View className={Boolean(
                                                 item.require_booking_approval !== undefined
@@ -77,7 +77,7 @@ export default function AgenciesList({ agencies, onPressAgency, onEditAgency, on
                                 {Boolean(onEditAgency) && (
                                     <IconButton
                                         icon="pencil-outline"
-                                        iconColor="#4338ca"
+                                        iconColor="#ff9933"
                                         size={20}
                                         style={{ margin: 0, marginLeft: 2 }}
                                         onPress={() => onEditAgency(item)}

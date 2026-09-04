@@ -304,7 +304,7 @@ const Signup = ({ navigation }) => {
                                 }
                                 mode="outlined"
                                 outlineColor="#e2e8f0"
-                                activeOutlineColor="#4338ca"
+                                activeOutlineColor="#ff9933"
                                 left={<TextInput.Icon icon="domain" />}
                             />
                             <TextInput
@@ -320,7 +320,7 @@ const Signup = ({ navigation }) => {
                                 }
                                 mode="outlined"
                                 outlineColor="#e2e8f0"
-                                activeOutlineColor="#4338ca"
+                                activeOutlineColor="#ff9933"
                                 keyboardType="email-address"
                                 left={<TextInput.Icon icon="email" />}
                             />
@@ -351,7 +351,7 @@ const Signup = ({ navigation }) => {
                                             disabled={otpVerified}
                                             mode="outlined"
                                             outlineColor="#e2e8f0"
-                                            activeOutlineColor="#4338ca"
+                                            activeOutlineColor="#ff9933"
                                             keyboardType="phone-pad"
                                             left={<TextInput.Icon icon="phone" />}
                                         />
@@ -390,7 +390,7 @@ const Signup = ({ navigation }) => {
                                                 onChangeText={setOtp}
                                                 mode="outlined"
                                                 outlineColor="#e2e8f0"
-                                                activeOutlineColor="#4338ca"
+                                                activeOutlineColor="#ff9933"
                                                 keyboardType="number-pad"
                                                 maxLength={6}
                                                 left={
@@ -451,7 +451,7 @@ const Signup = ({ navigation }) => {
                                 }
                                 mode="outlined"
                                 outlineColor="#e2e8f0"
-                                activeOutlineColor="#4338ca"
+                                activeOutlineColor="#ff9933"
                                 left={<TextInput.Icon icon="account-circle" />}
                             />
                             <TextInput
@@ -467,7 +467,7 @@ const Signup = ({ navigation }) => {
                                 }
                                 mode="outlined"
                                 outlineColor="#e2e8f0"
-                                activeOutlineColor="#4338ca"
+                                activeOutlineColor="#ff9933"
                                 secureTextEntry
                                 left={<TextInput.Icon icon="lock" />}
                             />
@@ -487,7 +487,7 @@ const Signup = ({ navigation }) => {
                                 }
                                 mode="outlined"
                                 outlineColor="#e2e8f0"
-                                activeOutlineColor="#4338ca"
+                                activeOutlineColor="#ff9933"
                                 secureTextEntry
                                 left={<TextInput.Icon icon="lock-check" />}
                             />
@@ -516,7 +516,7 @@ const Signup = ({ navigation }) => {
                                 }
                                 mode="outlined"
                                 outlineColor="#e2e8f0"
-                                activeOutlineColor="#4338ca"
+                                activeOutlineColor="#ff9933"
                                 multiline
                                 left={<TextInput.Icon icon="map-marker" />}
                             />
@@ -528,7 +528,7 @@ const Signup = ({ navigation }) => {
                                 }
                                 mode="outlined"
                                 outlineColor="#e2e8f0"
-                                activeOutlineColor="#4338ca"
+                                activeOutlineColor="#ff9933"
                                 left={<TextInput.Icon icon="office-building-marker-outline" />}
                             />
 
@@ -551,7 +551,7 @@ const Signup = ({ navigation }) => {
                         <Checkbox
                             status={acceptedTerms ? "checked" : "unchecked"}
                             onPress={() => setAcceptedTerms(!acceptedTerms)}
-                            color="#4338ca"
+                            color="#ff9933"
                         />
                         <View className="flex-1 ml-1 flex-row flex-wrap items-center">
                             <Text className="text-slate-700 text-xs font-semibold">
@@ -560,7 +560,7 @@ const Signup = ({ navigation }) => {
                             <TouchableOpacity
                                 onPress={() => setTermsModalVisible(true)}
                             >
-                                <Text className="text-indigo-700 font-bold text-xs underline">
+                                <Text className="text-carrot-700 font-bold text-xs underline">
                                     Partner Terms & Conditions
                                 </Text>
                             </TouchableOpacity>
@@ -635,7 +635,7 @@ const Signup = ({ navigation }) => {
                                             setAcceptedTerms(true);
                                             setTermsModalVisible(false);
                                         }}
-                                        buttonColor="#4338ca"
+                                        buttonColor="#ff9933"
                                         className="rounded-xl"
                                     >
                                         I Accept Terms
@@ -652,7 +652,7 @@ const Signup = ({ navigation }) => {
 
 const styles = StyleSheet.create({
     header: {
-        backgroundColor: "#4338ca",
+        backgroundColor: "#ff9933",
     },
     card: {
         backgroundColor: "white",
@@ -660,7 +660,7 @@ const styles = StyleSheet.create({
         paddingBottom: 4,
     },
     submitButton: {
-        backgroundColor: "#4338ca",
+        backgroundColor: "#ff9933",
         borderRadius: 12,
         marginTop: 8,
         elevation: 4,

@@ -52,7 +52,7 @@ export default function RoleModal({
                                                 </Text>
                                                 <RadioButton
                                                     value={roleValue}
-                                                    color="#4338ca"
+                                                    color="#ff9933"
                                                     uncheckedColor="#cbd5e1"
                                                 />
                                             </View>
@@ -74,7 +74,7 @@ export default function RoleModal({
                                 <Button
                                     mode="contained"
                                     onPress={onSubmit}
-                                    buttonColor="#4338ca"
+                                    buttonColor="#ff9933"
                                     labelStyle={{ color: "white" }}
                                 >
                                     Save Changes

@@ -39,7 +39,7 @@ export default function AgencySettlementsTab({
                                         size={44}
                                         icon="cash-clock"
                                         style={{ backgroundColor: "#e0e7ff" }}
-                                        color="#4338ca"
+                                        color="#ff9933"
                                     />
                                     <View className="ml-3 flex-1">
                                         <Text
@@ -65,7 +65,7 @@ export default function AgencySettlementsTab({
                                 </View>
                                 <View className="items-end">
                                     <Text className="text-xs text-slate-500 font-semibold uppercase">Total Deducted</Text>
-                                    <Text className="text-base font-extrabold text-indigo-700">₹{totalAmount.toFixed(2)}</Text>
+                                    <Text className="text-base font-extrabold text-carrot-700">₹{totalAmount.toFixed(2)}</Text>
                                 </View>
                             </View>
 

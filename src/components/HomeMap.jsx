@@ -240,16 +240,70 @@ const HomeMap = () => {
                         return null;
                     }
 
+                    const now = new Date();
                     const activeCount = (bookings || []).filter((b) => {
                         const bAgencyId = String(
                             b.agencyId || b.agency_id || b.org_id || ""
                         );
+                        if (bAgencyId !== targetAgencyId) return false;
+
                         const bVehicleType = b.vehicleType || b.vehicle_type;
-                        return (
-                            bAgencyId === targetAgencyId &&
-                            bVehicleType === key &&
-                            (b.status === "booked" || b.status === "checked_in")
-                        );
+                        const normKey = key.toLowerCase().replace(/[-_\s]/g, "");
+                        const normBType = (bVehicleType || "")
+                            .toLowerCase()
+                            .replace(/[-_\s]/g, "");
+                        const isTypeMatch =
+                            normKey === normBType ||
+                            ((normKey.includes("twowheeler") ||
+                                normKey === "bike") &&
+                                (normBType.includes("twowheeler") ||
+                                    normBType === "bike")) ||
+                            ((normKey.includes("threewheeler") ||
+                                normKey === "auto") &&
+                                (normBType.includes("threewheeler") ||
+                                    normBType === "auto"));
+
+                        if (!isTypeMatch) return false;
+
+                        if (b.status === "checked_in") return true;
+
+                        if (
+                            b.status === "booked" ||
+                            b.status === "pending_approval"
+                        ) {
+                            const bStartRaw =
+                                b.bookingStartTime ||
+                                b.booking_start_time ||
+                                b.startTime ||
+                                b.start_time;
+                            const bEndRaw =
+                                b.bookingEndTime ||
+                                b.booking_end_time ||
+                                b.endTime ||
+                                b.end_time;
+                            if (!bStartRaw) return false;
+
+                            const bStart = new Date(bStartRaw);
+                            if (isNaN(bStart.getTime())) return false;
+
+                            let bEnd;
+                            if (bEndRaw) {
+                                bEnd = new Date(bEndRaw);
+                            } else {
+                                const durHours =
+                                    parseFloat(
+                                        b.bookedDuration || b.booked_duration
+                                    ) || 1;
+                                bEnd = new Date(
+                                    bStart.getTime() + durHours * 3600000
+                                );
+                            }
+
+                            // Active right now if bStart <= now and bEnd > now
+                            return bStart <= now && bEnd > now;
+                        }
+
+                        return false;
                     }).length;
 
                     const availableSpots = Math.max(0, cap - activeCount);
@@ -717,8 +771,8 @@ const HomeMap = () => {
                         coordinate={locationState.coords}
                     >
                         <View className="items-center justify-center w-8 h-8">
-                            <View className="w-6 h-6 rounded-full bg-indigo-500/30 items-center justify-center border border-indigo-400">
-                                <View className="w-3.5 h-3.5 rounded-full bg-indigo-600 border-2 border-white" />
+                            <View className="w-6 h-6 rounded-full bg-carrot-500/30 items-center justify-center border border-carrot-400">
+                                <View className="w-3.5 h-3.5 rounded-full bg-carrot-600 border-2 border-white" />
                             </View>
                         </View>
                     </MarkerView>
@@ -733,7 +787,7 @@ const HomeMap = () => {
                         <LineLayer
                             id={`route-layer-${routeCoordCount}`}
                             style={{
-                                lineColor: "#4338ca",
+                                lineColor: "#ff9933",
                                 lineWidth: 6,
                                 lineCap: "round",
                                 lineJoin: "round",
@@ -787,7 +841,7 @@ const HomeMap = () => {
                                     className={`bg-white rounded-full w-10 h-10 items-center justify-center border-2 ${
                                         parkingState.selectedLocation?.id === loc.id
                                             ? "border-primary"
-                                            : "border-indigo-400"
+                                            : "border-carrot-400"
                                     }`}
                                 >
                                     <MaterialDesignIcons
@@ -796,8 +850,8 @@ const HomeMap = () => {
                                         color={
                                             parkingState.selectedLocation?.id ===
                                             loc.id
-                                                ? "#4338ca"
-                                                : "#6366f1"
+                                                ? "#ff9933"
+                                                : "#ff9933"
                                         }
                                     />
                                 </Surface>
@@ -857,7 +911,7 @@ const HomeMap = () => {
                 >
                     <IconButton
                         icon="crosshairs-gps"
-                        iconColor="#4338ca"
+                        iconColor="#ff9933"
                         size={24}
                         onPress={handleLocateMe}
                     />

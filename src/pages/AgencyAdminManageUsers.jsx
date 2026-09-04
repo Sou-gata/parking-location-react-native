@@ -463,7 +463,7 @@ export default function AgencyAdminManageUsers({ navigation }) {
                     mode="outlined"
                     dense
                     outlineColor="#e2e8f0"
-                    activeOutlineColor="#4338ca"
+                    activeOutlineColor="#ff9933"
                     left={<TextInput.Icon icon="magnify" />}
                     right={
                         searchQuery ? (
@@ -480,7 +480,7 @@ export default function AgencyAdminManageUsers({ navigation }) {
             {Boolean(apiLoading) && (
                 <ActivityIndicator
                     animating={true}
-                    color="#4338ca"
+                    color="#ff9933"
                     style={{ marginVertical: 10 }}
                 />
             )}
@@ -505,7 +505,7 @@ export default function AgencyAdminManageUsers({ navigation }) {
                             style={{
                                 backgroundColor:
                                     selectedRoleFilter === "all"
-                                        ? "#4338ca"
+                                        ? "#ff9933"
                                         : "#f1f5f9",
                             }}
                         >
@@ -529,7 +529,7 @@ export default function AgencyAdminManageUsers({ navigation }) {
                                     style={{
                                         backgroundColor:
                                             selectedRoleFilter === roleValue
-                                                ? "#4338ca"
+                                                ? "#ff9933"
                                                 : "#f1f5f9",
                                     }}
                                 >

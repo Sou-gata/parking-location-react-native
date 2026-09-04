@@ -290,7 +290,7 @@ export default function Wallet() {
             {/* Balance Card */}
             <Surface
                 elevation={4}
-                className="bg-indigo-600 rounded-3xl p-6 overflow-hidden relative"
+                className="bg-carrot-600 rounded-3xl p-6 overflow-hidden relative"
             >
                 <View className="absolute -right-10 -bottom-10 opacity-10">
                     <Avatar.Icon
@@ -310,9 +310,9 @@ export default function Wallet() {
                 </Text>
 
                 {Boolean(hasPermission(PERMISSIONS.BOOK_PARKING)) && (
-                    <View className="flex-row justify-between mb-3 pr-4 border-t border-indigo-500/40 pt-3">
+                    <View className="flex-row justify-between mb-3 pr-4 border-t border-carrot-500/40 pt-3">
                         <View>
-                            <Text className="text-indigo-200 text-[10px] font-bold uppercase tracking-wider">
+                            <Text className="text-carrot-200 text-[10px] font-bold uppercase tracking-wider">
                                 Reserved Balance
                             </Text>
                             <Text className="text-white text-base font-bold mt-0.5">
@@ -320,7 +320,7 @@ export default function Wallet() {
                             </Text>
                         </View>
                         <View className="items-end">
-                            <Text className="text-indigo-200 text-[10px] font-bold uppercase tracking-wider">
+                            <Text className="text-carrot-200 text-[10px] font-bold uppercase tracking-wider">
                                 Available to Use
                             </Text>
                             <Text className="text-emerald-300 text-base font-extrabold mt-0.5">
@@ -333,7 +333,7 @@ export default function Wallet() {
                         </View>
                     </View>
                 )}
-                <View className="flex-row items-center bg-indigo-700/50 self-start px-3 py-1 rounded-full">
+                <View className="flex-row items-center bg-carrot-700/50 self-start px-3 py-1 rounded-full">
                     <Avatar.Icon
                         size={16}
                         icon="shield-check"
@@ -388,7 +388,7 @@ export default function Wallet() {
                             keyboardType="numeric"
                             value={amount}
                             onChangeText={setAmount}
-                            activeOutlineColor="#4338ca"
+                            activeOutlineColor="#ff9933"
                             outlineColor="#cbd5e1"
                             className="bg-white mb-4"
                             left={<TextInput.Affix text="₹" />}
@@ -402,9 +402,9 @@ export default function Wallet() {
                                     mode="outlined"
                                     compact
                                     onPress={() => handleQuickAdd(val)}
-                                    textColor="#4338ca"
+                                    textColor="#ff9933"
                                     style={{
-                                        borderColor: "#4338ca",
+                                        borderColor: "#ff9933",
                                         flex: 1,
                                         marginHorizontal: 3,
                                     }}
@@ -424,7 +424,7 @@ export default function Wallet() {
                             onPress={handleInitiateAddMoney}
                             loading={loadingQr}
                             disabled={loadingQr}
-                            className="bg-indigo-600 rounded-xl py-1"
+                            className="bg-carrot-600 rounded-xl py-1"
                             labelStyle={{ fontWeight: "bold", fontSize: 15 }}
                         >
                             Proceed to Add Money
@@ -648,7 +648,7 @@ export default function Wallet() {
                                                     }
                                                 }
                                             }}
-                                            textColor="#4338ca"
+                                            textColor="#ff9933"
                                             style={{
                                                 borderColor: "#c7d2fe",
                                                 borderRadius: 12,
@@ -665,7 +665,7 @@ export default function Wallet() {
                                             mode="contained"
                                             icon="cellphone-arrow-down"
                                             onPress={handlePayNow}
-                                            buttonColor="#4338ca"
+                                            buttonColor="#ff9933"
                                             textColor="white"
                                             style={{
                                                 borderRadius: 12,
@@ -685,7 +685,7 @@ export default function Wallet() {
 
                             <Text className="text-xs font-semibold text-center text-slate-500 mb-4">
                                 UPI ID:{" "}
-                                <Text className="text-indigo-600 font-bold">
+                                <Text className="text-carrot-600 font-bold">
                                     {qrData?.upiId || "gbt@upi"}
                                 </Text>
                             </Text>
@@ -697,13 +697,13 @@ export default function Wallet() {
                                 value={txNumber}
                                 onChangeText={setTxNumber}
                                 keyboardType="numeric"
-                                activeOutlineColor="#4338ca"
+                                activeOutlineColor="#ff9933"
                                 outlineColor="#cbd5e1"
                                 className="bg-white mb-4"
                             />
 
                             {screenshot ? (
-                                <View className="items-center justify-center my-2 p-2 border border-dashed border-indigo-200 rounded-2xl bg-indigo-50/20">
+                                <View className="items-center justify-center my-2 p-2 border border-dashed border-carrot-200 rounded-2xl bg-carrot-50/20">
                                     <Image
                                         source={{ uri: screenshot.uri }}
                                         style={{ width: 120, height: 120 }}
@@ -725,8 +725,8 @@ export default function Wallet() {
                                     mode="outlined"
                                     icon="upload"
                                     onPress={handlePickScreenshot}
-                                    className="mb-6 rounded-xl border-indigo-200"
-                                    textColor="#4338ca"
+                                    className="mb-6 rounded-xl border-carrot-200"
+                                    textColor="#ff9933"
                                     labelStyle={{ fontWeight: "bold" }}
                                 >
                                     Upload Payment Screenshot
@@ -749,7 +749,7 @@ export default function Wallet() {
                                     onPress={handleSubmitPayment}
                                     loading={submitting}
                                     disabled={submitting}
-                                    className="flex-1 bg-indigo-600 rounded-xl"
+                                    className="flex-1 bg-carrot-600 rounded-xl"
                                     labelStyle={{ fontWeight: "bold" }}
                                 >
                                     Submit Request
@@ -779,11 +779,11 @@ export default function Wallet() {
                                 Requests cannot be cancelled once submitted.
                             </Text>
 
-                            <View className="bg-indigo-50 p-4 rounded-2xl mb-4 border border-indigo-100 flex-row justify-between items-center">
+                            <View className="bg-carrot-50 p-4 rounded-2xl mb-4 border border-carrot-100 flex-row justify-between items-center">
                                 <Text className="text-xs font-semibold text-slate-600 uppercase">
                                     Available Balance
                                 </Text>
-                                <Text className="text-xl font-extrabold text-indigo-700">
+                                <Text className="text-xl font-extrabold text-carrot-700">
                                     ₹{(balance || 0).toFixed(2)}
                                 </Text>
                             </View>
@@ -968,7 +968,7 @@ export default function Wallet() {
                                                 <Text className="text-xs font-semibold text-slate-500">
                                                     Updated Account Balance
                                                 </Text>
-                                                <Text className="text-sm font-extrabold text-indigo-700">
+                                                <Text className="text-sm font-extrabold text-carrot-700">
                                                     ₹
                                                     {parseFloat(
                                                         selectedTransaction.newBalance

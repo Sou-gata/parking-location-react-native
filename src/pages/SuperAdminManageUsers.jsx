@@ -1019,7 +1019,7 @@ export default function SuperAdminManageUsers({ route, navigation }) {
                     mode="outlined"
                     dense
                     outlineColor="#e2e8f0"
-                    activeOutlineColor="#4338ca"
+                    activeOutlineColor="#ff9933"
                     left={<TextInput.Icon icon="magnify" />}
                     right={
                         searchQuery ? (
@@ -1036,7 +1036,7 @@ export default function SuperAdminManageUsers({ route, navigation }) {
             {Boolean(apiLoading) && (
                 <ActivityIndicator
                     animating={true}
-                    color="#4338ca"
+                    color="#ff9933"
                     style={{ marginVertical: 10 }}
                 />
             )}
@@ -1096,10 +1096,10 @@ export default function SuperAdminManageUsers({ route, navigation }) {
                                 className="mr-2 h-9"
                                 style={{
                                     backgroundColor: isSelected
-                                        ? "#4338ca"
+                                        ? "#ff9933"
                                         : "#f1f5f9",
                                     borderColor: isSelected
-                                        ? "#4338ca"
+                                        ? "#ff9933"
                                         : "#cbd5e1",
                                 }}
                                 textStyle={{
@@ -1129,11 +1129,11 @@ export default function SuperAdminManageUsers({ route, navigation }) {
                             style={{
                                 backgroundColor:
                                     selectedRoleFilter === "all"
-                                        ? "#4338ca"
+                                        ? "#ff9933"
                                         : "#f1f5f9",
                                 borderColor:
                                     selectedRoleFilter === "all"
-                                        ? "#4338ca"
+                                        ? "#ff9933"
                                         : "#cbd5e1",
                             }}
                             textStyle={{
@@ -1162,10 +1162,10 @@ export default function SuperAdminManageUsers({ route, navigation }) {
                                     className="mr-2 h-9"
                                     style={{
                                         backgroundColor: isRoleSel
-                                            ? "#4338ca"
+                                            ? "#ff9933"
                                             : "#f1f5f9",
                                         borderColor: isRoleSel
-                                            ? "#4338ca"
+                                            ? "#ff9933"
                                             : "#cbd5e1",
                                     }}
                                     textStyle={{
@@ -1197,9 +1197,9 @@ export default function SuperAdminManageUsers({ route, navigation }) {
                             icon="arrow-left"
                             size={20}
                             className="m-0"
-                            iconColor="#4338ca"
+                            iconColor="#ff9933"
                         />
-                        <Text className="text-indigo-700 font-bold text-sm ml-1">
+                        <Text className="text-carrot-700 font-bold text-sm ml-1">
                             Back to Agencies
                         </Text>
                     </Pressable>
@@ -1274,11 +1274,11 @@ export default function SuperAdminManageUsers({ route, navigation }) {
                                 className="bg-white rounded-2xl p-4 mb-3 border border-slate-100 flex-row items-center justify-between"
                             >
                                 <View className="flex-row items-center flex-1 mr-2">
-                                    <View className="w-10 h-10 rounded-xl bg-blue-100 items-center justify-center mr-3">
+                                    <View className="w-10 h-10 rounded-xl bg-carrot-100 items-center justify-center mr-3">
                                         <MaterialDesignIcons
                                             name="clock-edit-outline"
                                             size={22}
-                                            color="#1d4ed8"
+                                            color="#c64908"
                                         />
                                     </View>
                                     <View className="flex-1">
@@ -1291,7 +1291,7 @@ export default function SuperAdminManageUsers({ route, navigation }) {
                                                 item.pendingWorkingDays || []
                                             ).join(", ") || "Custom Schedule"}
                                         </Text>
-                                        <Text className="text-indigo-700 text-[11px] font-semibold mt-0.5">
+                                        <Text className="text-carrot-700 text-[11px] font-semibold mt-0.5">
                                             {item.pendingIs247
                                                 ? "24/7 Operation"
                                                 : `${
@@ -1305,7 +1305,7 @@ export default function SuperAdminManageUsers({ route, navigation }) {
                                     </View>
                                 </View>
                                 <Pressable
-                                    className="bg-indigo-700 px-3.5 py-2 rounded-xl"
+                                    className="bg-carrot-700 px-3.5 py-2 rounded-xl"
                                     onPress={() => {
                                         setSelectedWHRequest(item);
                                         setWhModalVisible(true);

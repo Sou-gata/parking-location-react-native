@@ -112,7 +112,7 @@ export default function CapacitiesTab({
                             onPress={openAddCapacity}
                             icon="plus"
                             compact
-                            textColor="#4338ca"
+                            textColor="#ff9933"
                             style={{ borderColor: "#a5b4fc" }}
                             labelStyle={{ fontWeight: "700" }}
                         >
@@ -148,7 +148,7 @@ export default function CapacitiesTab({
                                     color={
                                         item.total === 0
                                             ? "#94a3b8"
-                                            : "#4338ca"
+                                            : "#ff9933"
                                     }
                                 />
                                 <View className="ml-4 flex-1">
@@ -159,7 +159,7 @@ export default function CapacitiesTab({
                                         <View className={`${
                                                 item.total === 0
                                                     ? "bg-slate-100 text-slate-500"
-                                                    : "bg-indigo-50 text-indigo-700"
+                                                    : "bg-carrot-50 text-carrot-700"
                                             } font-bold`}><Text className="font-bold text-xs">{String("                                             " + (item.total === 0
                                                 ? "Disabled"
                                                 : `${item.parked} / ${item.total}`) + "                                         ").trim()}</Text></View>

@@ -428,7 +428,7 @@ export default function MyBookings() {
             case "pending_approval":
                 return "#d97706"; // amber
             case "booked":
-                return "#3b82f6"; // blue
+                return "#ff9933"; // blue
             case "checked_in":
                 return "#10b981"; // green (active)
             case "completed":
@@ -463,12 +463,49 @@ export default function MyBookings() {
     const formatDateTime = (isoString) => {
         if (!isoString) return "-";
         const date = new Date(isoString);
+        if (isNaN(date.getTime())) return "-";
         return date.toLocaleDateString("en-IN", {
             day: "numeric",
             month: "short",
             hour: "2-digit",
             minute: "2-digit",
         });
+    };
+
+    const getBookingCheckInTime = (item) => {
+        const val =
+            item.checkinTime ||
+            item.checkin_time ||
+            item.check_in_time ||
+            item.actualStartTime ||
+            item.actual_start_time ||
+            item.checkInTime ||
+            item.checkinAt ||
+            item.checkin_at;
+        if (val) return val;
+
+        if (item.status === "completed" || item.status === "checked_in") {
+            return item.startTime || item.start_time || null;
+        }
+        return null;
+    };
+
+    const getBookingCheckOutTime = (item) => {
+        const val =
+            item.checkoutTime ||
+            item.checkout_time ||
+            item.check_out_time ||
+            item.actualEndTime ||
+            item.actual_end_time ||
+            item.checkOutTime ||
+            item.checkoutAt ||
+            item.checkout_at;
+        if (val) return val;
+
+        if (item.status === "completed") {
+            return item.endTime || item.end_time || null;
+        }
+        return null;
     };
 
     const requestLocationPermission = async () => {
@@ -617,19 +654,32 @@ export default function MyBookings() {
                     const durationHours = parseFloat(item.bookedDuration || 1);
                     const endTimeCalculated =
                         item.bookingEndTime ||
-                        item.endTime ||
                         (startTimeRaw
                             ? new Date(
                                   new Date(startTimeRaw).getTime() +
                                       durationHours * 60 * 60 * 1000
                               ).toISOString()
-                            : null);
+                            : item.endTime);
                     const totalCost = parseFloat(
                         item.totalBill && parseFloat(item.totalBill) > 0
                             ? item.totalBill
                             : parseFloat(item.hourlyRate || 0) *
                                   parseFloat(item.bookedDuration || 0)
                     ).toFixed(2);
+
+                    const checkInTimeRaw = getBookingCheckInTime(item);
+                    const checkInTimeFormatted = checkInTimeRaw
+                        ? formatDateTime(checkInTimeRaw)
+                        : null;
+                    const isCheckInAvailable =
+                        checkInTimeFormatted && checkInTimeFormatted !== "-";
+
+                    const checkOutTimeRaw = getBookingCheckOutTime(item);
+                    const checkOutTimeFormatted = checkOutTimeRaw
+                        ? formatDateTime(checkOutTimeRaw)
+                        : null;
+                    const isCheckOutAvailable =
+                        checkOutTimeFormatted && checkOutTimeFormatted !== "-";
 
                     return (
                         <Card className="mb-4 bg-white border border-slate-100 rounded-xl elevation-1">
@@ -720,6 +770,28 @@ export default function MyBookings() {
                                         </Text>
                                     </View>
 
+                                    {/* Actual Check-in & Checkout Times (if available) */}
+                                    {Boolean(isCheckInAvailable) && (
+                                        <View className="flex-row justify-between">
+                                            <Text className="text-sm text-slate-500">
+                                                Check-in Time:
+                                            </Text>
+                                            <Text className="text-sm font-medium text-slate-700">
+                                                {checkInTimeFormatted}
+                                            </Text>
+                                        </View>
+                                    )}
+                                    {Boolean(isCheckOutAvailable) && (
+                                        <View className="flex-row justify-between">
+                                            <Text className="text-sm text-slate-500">
+                                                Checkout Time:
+                                            </Text>
+                                            <Text className="text-sm font-medium text-slate-700">
+                                                {checkOutTimeFormatted}
+                                            </Text>
+                                        </View>
+                                    )}
+
                                     {/* Total Duration */}
                                     <View className="flex-row justify-between">
                                         <Text className="text-sm text-slate-500">
@@ -781,11 +853,11 @@ export default function MyBookings() {
                                     })()}
 
                                     {/* Total Cost */}
-                                    <View className="flex-row justify-between items-center bg-indigo-50/70 p-2.5 rounded-lg mt-1 border border-indigo-100/60">
-                                        <Text className="text-sm font-bold text-indigo-950">
+                                    <View className="flex-row justify-between items-center bg-carrot-50/70 p-2.5 rounded-lg mt-1 border border-carrot-100/60">
+                                        <Text className="text-sm font-bold text-carrot-950">
                                             Total Cost:
                                         </Text>
-                                        <Text className="text-base font-bold text-indigo-700">
+                                        <Text className="text-base font-bold text-carrot-700">
                                             ₹{totalCost}
                                         </Text>
                                     </View>
@@ -795,11 +867,11 @@ export default function MyBookings() {
                                             (item.status === "booked" ||
                                                 item.status === "checked_in")
                                     ) && (
-                                        <View className="flex-row justify-between mt-2 p-2.5 bg-indigo-50 rounded-lg border border-indigo-100 items-center">
-                                            <Text className="text-sm font-bold text-indigo-800">
+                                        <View className="flex-row justify-between mt-2 p-2.5 bg-carrot-50 rounded-lg border border-carrot-100 items-center">
+                                            <Text className="text-sm font-bold text-carrot-800">
                                                 Entry OTP:
                                             </Text>
-                                            <Text className="text-base font-mono font-bold text-indigo-900 tracking-widest">
+                                            <Text className="text-base font-mono font-bold text-carrot-900 tracking-widest">
                                                 {item.otp}
                                             </Text>
                                         </View>
@@ -941,7 +1013,7 @@ export default function MyBookings() {
                                                 <Button
                                                     mode="contained"
                                                     icon="star-outline"
-                                                    buttonColor="#4338ca"
+                                                    buttonColor="#ff9933"
                                                     onPress={() =>
                                                         handleOpenRating(item)
                                                     }
@@ -1038,7 +1110,7 @@ export default function MyBookings() {
                                                     <Button
                                                         mode="contained-tonal"
                                                         icon="timeline-text-outline"
-                                                        textColor="#4338ca"
+                                                        textColor="#ff9933"
                                                         buttonColor="#e0e7ff"
                                                         style={{
                                                             width: "100%",
@@ -1131,7 +1203,7 @@ export default function MyBookings() {
                 >
                     {previewLoading ? (
                         <View className="items-center py-6">
-                            <ActivityIndicator size="large" color="#4338ca" />
+                            <ActivityIndicator size="large" color="#ff9933" />
                             <Text className="text-sm font-semibold text-slate-500 mt-4">
                                 Calculating cancellation charges...
                             </Text>
@@ -1161,7 +1233,7 @@ export default function MyBookings() {
                                         onPress={() =>
                                             setCancelModalVisible(false)
                                         }
-                                        buttonColor="#4338ca"
+                                        buttonColor="#ff9933"
                                         className="mt-6 w-full rounded-lg"
                                         labelStyle={{ fontWeight: "700" }}
                                     >

@@ -149,7 +149,7 @@ export default function SendNotificationModal({
                                         <View style={styles.radioOption}>
                                             <RadioButton.Android
                                                 value="all"
-                                                color="#4338ca"
+                                                color="#ff9933"
                                             />
                                             <Text style={styles.radioLabel}>
                                                 All Users (Broadcast)
@@ -158,7 +158,7 @@ export default function SendNotificationModal({
                                         <View style={styles.radioOption}>
                                             <RadioButton.Android
                                                 value="specific"
-                                                color="#4338ca"
+                                                color="#ff9933"
                                             />
                                             <Text style={styles.radioLabel}>
                                                 Specific User ID
@@ -176,7 +176,7 @@ export default function SendNotificationModal({
                                             keyboardType="numeric"
                                             mode="outlined"
                                             outlineColor="#cbd5e1"
-                                            activeOutlineColor="#4338ca"
+                                            activeOutlineColor="#ff9933"
                                             style={styles.input}
                                             placeholder="Enter User ID (e.g. 1)"
                                         />
@@ -223,7 +223,7 @@ export default function SendNotificationModal({
                                     onChangeText={setTitle}
                                     mode="outlined"
                                     outlineColor="#cbd5e1"
-                                    activeOutlineColor="#4338ca"
+                                    activeOutlineColor="#ff9933"
                                     style={styles.input}
                                     placeholder="e.g. Booking Confirmed, Special Offer"
                                     maxLength={100}
@@ -239,7 +239,7 @@ export default function SendNotificationModal({
                                     onChangeText={setMessage}
                                     mode="outlined"
                                     outlineColor="#cbd5e1"
-                                    activeOutlineColor="#4338ca"
+                                    activeOutlineColor="#ff9933"
                                     multiline
                                     numberOfLines={4}
                                     style={[styles.input, { minHeight: 90 }]}
@@ -262,7 +262,7 @@ export default function SendNotificationModal({
                                         mode="contained"
                                         onPress={handleSend}
                                         style={styles.sendBtn}
-                                        buttonColor="#4338ca"
+                                        buttonColor="#ff9933"
                                         textColor="#ffffff"
                                         loading={loading}
                                         disabled={loading}
@@ -355,7 +355,7 @@ const styles = StyleSheet.create({
     },
     chipSelected: {
         backgroundColor: "#e0e7ff",
-        borderColor: "#4338ca",
+        borderColor: "#ff9933",
     },
     chipText: {
         color: "#475569",
@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
         fontWeight: "600",
     },
     chipTextSelected: {
-        color: "#4338ca",
+        color: "#ff9933",
         fontWeight: "bold",
     },
     buttonRow: {

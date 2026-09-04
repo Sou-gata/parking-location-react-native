@@ -56,8 +56,8 @@ export default function AdminTransactionHistoryTab({
                                 onPress={() => onSelectAgencyId(item.id)}
                                 className="mr-2 h-9"
                                 style={{
-                                    backgroundColor: isSelected ? "#4338ca" : "#f1f5f9",
-                                    borderColor: isSelected ? "#4338ca" : "#cbd5e1",
+                                    backgroundColor: isSelected ? "#ff9933" : "#f1f5f9",
+                                    borderColor: isSelected ? "#ff9933" : "#cbd5e1",
                                 }}
                                 textStyle={{
                                     color: isSelected ? "#ffffff" : "#334155",
@@ -84,7 +84,7 @@ export default function AdminTransactionHistoryTab({
 
                     let iconName = "bank-transfer";
                     let iconBg = "#e0e7ff";
-                    let iconColor = "#4338ca";
+                    let iconColor = "#ff9933";
 
                     if (isRevenueSplit) {
                         iconName = "chart-pie";
@@ -140,7 +140,7 @@ export default function AdminTransactionHistoryTab({
                                         </View>
                                         <View className="flex-row justify-between">
                                             <Text className="text-xs text-slate-500 font-semibold">Agency Share:</Text>
-                                            <Text className="text-xs font-bold text-indigo-700">+₹{item.agencyShare.toFixed(2)} ({item.agencyName})</Text>
+                                            <Text className="text-xs font-bold text-carrot-700">+₹{item.agencyShare.toFixed(2)} ({item.agencyName})</Text>
                                         </View>
                                     </View>
                                 ) : (
@@ -165,7 +165,7 @@ export default function AdminTransactionHistoryTab({
                                         {item.newBalance !== null && item.newBalance !== undefined && (
                                             <View className="flex-row justify-between items-center">
                                                 <Text className="text-xs font-semibold text-slate-500">Updated Account Balance:</Text>
-                                                <Text className="text-xs font-extrabold text-indigo-700">₹{parseFloat(item.newBalance).toFixed(2)}</Text>
+                                                <Text className="text-xs font-extrabold text-carrot-700">₹{parseFloat(item.newBalance).toFixed(2)}</Text>
                                             </View>
                                         )}
 

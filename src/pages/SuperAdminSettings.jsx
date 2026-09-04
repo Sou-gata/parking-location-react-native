@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { View, ScrollView, ActivityIndicator } from "react-native";
 import { Text, Card, TextInput, Button, Avatar, Switch } from "react-native-paper";
 import apiService from "../utils/apiService";
@@ -262,7 +262,7 @@ export default function SuperAdminSettings() {
     if (loading) {
         return (
             <View className="flex-1 justify-center items-center bg-slate-50">
-                <ActivityIndicator size="large" color="#4338ca" />
+                <ActivityIndicator size="large" color="#ff9933" />
             </View>
         );
     }
@@ -310,7 +310,7 @@ export default function SuperAdminSettings() {
                             placeholder="e.g. merchant@ybl"
                             value={upiId}
                             onChangeText={setUpiId}
-                            activeOutlineColor="#4338ca"
+                            activeOutlineColor="#ff9933"
                             outlineColor="#cbd5e1"
                             left={<TextInput.Icon icon="qrcode" />}
                             className="bg-white mb-3"
@@ -441,7 +441,7 @@ export default function SuperAdminSettings() {
                             size={34}
                             icon="file-document-outline"
                             style={{ backgroundColor: "#e0e7ff" }}
-                            color="#4338ca"
+                            color="#ff9933"
                         />
                         <View className="ml-3 flex-1">
                             <Text className="text-base font-bold text-slate-800">
@@ -461,7 +461,7 @@ export default function SuperAdminSettings() {
                         onChangeText={setUserTerms}
                         multiline
                         numberOfLines={8}
-                        activeOutlineColor="#4338ca"
+                        activeOutlineColor="#ff9933"
                         outlineColor="#cbd5e1"
                         className="bg-white mb-4 mt-2"
                     />

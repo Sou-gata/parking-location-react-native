@@ -391,7 +391,7 @@ const ParkingDetailDrawer = ({
                                                     size={16}
                                                     color={
                                                         isActive
-                                                            ? "#4338ca"
+                                                            ? "#ff9933"
                                                             : "#64748b"
                                                     }
                                                 />
@@ -418,7 +418,7 @@ const ParkingDetailDrawer = ({
                                 <MaterialDesignIcons
                                     name="car-multiple"
                                     size={28}
-                                    color="#4338ca"
+                                    color="#ff9933"
                                 />
                                 <Text style={styles.statVal}>
                                     {location?.availableSpots !== undefined &&
@@ -438,7 +438,7 @@ const ParkingDetailDrawer = ({
                                 <MaterialDesignIcons
                                     name="map-marker-distance"
                                     size={28}
-                                    color="#4338ca"
+                                    color="#ff9933"
                                 />
                                 <Text style={styles.statVal}>
                                     {location?.distance
@@ -723,7 +723,7 @@ const ParkingDetailDrawer = ({
                                 <View style={styles.loadingMoreBox}>
                                     <ActivityIndicator
                                         size="small"
-                                        color="#4338ca"
+                                        color="#ff9933"
                                     />
                                     <Text style={styles.loadingMoreText}>
                                         Loading more reviews...
@@ -736,7 +736,7 @@ const ParkingDetailDrawer = ({
                                 <View style={styles.emptyContainer}>
                                     <ActivityIndicator
                                         size="small"
-                                        color="#4338ca"
+                                        color="#ff9933"
                                     />
                                     <Text
                                         style={[
@@ -1008,7 +1008,7 @@ const styles = StyleSheet.create({
         color: "#64748b",
     },
     activeTabText: {
-        color: "#4f46e5",
+        color: "#ef6207",
     },
     tabContentContainer: {
         marginBottom: 16,
@@ -1035,7 +1035,7 @@ const styles = StyleSheet.create({
     },
     activeVehicleChip: {
         backgroundColor: "#e0e7ff",
-        borderColor: "#4338ca",
+        borderColor: "#ff9933",
     },
     vehicleChipText: {
         fontSize: 12,
@@ -1117,16 +1117,16 @@ const styles = StyleSheet.create({
     overallRatingVal: {
         fontSize: 24,
         fontWeight: "900",
-        color: "#4338ca",
+        color: "#ff9933",
     },
     overallRatingTitle: {
         fontSize: 12,
         fontWeight: "bold",
-        color: "#312e81",
+        color: "#441706",
     },
     overallRatingSub: {
         fontSize: 10,
-        color: "#4f46e5",
+        color: "#ef6207",
     },
     starsRow: {
         flexDirection: "row",
@@ -1291,7 +1291,7 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         borderRadius: 12,
         paddingVertical: 14,
-        backgroundColor: "#4338ca",
+        backgroundColor: "#ff9933",
     },
     bookBtnText: {
         color: "#ffffff",

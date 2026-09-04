@@ -133,13 +133,13 @@ export default function ManageComplaintsModal({
                         <View className="flex-row items-center gap-1.5">
                             <Surface
                                 className={`px-2 py-0.5 rounded-md ${
-                                    isUserComplaint ? "bg-rose-100" : "bg-indigo-100"
+                                    isUserComplaint ? "bg-rose-100" : "bg-carrot-100"
                                 }`}
                                 elevation={0}
                             >
                                 <Text
                                     className={`text-[11px] font-extrabold ${
-                                        isUserComplaint ? "text-rose-800" : "text-indigo-800"
+                                        isUserComplaint ? "text-rose-800" : "text-carrot-800"
                                     }`}
                                 >
                                     {isUserComplaint ? "User Complaint" : "Agency Complaint"}
@@ -289,7 +289,7 @@ export default function ManageComplaintsModal({
                                 key={st}
                                 onPress={() => setFilterStatus(st)}
                                 className={`px-3.5 py-1.5 rounded-full mr-2 justify-center ${
-                                    filterStatus === st ? "bg-indigo-700" : "bg-slate-100"
+                                    filterStatus === st ? "bg-carrot-700" : "bg-slate-100"
                                 }`}
                             >
                                 <Text
@@ -307,7 +307,7 @@ export default function ManageComplaintsModal({
                 {/* Content List */}
                 {loading ? (
                     <View className="py-10 items-center">
-                        <ActivityIndicator size="large" color="#4338ca" />
+                        <ActivityIndicator size="large" color="#ff9933" />
                         <Text className="mt-3 color-slate-500 font-semibold text-xs">
                             Loading complaints...
                         </Text>
@@ -355,7 +355,7 @@ export default function ManageComplaintsModal({
                                             multiline
                                             numberOfLines={3}
                                             outlineColor="#cbd5e1"
-                                            activeOutlineColor="#4338ca"
+                                            activeOutlineColor="#ff9933"
                                             className="mb-4 bg-slate-50"
                                             placeholder="Enter details regarding status update or resolution..."
                                         />
@@ -372,7 +372,7 @@ export default function ManageComplaintsModal({
                                             <Button
                                                 mode="contained"
                                                 onPress={handleUpdateStatus}
-                                                className="flex-1 rounded-xl bg-indigo-700"
+                                                className="flex-1 rounded-xl bg-carrot-700"
                                                 loading={updating}
                                                 disabled={updating}
                                             >

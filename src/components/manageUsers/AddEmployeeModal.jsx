@@ -34,7 +34,7 @@ export default function AddEmployeeModal({
                                     dense
                                     className="bg-white mb-3"
                                     outlineColor="#e2e8f0"
-                                    activeOutlineColor="#4338ca"
+                                    activeOutlineColor="#ff9933"
                                 />
                                 <TextInput
                                     label="Username *"
@@ -45,7 +45,7 @@ export default function AddEmployeeModal({
                                     autoCapitalize="none"
                                     className="bg-white mb-3"
                                     outlineColor="#e2e8f0"
-                                    activeOutlineColor="#4338ca"
+                                    activeOutlineColor="#ff9933"
                                 />
                                 <TextInput
                                     label="Password *"
@@ -56,7 +56,7 @@ export default function AddEmployeeModal({
                                     secureTextEntry
                                     className="bg-white mb-3"
                                     outlineColor="#e2e8f0"
-                                    activeOutlineColor="#4338ca"
+                                    activeOutlineColor="#ff9933"
                                 />
                                 <TextInput
                                     label="Email Address"
@@ -67,7 +67,7 @@ export default function AddEmployeeModal({
                                     keyboardType="email-address"
                                     className="bg-white mb-3"
                                     outlineColor="#e2e8f0"
-                                    activeOutlineColor="#4338ca"
+                                    activeOutlineColor="#ff9933"
                                 />
                                 <TextInput
                                     label="Phone Number"
@@ -78,7 +78,7 @@ export default function AddEmployeeModal({
                                     keyboardType="phone-pad"
                                     className="bg-white mb-4"
                                     outlineColor="#e2e8f0"
-                                    activeOutlineColor="#4338ca"
+                                    activeOutlineColor="#ff9933"
                                 />
 
                                 <Text className="text-sm font-semibold text-slate-700 mb-2">
@@ -94,7 +94,7 @@ export default function AddEmployeeModal({
                                         },
                                         { value: ROLES.AGENCY_ADMIN, label: "Admin" },
                                     ]}
-                                    theme={{ colors: { primary: "#4338ca" } }}
+                                    theme={{ colors: { primary: "#ff9933" } }}
                                     style={{ marginBottom: 16 }}
                                 />
 
@@ -109,7 +109,7 @@ export default function AddEmployeeModal({
                                     <Button
                                         mode="contained"
                                         onPress={onSubmit}
-                                        buttonColor="#4338ca"
+                                        buttonColor="#ff9933"
                                         labelStyle={{ color: "white" }}
                                     >
                                         Register User
