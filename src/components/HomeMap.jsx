@@ -7,6 +7,9 @@ import {
     Platform,
     PermissionsAndroid,
     BackHandler,
+    Text,
+    TouchableOpacity,
+    ActivityIndicator,
 } from "react-native";
 import { Searchbar, List, Surface, IconButton } from "react-native-paper";
 import {
@@ -22,6 +25,8 @@ import axios from "axios";
 import { useSelector, useDispatch } from "react-redux";
 import ParkingDetailDrawer from "./ParkingDetailDrawer";
 import BookingModal from "./BookingModal";
+import PreBookingIntentDialog from "./PreBookingIntentDialog";
+import UnavailableBottomSheet from "./UnavailableBottomSheet";
 import { setAgencies } from "../store/slices/parkingSlice";
 import useToast from "../hooks/useToast";
 import apiService from "../utils/apiService";
@@ -142,6 +147,13 @@ const INITIAL_BOOKING_STATE = {
     toDate: "",
     toTime: "",
 };
+const INITIAL_PRE_BOOKING_INTENT = {
+    dialogVisible: false,
+    vehicleType: "car",
+    startTime: null,   // ISO string
+    endTime: null,     // ISO string
+    isSet: false,
+};
 
 const formatDate = (d) => {
     const year = d.getFullYear();
@@ -156,7 +168,7 @@ const formatTime = (d) => {
     return `${hours}:${minutes}`;
 };
 
-const HomeMap = () => {
+const HomeMap = ({ shouldOpenIntentOnMount = false }) => {
     const dispatch = useDispatch();
     const toast = useToast();
     const toastRef = useRef(toast);
@@ -168,6 +180,18 @@ const HomeMap = () => {
     useEffect(() => {
         toastRef.current = toast;
     }, [toast]);
+
+    // Open pre-booking intent dialog once when map view becomes active
+    useEffect(() => {
+        if (shouldOpenIntentOnMount) {
+            // Small delay to let the map render first
+            const t = setTimeout(() => {
+                setPreBookingIntent((prev) => ({ ...prev, dialogVisible: true }));
+            }, 400);
+            return () => clearTimeout(t);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // intentionally run once on mount only
 
     const currentUser = useSelector((state) => state.user.user);
     const approvedAgencies = useSelector((state) => state.parking.agencies);
@@ -182,10 +206,26 @@ const HomeMap = () => {
     });
     const [routingState, setRoutingState] = useState(INITIAL_ROUTING_STATE);
     const [parkingState, setParkingState] = useState(INITIAL_PARKING_STATE);
-
     const [bookingState, setBookingState] = useState(INITIAL_BOOKING_STATE);
 
-    // Convenience partial-update setter for bookingState
+    // Pre-booking intent state (vehicle type + time filter for map search)
+    const [preBookingIntent, setPreBookingIntent] = useState(INITIAL_PRE_BOOKING_INTENT);
+    // Map of agencyId -> availability data from /agencies/availability-bulk
+    const [availabilityMap, setAvailabilityMap] = useState({});
+    const [availabilityLoading, setAvailabilityLoading] = useState(false);
+    // Grayed-out marker tap state
+    const [unavailableSheet, setUnavailableSheet] = useState({
+        visible: false,
+        data: null,
+        agency: null,
+    });
+
+    // Keep a ref to the intent so async callbacks always see latest value
+    const preBookingIntentRef = useRef(preBookingIntent);
+    useEffect(() => {
+        preBookingIntentRef.current = preBookingIntent;
+    }, [preBookingIntent]);
+
     const setBooking = useCallback(
         (patch) => setBookingState((prev) => ({ ...prev, ...patch })),
         []
@@ -364,12 +404,23 @@ const HomeMap = () => {
                 if (res?.success) {
                     const mapped = res.data.map(mapAgencyFromApi);
                     dispatch(setAgencies(mapped));
+                    // If pre-booking intent is active, fetch availability for these agencies
+                    const intent = preBookingIntentRef.current;
+                    if (intent.isSet && intent.startTime && intent.endTime) {
+                        fetchAvailabilityBulk(
+                            lat,
+                            lon,
+                            intent.vehicleType,
+                            intent.startTime,
+                            intent.endTime
+                        );
+                    }
                 }
             } catch (err) {
                 console.log("Error fetching nearby agencies:", err);
             }
         },
-        [dispatch]
+        [dispatch] // fetchAvailabilityBulk added via ref pattern to avoid circular dep
     );
 
     const fetchRoute = useCallback(async (start, end) => {
@@ -423,6 +474,41 @@ const HomeMap = () => {
             console.error("Error fetching route from backend:", error);
         }
     }, []);
+
+    // Fetch bulk availability data for all agencies in the current radius
+    const fetchAvailabilityBulk = useCallback(
+        async (lat, lon, vehicleType, startTime, endTime) => {
+            if (!vehicleType || !startTime || !endTime) return;
+            setAvailabilityLoading(true);
+            try {
+                const params = {
+                    vehicleType,
+                    startTime,
+                    endTime,
+                    radius: 5.0,
+                };
+                if (lat !== undefined && lon !== undefined) {
+                    params.latitude = lat;
+                    params.longitude = lon;
+                }
+                const res = await apiService.get("agencies/availability-bulk", {
+                    params,
+                });
+                if (res?.success && Array.isArray(res.data)) {
+                    const map = {};
+                    res.data.forEach((item) => {
+                        map[item.agencyId] = item;
+                    });
+                    setAvailabilityMap(map);
+                }
+            } catch (err) {
+                console.log("Error fetching bulk availability:", err);
+            } finally {
+                setAvailabilityLoading(false);
+            }
+        },
+        []
+    );
 
     const fetchUserLocation = useCallback(
         async (isLocateButtonPress = false) => {
@@ -604,9 +690,20 @@ const HomeMap = () => {
             setRoutingState({ origin: coords, destination: null, route: null });
             setParkingState(INITIAL_PARKING_STATE);
             fetchNearbyAgencies(coords[1], coords[0]);
+            // If intent is active, also fetch availability for this new location
+            const intent = preBookingIntentRef.current;
+            if (intent.isSet && intent.startTime && intent.endTime) {
+                fetchAvailabilityBulk(
+                    coords[1],
+                    coords[0],
+                    intent.vehicleType,
+                    intent.startTime,
+                    intent.endTime
+                );
+            }
             Keyboard.dismiss();
         },
-        [fetchNearbyAgencies]
+        [fetchNearbyAgencies, fetchAvailabilityBulk]
     );
 
     const handleNearbyPress = useCallback(
@@ -696,8 +793,26 @@ const HomeMap = () => {
                 ? currentType
                 : supportedTypes[0] || currentType || "car";
 
-        const now = new Date();
-        const twoHoursLater = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+        const intent = preBookingIntentRef.current;
+        let fromDateVal, fromTimeVal, toDateVal, toTimeVal;
+
+        if (intent.isSet && intent.startTime && intent.endTime) {
+            // Pre-fill from pre-booking intent
+            const startD = new Date(intent.startTime);
+            const endD = new Date(intent.endTime);
+            fromDateVal = formatDate(startD);
+            fromTimeVal = formatTime(startD);
+            toDateVal = formatDate(endD);
+            toTimeVal = formatTime(endD);
+        } else {
+            // Default: now + 2 hours
+            const now = new Date();
+            const twoHoursLater = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+            fromDateVal = formatDate(now);
+            fromTimeVal = formatTime(now);
+            toDateVal = formatDate(twoHoursLater);
+            toTimeVal = formatTime(twoHoursLater);
+        }
 
         const savedVehicles = currentUser?.vehicle_numbers
             ? (() => {
@@ -735,10 +850,10 @@ const HomeMap = () => {
             visible: true,
             vehicleNum: defaultVehicle,
             vehicleType: effectiveType,
-            fromDate: formatDate(now),
-            fromTime: formatTime(now),
-            toDate: formatDate(twoHoursLater),
-            toTime: formatTime(twoHoursLater),
+            fromDate: fromDateVal,
+            fromTime: fromTimeVal,
+            toDate: toDateVal,
+            toTime: toTimeVal,
         });
     }, [
         parkingState.selectedLocation,
@@ -825,40 +940,68 @@ const HomeMap = () => {
                             !isNaN(Number(loc.longitude)) &&
                             !isNaN(Number(loc.latitude))
                     )
-                    .map((loc) => (
-                        <PointAnnotation
-                            key={`agency-${loc.id}`}
-                            id={`agency-${loc.id}`}
-                            coordinate={[
-                                Number(loc.longitude),
-                                Number(loc.latitude),
-                            ]}
-                            onSelected={() => handleNearbyPress(loc)}
-                        >
-                            <View className="items-center justify-center w-11 h-11">
-                                <Surface
-                                    elevation={4}
-                                    className={`bg-white rounded-full w-10 h-10 items-center justify-center border-2 ${
-                                        parkingState.selectedLocation?.id === loc.id
-                                            ? "border-primary"
-                                            : "border-carrot-400"
-                                    }`}
-                                >
-                                    <MaterialDesignIcons
-                                        name="car"
-                                        size={24}
-                                        color={
-                                            parkingState.selectedLocation?.id ===
-                                            loc.id
+                    .map((loc) => {
+                        // Determine availability state when intent is active
+                        const avail = availabilityMap[loc.id];
+                        const isUnavailable =
+                            preBookingIntent.isSet &&
+                            avail !== undefined &&
+                            !avail.isAvailable;
+
+                        return (
+                            <PointAnnotation
+                                key={`agency-${loc.id}-${isUnavailable ? "u" : "a"}`}
+                                id={`agency-${loc.id}`}
+                                coordinate={[
+                                    Number(loc.longitude),
+                                    Number(loc.latitude),
+                                ]}
+                                onSelected={() => {
+                                    if (isUnavailable) {
+                                        // Open UnavailableBottomSheet
+                                        setUnavailableSheet({
+                                            visible: true,
+                                            data: avail,
+                                            agency: loc,
+                                        });
+                                    } else {
+                                        handleNearbyPress(loc);
+                                    }
+                                }}
+                            >
+                                <View className="items-center justify-center w-11 h-11">
+                                    <Surface
+                                        elevation={isUnavailable ? 2 : 4}
+                                        style={{
+                                            width: 40,
+                                            height: 40,
+                                            borderRadius: 20,
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            borderWidth: 2,
+                                            backgroundColor: isUnavailable
+                                                ? "#e5e7eb"
+                                                : "#ffffff",
+                                            borderColor: isUnavailable
+                                                ? "#9ca3af"
+                                                : parkingState.selectedLocation?.id === loc.id
                                                 ? "#ff9933"
-                                                : "#ff9933"
-                                        }
-                                    />
-                                </Surface>
-                            </View>
-                        </PointAnnotation>
-                    ))}
+                                                : "#ff9933",
+                                            opacity: isUnavailable ? 0.7 : 1,
+                                        }}
+                                    >
+                                        <MaterialDesignIcons
+                                            name="car"
+                                            size={24}
+                                            color={isUnavailable ? "#9ca3af" : "#ff9933"}
+                                        />
+                                    </Surface>
+                                </View>
+                            </PointAnnotation>
+                        );
+                    })}
             </MapView>
+
 
             <ParkingDetailDrawer
                 visible={parkingState.isDrawerVisible}
@@ -918,8 +1061,97 @@ const HomeMap = () => {
                 </Surface>
             </View>
 
-            {/* Floating Search Bar */}
+            {/* Floating Search Bar + Pre-booking filter chip */}
             <View className="absolute top-5 left-4 right-4 z-10">
+                {/* Active filter chip row */}
+                {preBookingIntent.isSet && (
+                    <View
+                        style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            marginBottom: 6,
+                        }}
+                    >
+                        <View
+                            style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                backgroundColor: "#ff9933",
+                                borderRadius: 20,
+                                paddingHorizontal: 12,
+                                paddingVertical: 6,
+                                gap: 6,
+                                flex: 1,
+                                flexShrink: 1,
+                            }}
+                        >
+                            <MaterialDesignIcons
+                                name="filter-check"
+                                size={14}
+                                color="#fff"
+                            />
+                            {availabilityLoading && (
+                                <ActivityIndicator
+                                    size={12}
+                                    color="#fff"
+                                    style={{ marginRight: 2 }}
+                                />
+                            )}
+                            <Text
+                                style={{
+                                    color: "#fff",
+                                    fontSize: 12,
+                                    fontWeight: "600",
+                                    flex: 1,
+                                }}
+                                numberOfLines={1}
+                            >
+                                {VEHICLE_TYPE_LABELS[preBookingIntent.vehicleType] || preBookingIntent.vehicleType}
+                                {" · "}
+                                {preBookingIntent.startTime
+                                    ? new Date(preBookingIntent.startTime).toLocaleTimeString([], {
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                      })
+                                    : ""}
+                                {" → "}
+                                {preBookingIntent.endTime
+                                    ? new Date(preBookingIntent.endTime).toLocaleTimeString([], {
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                      })
+                                    : ""}
+                            </Text>
+                        </View>
+                        {/* Clear filter */}
+                        <TouchableOpacity
+                            onPress={() => {
+                                setPreBookingIntent(INITIAL_PRE_BOOKING_INTENT);
+                                setAvailabilityMap({});
+                            }}
+                            style={{
+                                marginLeft: 6,
+                                backgroundColor: "#fff",
+                                borderRadius: 16,
+                                width: 32,
+                                height: 32,
+                                alignItems: "center",
+                                justifyContent: "center",
+                                elevation: 3,
+                                shadowColor: "#000",
+                                shadowOpacity: 0.1,
+                                shadowRadius: 4,
+                            }}
+                        >
+                            <MaterialDesignIcons
+                                name="close"
+                                size={16}
+                                color="#6b7280"
+                            />
+                        </TouchableOpacity>
+                    </View>
+                )}
+
                 <Searchbar
                     placeholder="Search parking locations..."
                     onChangeText={handleSearchChange}
@@ -974,6 +1206,76 @@ const HomeMap = () => {
                 setBooking={setBooking}
                 currentUser={currentUser}
                 bookings={bookings}
+            />
+
+            {/* Pre-Booking Intent Dialog (opens when map view becomes active) */}
+            <PreBookingIntentDialog
+                visible={preBookingIntent.dialogVisible}
+                initialVehicleType={preBookingIntent.vehicleType}
+                onConfirm={(vehicleType, startTime, endTime) => {
+                    const coords = locationState.coords;
+                    setPreBookingIntent({
+                        dialogVisible: false,
+                        vehicleType,
+                        startTime,
+                        endTime,
+                        isSet: true,
+                    });
+                    // Immediately fetch availability for current location
+                    fetchAvailabilityBulk(
+                        coords ? coords[1] : undefined,
+                        coords ? coords[0] : undefined,
+                        vehicleType,
+                        startTime,
+                        endTime
+                    );
+                    // Also update the vehicle type in booking state
+                    setBooking({ vehicleType });
+                }}
+                onDismiss={() =>
+                    setPreBookingIntent((prev) => ({
+                        ...prev,
+                        dialogVisible: false,
+                    }))
+                }
+            />
+
+            {/* Unavailable Parking Bottom Sheet */}
+            <UnavailableBottomSheet
+                visible={unavailableSheet.visible}
+                agency={unavailableSheet.agency}
+                data={unavailableSheet.data}
+                vehicleType={preBookingIntent.vehicleType}
+                onClose={() =>
+                    setUnavailableSheet({ visible: false, data: null, agency: null })
+                }
+                onBookWithShortenedTime={(agency, reducedEndTime) => {
+                    // Update intent end time to the reduced time
+                    setPreBookingIntent((prev) => ({
+                        ...prev,
+                        endTime: reducedEndTime,
+                    }));
+                    setUnavailableSheet({ visible: false, data: null, agency: null });
+                    // Open the parking drawer then booking modal
+                    handleNearbyPress(agency).then(() => {
+                        setTimeout(() => openBookingModal(), 400);
+                    }).catch(() => {
+                        // handleNearbyPress may not return a promise — fallback
+                        setTimeout(() => openBookingModal(), 700);
+                    });
+                }}
+                onViewNextSlot={(agency, nextWindow) => {
+                    // Pre-fill intent with the next available window
+                    if (nextWindow?.startTime && nextWindow?.endTime) {
+                        setPreBookingIntent((prev) => ({
+                            ...prev,
+                            startTime: nextWindow.startTime,
+                            endTime: nextWindow.endTime,
+                        }));
+                    }
+                    setUnavailableSheet({ visible: false, data: null, agency: null });
+                    handleNearbyPress(agency);
+                }}
             />
         </View>
     );

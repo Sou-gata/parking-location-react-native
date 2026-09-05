@@ -263,7 +263,7 @@ const Home = ({ navigation }) => {
                 !hasPermission(PERMISSIONS.VIEW_MAP) ? (
                     renderRoleDashboard()
                 ) : (
-                    <HomeMap />
+                    <HomeMap shouldOpenIntentOnMount />
                 )}
             </View>
 
