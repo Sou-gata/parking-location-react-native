@@ -1,9 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
     View,
     Text,
     Modal,
-    Pressable,
     ScrollView,
     StyleSheet,
     TouchableWithoutFeedback,
@@ -24,17 +23,26 @@ const NOTIFICATION_TYPES = ["general", "booking", "wallet", "alert", "promo"];
 export default function SendNotificationModal({
     visible,
     onClose,
+    initialUsername = "",
     initialUserId = "",
 }) {
     const toast = useToast();
     const [title, setTitle] = useState("");
     const [message, setMessage] = useState("");
     const [recipientType, setRecipientType] = useState("all"); // 'all' or 'specific'
-    const [userId, setUserId] = useState(
-        initialUserId ? String(initialUserId) : ""
+    const [username, setUsername] = useState(
+        initialUsername || (initialUserId ? String(initialUserId) : "")
     );
     const [selectedType, setSelectedType] = useState("general");
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (visible) {
+            setUsername(
+                initialUsername || (initialUserId ? String(initialUserId) : "")
+            );
+        }
+    }, [visible, initialUsername, initialUserId]);
 
     const handleSend = async () => {
         if (!title.trim()) {
@@ -53,9 +61,9 @@ export default function SendNotificationModal({
             );
             return;
         }
-        if (recipientType === "specific" && !userId.trim()) {
+        if (recipientType === "specific" && !username.trim()) {
             toast.error(
-                "Please enter a recipient User ID",
+                "Please enter a recipient username",
                 "Validation Error",
                 true
             );
@@ -64,13 +72,14 @@ export default function SendNotificationModal({
 
         setLoading(true);
         try {
+            const cleanUsername = username.trim().replace(/^@/, "");
             const payload = {
                 title: title.trim(),
                 message: message.trim(),
                 type: selectedType,
                 broadcast: recipientType === "all",
                 ...(recipientType === "specific"
-                    ? { recipient_id: Number(userId.trim()) }
+                    ? { username: cleanUsername }
                     : {}),
             };
 
@@ -82,13 +91,14 @@ export default function SendNotificationModal({
                 toast.success(
                     recipientType === "all"
                         ? "Broadcast notification sent to all registered devices!"
-                        : `Notification sent to user #${userId}!`,
+                        : `Notification sent to user @${cleanUsername}!`,
                     "Sent Successfully",
                     true
                 );
                 // Reset form
                 setTitle("");
                 setMessage("");
+                setUsername("");
                 onClose();
             } else {
                 throw new Error(
@@ -116,7 +126,9 @@ export default function SendNotificationModal({
         >
             <TouchableWithoutFeedback onPress={onClose}>
                 <View style={styles.overlay}>
-                    <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+                    <TouchableWithoutFeedback
+                        onPress={(e) => e.stopPropagation()}
+                    >
                         <Surface style={styles.container} elevation={5}>
                             <View style={styles.header}>
                                 <View style={{ flex: 1 }}>
@@ -124,7 +136,8 @@ export default function SendNotificationModal({
                                         Send Push Notification
                                     </Text>
                                     <Text style={styles.headerSubtitle}>
-                                        Dispatch Firebase push notification to devices
+                                        Dispatch Firebase push notification to
+                                        devices
                                     </Text>
                                 </View>
                                 <IconButton
@@ -140,9 +153,13 @@ export default function SendNotificationModal({
                                 contentContainerStyle={styles.scrollContent}
                             >
                                 {/* Recipient Selection */}
-                                <Text style={styles.label}>Recipient Target</Text>
+                                <Text style={styles.label}>
+                                    Recipient Target
+                                </Text>
                                 <RadioButton.Group
-                                    onValueChange={(val) => setRecipientType(val)}
+                                    onValueChange={(val) =>
+                                        setRecipientType(val)
+                                    }
                                     value={recipientType}
                                 >
                                     <View style={styles.radioRow}>
@@ -161,7 +178,7 @@ export default function SendNotificationModal({
                                                 color="#ff9933"
                                             />
                                             <Text style={styles.radioLabel}>
-                                                Specific User ID
+                                                Specific Username
                                             </Text>
                                         </View>
                                     </View>
@@ -170,15 +187,17 @@ export default function SendNotificationModal({
                                 {recipientType === "specific" && (
                                     <View style={{ marginTop: 8 }}>
                                         <TextInput
-                                            label="User ID"
-                                            value={userId}
-                                            onChangeText={setUserId}
-                                            keyboardType="numeric"
+                                            label="Username"
+                                            value={username}
+                                            onChangeText={setUsername}
+                                            autoCapitalize="none"
+                                            autoCorrect={false}
                                             mode="outlined"
                                             outlineColor="#cbd5e1"
                                             activeOutlineColor="#ff9933"
                                             style={styles.input}
-                                            placeholder="Enter User ID (e.g. 1)"
+                                            placeholder="Enter username (e.g. johndoe)"
+                                            left={<TextInput.Affix text="@" />}
                                         />
                                     </View>
                                 )}
@@ -196,7 +215,9 @@ export default function SendNotificationModal({
                                         <Chip
                                             key={type}
                                             selected={selectedType === type}
-                                            onPress={() => setSelectedType(type)}
+                                            onPress={() =>
+                                                setSelectedType(type)
+                                            }
                                             style={[
                                                 styles.chip,
                                                 selectedType === type &&

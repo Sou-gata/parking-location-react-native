@@ -15,8 +15,8 @@ import apiService from "../utils/apiService";
 import baseURL from "../utils/baseURL";
 import useToast from "../hooks/useToast";
 
-const CURRENT_VERSION_NAME = "1.0.1";
-const CURRENT_VERSION_CODE = 2;
+const CURRENT_VERSION_NAME = "1.0.4";
+const CURRENT_VERSION_CODE = 5;
 
 export default function About({ navigation }) {
     const toast = useToast();
@@ -139,7 +139,7 @@ export default function About({ navigation }) {
                         />
                     </View>
                     <Text className="text-2xl font-bold text-white mb-1">
-                        Pointo Park
+                        PointOPark
                     </Text>
                     {/* <Image
                         source={require("../assets/logo_text.png")}
@@ -177,7 +177,7 @@ export default function About({ navigation }) {
                         </View>
 
                         <Text className="text-xs text-slate-500 leading-5 mb-3">
-                            Check if a new version of ParkVerse is available
+                            Check if a new version of PointOPark is available
                             with new features, bug fixes, and security
                             enhancements.
                         </Text>
@@ -236,7 +236,7 @@ export default function About({ navigation }) {
                                 App Name
                             </Text>
                             <Text className="text-sm font-semibold text-slate-900">
-                                ParkVerse Mobile
+                                PointOPark Mobile
                             </Text>
                         </View>
                         <Divider className="bg-slate-100" />

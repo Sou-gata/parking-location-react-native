@@ -1,6 +1,8 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useSelector } from "react-redux";
+import { IconButton } from "react-native-paper";
+import { useSidebar } from "../context/SidebarContext";
 import Home from "../pages/Home";
 import Login from "../pages/Login";
 import OrgSignup from "../pages/OrgSignup";
@@ -19,6 +21,19 @@ import About from "../pages/About";
 
 const Stack = createNativeStackNavigator();
 
+const HeaderMenuButton = () => {
+    const { openSidebar } = useSidebar();
+    return (
+        <IconButton
+            icon="menu"
+            iconColor="#ffffff"
+            size={26}
+            className="mr-[-4px]"
+            onPress={openSidebar}
+        />
+    );
+};
+
 const Screens = () => {
     const isLoggedIn = useSelector((state) => state.user.isLoggedIn);
 
@@ -32,6 +47,7 @@ const Screens = () => {
                 headerTitleStyle: {
                     fontWeight: "bold",
                 },
+                headerRight: isLoggedIn ? HeaderMenuButton : undefined,
             }}
         >
             {isLoggedIn ? (

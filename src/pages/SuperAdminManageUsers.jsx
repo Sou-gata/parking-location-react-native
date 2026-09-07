@@ -45,6 +45,8 @@ import ApproveSettlementModal from "../components/manageUsers/ApproveSettlementM
 import SuperAdminRegisterComplaintModal from "../components/SuperAdminRegisterComplaintModal";
 import VehicleRequestsTab from "../components/manageUsers/VehicleRequestsTab";
 import VehicleRejectModal from "../components/manageUsers/VehicleRejectModal";
+import CustomersTab from "../components/manageUsers/CustomersTab";
+import BlockStatusModal from "../components/manageUsers/BlockStatusModal";
 
 export default function SuperAdminManageUsers({ route, navigation }) {
     const toast = useToast();
@@ -112,6 +114,13 @@ export default function SuperAdminManageUsers({ route, navigation }) {
     // Working Hours Modal state
     const [whModalVisible, setWhModalVisible] = useState(false);
     const [selectedWHRequest, setSelectedWHRequest] = useState(null);
+
+    // Customers & Block Status state
+    const [apiCustomers, setApiCustomers] = useState([]);
+    const [blockModalVisible, setBlockModalVisible] = useState(false);
+    const [blockTargetItem, setBlockTargetItem] = useState(null);
+    const [blockTargetType, setBlockTargetType] = useState("user"); // "user" or "agency"
+    const [blockAction, setBlockAction] = useState("block"); // "block" or "unblock"
 
     // Fetch from Redux
     const reduxRequests = useSelector(
@@ -204,6 +213,22 @@ export default function SuperAdminManageUsers({ route, navigation }) {
             const historyRes = await apiService.get("wallets/admin/history");
             if (historyRes && historyRes.success) {
                 setAdminHistory(historyRes.data);
+            }
+
+            // Fetch customers directory
+            try {
+                const customersRes = await apiService.get("users/directory");
+                if (customersRes && customersRes.success) {
+                    const rawData = customersRes.data;
+                    const usersList = Array.isArray(rawData)
+                        ? rawData
+                        : Array.isArray(rawData?.users)
+                        ? rawData.users
+                        : [];
+                    setApiCustomers(usersList);
+                }
+            } catch (custErr) {
+                console.error("Error fetching customers directory:", custErr);
             }
 
             setUseApiData(true);
@@ -660,6 +685,51 @@ export default function SuperAdminManageUsers({ route, navigation }) {
         }
     };
 
+    const handleStatusConfirm = async ({ targetItem, targetType, newStatus, reason }) => {
+        try {
+            if (targetType === "agency") {
+                const agencyId = targetItem.id || targetItem.org_id;
+                const res = await apiService.put(`agencies/${agencyId}/status`, {
+                    status: newStatus,
+                    reason,
+                });
+                if (res && res.success) {
+                    toast.success(
+                        `Agency '${targetItem.name || targetItem.org_name}' has been ${
+                            newStatus === "blocked" ? "blocked" : "unblocked"
+                        } successfully!`,
+                        "Success",
+                        true
+                    );
+                    fetchData();
+                } else {
+                    toast.error(res?.message || "Failed to update agency status", "Error", true);
+                }
+            } else {
+                const userId = targetItem.id || targetItem.user_id;
+                const res = await apiService.put(`users/${userId}/status`, {
+                    status: newStatus,
+                    reason,
+                });
+                if (res && res.success) {
+                    toast.success(
+                        `User '${targetItem.name || targetItem.full_name}' has been ${
+                            newStatus === "blocked" ? "blocked" : "unblocked"
+                        } successfully!`,
+                        "Success",
+                        true
+                    );
+                    fetchData();
+                } else {
+                    toast.error(res?.message || "Failed to update user status", "Error", true);
+                }
+            }
+        } catch (err) {
+            console.error("Error updating status:", err);
+            toast.error(err?.message || "Operation failed", "Error", true);
+        }
+    };
+
     // Open Add Employee Modal
     const openAddEmployee = () => {
         setNewEmployeeData({
@@ -962,27 +1032,44 @@ export default function SuperAdminManageUsers({ route, navigation }) {
     };
 
     // Filters
-    const filteredRequests = activeRequests.filter((r) => {
-        const query = searchQuery.toLowerCase();
+    const filteredRequests = (Array.isArray(activeRequests) ? activeRequests : []).filter((r) => {
+        const query = (searchQuery || "").toLowerCase();
         return (
-            r.name.toLowerCase().includes(query) ||
-            r.owner.toLowerCase().includes(query) ||
-            r.email.toLowerCase().includes(query)
+            (r.name || "").toLowerCase().includes(query) ||
+            (r.owner || "").toLowerCase().includes(query) ||
+            (r.email || "").toLowerCase().includes(query)
         );
     });
 
-    const filteredAgencies = agencies.filter((a) => {
-        const query = searchQuery.toLowerCase();
+    const filteredAgencies = (Array.isArray(agencies) ? agencies : []).filter((a) => {
+        const query = (searchQuery || "").toLowerCase();
         return (
-            a.name.toLowerCase().includes(query) ||
-            a.owner.toLowerCase().includes(query) ||
-            a.email.toLowerCase().includes(query)
+            (a.name || "").toLowerCase().includes(query) ||
+            (a.owner || "").toLowerCase().includes(query) ||
+            (a.email || "").toLowerCase().includes(query)
         );
     });
 
-    const filteredEmployees = currentSelectedAgency
+    const customerList = Array.isArray(apiCustomers)
+        ? apiCustomers
+        : Array.isArray(apiCustomers?.users)
+        ? apiCustomers.users
+        : [];
+    const filteredCustomers = customerList.filter((c) => {
+        if (!c) return false;
+        const query = (searchQuery || "").toLowerCase();
+        return (
+            (c.name || c.full_name || "").toString().toLowerCase().includes(query) ||
+            (c.username || "").toString().toLowerCase().includes(query) ||
+            (c.email || "").toString().toLowerCase().includes(query) ||
+            (c.phoneNumber || c.phone_number || "").toString().toLowerCase().includes(query)
+        );
+    });
+
+    const filteredEmployees = currentSelectedAgency && Array.isArray(currentSelectedAgency.users)
         ? currentSelectedAgency.users.filter((u) => {
-              const query = searchQuery.toLowerCase();
+              if (!u) return false;
+              const query = (searchQuery || "").toLowerCase();
               const name = u.name || "";
               const username = u.username || "";
               const email = u.email || "";
@@ -1010,9 +1097,11 @@ export default function SuperAdminManageUsers({ route, navigation }) {
                     placeholder={
                         tab === "requests"
                             ? "Search pending agencies..."
+                            : tab === "customers"
+                            ? "Search customers by name, phone, email..."
                             : currentSelectedAgency
                             ? `Search users under ${currentSelectedAgency.name}...`
-                            : "Search active agencies..."
+                            : "Search agencies..."
                     }
                     value={searchQuery}
                     onChangeText={setSearchQuery}
@@ -1055,9 +1144,9 @@ export default function SuperAdminManageUsers({ route, navigation }) {
                             icon: "account-clock",
                         },
                         {
-                            key: "vehicles",
-                            label: `Vehicles (${pendingVehicleRequests.length})`,
-                            icon: "car-clock",
+                            key: "customers",
+                            label: `Customers (${customerList.length})`,
+                            icon: "account-group",
                         },
                         {
                             key: "active",
@@ -1217,6 +1306,28 @@ export default function SuperAdminManageUsers({ route, navigation }) {
                     onReject={handleReject}
                     onPressItem={handleOpenRequestDetails}
                 />
+            ) : tab === "customers" ? (
+                <CustomersTab
+                    customers={filteredCustomers}
+                    onBlockUser={(user) => {
+                        setBlockTargetItem(user);
+                        setBlockTargetType("user");
+                        setBlockAction("block");
+                        setBlockModalVisible(true);
+                    }}
+                    onUnblockUser={(user) => {
+                        setBlockTargetItem(user);
+                        setBlockTargetType("user");
+                        setBlockAction("unblock");
+                        setBlockModalVisible(true);
+                    }}
+                    onLodgeComplaint={(user) => {
+                        setRegisterTargetType("user");
+                        setRegisterTargetId(user.id || user.user_id);
+                        setRegisterTargetName(user.name || user.full_name);
+                        setRegisterModalVisible(true);
+                    }}
+                />
             ) : tab === "vehicles" ? (
                 <VehicleRequestsTab
                     data={pendingVehicleRequests}
@@ -1361,6 +1472,18 @@ export default function SuperAdminManageUsers({ route, navigation }) {
                         setSearchQuery("");
                     }}
                     onEditAgency={openEditAgency}
+                    onBlockAgency={(agency) => {
+                        setBlockTargetItem(agency);
+                        setBlockTargetType("agency");
+                        setBlockAction("block");
+                        setBlockModalVisible(true);
+                    }}
+                    onUnblockAgency={(agency) => {
+                        setBlockTargetItem(agency);
+                        setBlockTargetType("agency");
+                        setBlockAction("unblock");
+                        setBlockModalVisible(true);
+                    }}
                     onLodgeComplaint={(agency) => {
                         setRegisterTargetType("agency");
                         setRegisterTargetId(agency.id || agency.org_id);
@@ -1420,6 +1543,27 @@ export default function SuperAdminManageUsers({ route, navigation }) {
                     visible={agencyDetailsVisible}
                     onDismiss={() => setAgencyDetailsVisible(false)}
                     agency={selectedAgency}
+                    onBlockAgency={(agency) => {
+                        setBlockTargetItem(agency);
+                        setBlockTargetType("agency");
+                        setBlockAction("block");
+                        setBlockModalVisible(true);
+                    }}
+                    onUnblockAgency={(agency) => {
+                        setBlockTargetItem(agency);
+                        setBlockTargetType("agency");
+                        setBlockAction("unblock");
+                        setBlockModalVisible(true);
+                    }}
+                />
+
+                <BlockStatusModal
+                    visible={blockModalVisible}
+                    onDismiss={() => setBlockModalVisible(false)}
+                    targetItem={blockTargetItem}
+                    targetType={blockTargetType}
+                    action={blockAction}
+                    onConfirm={handleStatusConfirm}
                 />
 
                 <WalletDetailsModal

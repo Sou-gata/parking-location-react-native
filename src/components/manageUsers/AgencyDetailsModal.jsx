@@ -9,9 +9,9 @@ export default function AgencyDetailsModal({
     visible,
     onDismiss,
     agency,
+    onBlockAgency,
+    onUnblockAgency,
 }) {
-    if (!agency) return null;
-
     const [mediaItems, setMediaItems] = useState([]);
     const [viewerState, setViewerState] = useState({
         visible: false,
@@ -30,6 +30,8 @@ export default function AgencyDetailsModal({
                 .catch((e) => console.error("Error fetching agency media:", e));
         }
     }, [visible, agency?.id]);
+
+    if (!agency) return null;
 
     const handleMediaStatus = async (mediaId, newStatus) => {
         try {
@@ -391,13 +393,47 @@ export default function AgencyDetailsModal({
             <Divider className="my-3 bg-slate-100" />
 
             {/* Actions */}
-            <View className="flex-row justify-center mt-1 pb-4">
+            <View className="flex-row items-center justify-end gap-2.5 mt-1 pb-4">
+                {(agency.status || "").toLowerCase() === "blocked" ? (
+                    Boolean(onUnblockAgency) && (
+                        <Button
+                            mode="contained"
+                            buttonColor="#059669"
+                            textColor="#ffffff"
+                            icon="lock-open-outline"
+                            onPress={() => {
+                                onDismiss();
+                                onUnblockAgency(agency);
+                            }}
+                            className="flex-1 rounded-xl py-0.5"
+                            labelStyle={{ fontWeight: "700" }}
+                        >
+                            Unblock Agency
+                        </Button>
+                    )
+                ) : (
+                    Boolean(onBlockAgency) && (
+                        <Button
+                            mode="outlined"
+                            textColor="#e11d48"
+                            icon="shield-alert-outline"
+                            onPress={() => {
+                                onDismiss();
+                                onBlockAgency(agency);
+                            }}
+                            className="flex-1 rounded-xl py-0.5 border-rose-200 bg-rose-50/50"
+                            labelStyle={{ fontWeight: "700" }}
+                        >
+                            Block Agency
+                        </Button>
+                    )
+                )}
                 <Button
                     mode="contained"
                     onPress={onDismiss}
                     buttonColor="#ff9933"
                     textColor="white"
-                    className="w-full rounded-xl py-0.5"
+                    className="flex-1 rounded-xl py-0.5"
                     labelStyle={{ fontWeight: "700" }}
                 >
                     Close
