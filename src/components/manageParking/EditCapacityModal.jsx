@@ -12,6 +12,10 @@ import useToast from "../../hooks/useToast";
 import { updateAgencyCapacities } from "../../store/slices/parkingSlice";
 import apiService from "../../utils/apiService";
 import { STANDARD_VEHICLES, getVehicleLabel, getVehicleIcon } from "./utils";
+import {
+    validateCapacityFitsSpace,
+    BLOCK_ON_CAPACITY_EXCEEDED,
+} from "../../utils/capacityValidator";
 
 export default function EditCapacityModal({
     visible,
@@ -60,6 +64,86 @@ export default function EditCapacityModal({
         setForm((prev) => ({ ...prev, [key]: value }));
     };
 
+    // Live validation against agency parking dimensions if configured
+    const capacityValidation = React.useMemo(() => {
+        const length =
+            currentAgency?.parking_length ?? currentAgency?.parkingLength;
+        const width =
+            currentAgency?.parking_width ?? currentAgency?.parkingWidth;
+        const unit =
+            currentAgency?.dimension_unit ??
+            currentAgency?.dimensionUnit ??
+            "meters";
+
+        if (!length || !width) return null;
+
+        const mergedCapacities = {
+            two_wheeler_capacity:
+                currentAgency.two_wheeler_capacity ??
+                currentAgency.twoWheelerCapacity ??
+                0,
+            three_wheeler_capacity:
+                currentAgency.three_wheeler_capacity ??
+                currentAgency.threeWheelerCapacity ??
+                0,
+            car_capacity:
+                currentAgency.car_capacity ??
+                currentAgency.carCapacity ??
+                0,
+            suv_capacity:
+                currentAgency.suv_capacity ??
+                currentAgency.suvCapacity ??
+                0,
+            van_capacity:
+                currentAgency.van_capacity ??
+                currentAgency.vanCapacity ??
+                0,
+            pickup_capacity:
+                currentAgency.pickup_capacity ??
+                currentAgency.pickupCapacity ??
+                0,
+            ev_capacity:
+                currentAgency.ev_capacity ??
+                currentAgency.evCapacity ??
+                0,
+        };
+
+        const targetVehicleType =
+            form.selectedVehicleType || capacityItem?.type;
+        if (targetVehicleType) {
+            const enteredCap = parseInt(form.capacityVal, 10);
+            const num = isNaN(enteredCap) || enteredCap < 0 ? 0 : enteredCap;
+
+            if (
+                targetVehicleType === "twoWheeler" ||
+                targetVehicleType === "two_wheeler"
+            )
+                mergedCapacities.two_wheeler_capacity = num;
+            else if (
+                targetVehicleType === "threeWheeler" ||
+                targetVehicleType === "three_wheeler"
+            )
+                mergedCapacities.three_wheeler_capacity = num;
+            else if (targetVehicleType === "car")
+                mergedCapacities.car_capacity = num;
+            else if (targetVehicleType === "suv")
+                mergedCapacities.suv_capacity = num;
+            else if (targetVehicleType === "van")
+                mergedCapacities.van_capacity = num;
+            else if (targetVehicleType === "pickup")
+                mergedCapacities.pickup_capacity = num;
+            else if (targetVehicleType === "ev")
+                mergedCapacities.ev_capacity = num;
+        }
+
+        return validateCapacityFitsSpace({
+            length,
+            width,
+            unit,
+            capacities: mergedCapacities,
+        });
+    }, [currentAgency, form.selectedVehicleType, form.capacityVal, capacityItem]);
+
     const handleSave = async () => {
         let vehicleType = form.selectedVehicleType;
         if (isAddingNew) {
@@ -103,6 +187,19 @@ export default function EditCapacityModal({
             return;
         }
 
+        if (
+            BLOCK_ON_CAPACITY_EXCEEDED &&
+            capacityValidation?.checked &&
+            !capacityValidation?.valid
+        ) {
+            toast.error(
+                capacityValidation.message,
+                "Capacity Exceeded",
+                true
+            );
+            return;
+        }
+
         if (useApi) {
             try {
                 // Real capacity update via API
@@ -126,13 +223,21 @@ export default function EditCapacityModal({
                 );
 
                 if (capRes && capRes.success && rateRes && rateRes.success) {
-                    toast.success(
-                        `Details for ${getVehicleLabel(
-                            vehicleType
-                        )} updated successfully!`,
-                        "Success",
-                        true
-                    );
+                    if (capRes.data?.capacity_warning) {
+                        toast.warning(
+                            capRes.data.capacity_warning,
+                            "Capacity Notice",
+                            true
+                        );
+                    } else {
+                        toast.success(
+                            `Details for ${getVehicleLabel(
+                                vehicleType
+                            )} updated successfully!`,
+                            "Success",
+                            true
+                        );
+                    }
                     onDismiss();
                     onSaveSuccess();
                 } else {
@@ -285,9 +390,56 @@ export default function EditCapacityModal({
                 mode="outlined"
                 outlineColor="#e2e8f0"
                 activeOutlineColor="#ff9933"
-                className="bg-white mb-6"
+                className="bg-white mb-4"
                 left={<TextInput.Icon icon="currency-inr" />}
             />
+
+            {/* Space Fit Capacity Indicator */}
+            {capacityValidation && capacityValidation.checked && (
+                <View
+                    style={{
+                        backgroundColor: capacityValidation.valid
+                            ? "#f0fdf4"
+                            : "#fef2f2",
+                        borderColor: capacityValidation.valid
+                            ? "#86efac"
+                            : "#fca5a5",
+                    }}
+                    className="p-2.5 rounded-xl border mb-4"
+                >
+                    <View className="flex-row items-center justify-between">
+                        <Text
+                            style={{
+                                color: capacityValidation.valid
+                                    ? "#15803d"
+                                    : "#b91c1c",
+                                fontWeight: "bold",
+                                fontSize: 11,
+                            }}
+                        >
+                            {capacityValidation.valid
+                                ? "✓ Space Utilization"
+                                : "⚠️ Exceeds Floor Space"}
+                        </Text>
+                        <Text
+                            style={{
+                                color: capacityValidation.valid
+                                    ? "#15803d"
+                                    : "#b91c1c",
+                                fontWeight: "bold",
+                                fontSize: 11,
+                            }}
+                        >
+                            {capacityValidation.occupancyPercentage}% ({capacityValidation.requiredAreaM2} / {capacityValidation.usableAreaM2} m²)
+                        </Text>
+                    </View>
+                    {!capacityValidation.valid && (
+                        <Text className="text-red-600 text-[10px] mt-1 leading-3 font-medium">
+                            Exceeded by {capacityValidation.excessAreaM2} m².
+                        </Text>
+                    )}
+                </View>
+            )}
 
             <View className="flex-row justify-end gap-3">
                 <Button

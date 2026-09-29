@@ -53,6 +53,14 @@ export default function Login({ navigation }) {
 
     const [signupModalVisible, setSignupModalVisible] = useState(false);
 
+    // Account Selection Modal State (when credentials match both user and org_user)
+    const [accountSelectionState, setAccountSelectionState] = useState({
+        visible: false,
+        accounts: [],
+        authMethod: "password", // "password" or "google"
+        googlePayload: null,
+    });
+
     const [forgotState, setForgotState] = useState({
         visible: false,
         step: 1, // 1: Phone, 2: OTP, 3: New Password
@@ -247,46 +255,66 @@ export default function Login({ navigation }) {
         }
     };
 
-    const handleGoogleSignIn = async () => {
+    const handleGoogleSignIn = async (
+        selectedAccountType = null,
+        cachedGooglePayload = null
+    ) => {
         setLoading((prev) => ({ ...prev, google: true }));
         try {
-            await GoogleSignin.hasPlayServices({
-                showPlayServicesUpdateDialog: true,
-            });
+            let googleData = cachedGooglePayload;
 
-            // Sign out of previous cached session so the account chooser dialog is always shown
-            try {
-                await GoogleSignin.signOut();
-            } catch (err) {
-                // Ignore if not previously signed in
+            if (!googleData) {
+                await GoogleSignin.hasPlayServices({
+                    showPlayServicesUpdateDialog: true,
+                });
+
+                // Sign out of previous cached session so the account chooser dialog is always shown
+                try {
+                    await GoogleSignin.signOut();
+                } catch (err) {
+                    // Ignore if not previously signed in
+                }
+
+                const userInfo = await GoogleSignin.signIn();
+                console.log("Google Sign-In response:", userInfo);
+
+                const userObj = userInfo.data?.user || userInfo.user || {};
+                const idToken = userInfo.data?.idToken || userInfo.idToken || "";
+                const email = userObj.email;
+                const name = userObj.name || "";
+                const photo = userObj.photo || "";
+
+                if (!email) {
+                    toast.error(
+                        "Could not retrieve email from Google account.",
+                        "Error",
+                        true
+                    );
+                    return;
+                }
+
+                googleData = { idToken, email, name, photo };
             }
 
-            const userInfo = await GoogleSignin.signIn();
-            console.log("Google Sign-In response:", userInfo);
-
-            const userObj = userInfo.data?.user || userInfo.user || {};
-            const idToken = userInfo.data?.idToken || userInfo.idToken || "";
-            const email = userObj.email;
-            const name = userObj.name || "";
-            const photo = userObj.photo || "";
-
-            if (!email) {
-                toast.error(
-                    "Could not retrieve email from Google account.",
-                    "Error",
-                    true
-                );
-                return;
+            const payload = { ...googleData };
+            if (typeof selectedAccountType === "string" && selectedAccountType) {
+                payload.account_type = selectedAccountType;
             }
 
-            const response = await apiService.post("users/google-auth", {
-                idToken,
-                email,
-                name,
-                photo,
-            });
+            const response = await apiService.post("users/google-auth", payload);
 
             if (response && response.success) {
+                // If multiple accounts found, display the account selection modal
+                if (response.data?.multiple_accounts) {
+                    setAccountSelectionState({
+                        visible: true,
+                        accounts: response.data.accounts || [],
+                        authMethod: "google",
+                        googlePayload: googleData,
+                    });
+                    return;
+                }
+
                 const { exists, user, token } = response.data;
 
                 if (exists && token && user) {
@@ -307,9 +335,9 @@ export default function Login({ navigation }) {
                     );
                     navigation.navigate("UserSignup", {
                         googleData: {
-                            email: response.data?.email || email,
-                            name: response.data?.name || name,
-                            photoUrl: response.data?.photoUrl || photo,
+                            email: response.data?.email || googleData.email,
+                            name: response.data?.name || googleData.name,
+                            photoUrl: response.data?.photoUrl || googleData.photo,
                         },
                     });
                 }
@@ -342,7 +370,7 @@ export default function Login({ navigation }) {
         }
     };
 
-    const handleLogin = async () => {
+    const handleLogin = async (selectedAccountType = null) => {
         if (!inputs.username || !inputs.password) {
             toast.error(
                 "Please enter both username and password",
@@ -357,13 +385,29 @@ export default function Login({ navigation }) {
             const usernameClean = inputs.username.trim();
             const passwordClean = inputs.password;
 
-            // Proper login using API
-            const response = await apiService.post("users/login", {
+            const payload = {
                 username: usernameClean,
                 password: passwordClean,
-            });
+            };
+            if (typeof selectedAccountType === "string" && selectedAccountType) {
+                payload.account_type = selectedAccountType;
+            }
+
+            // Proper login using API
+            const response = await apiService.post("users/login", payload);
 
             if (response && response.success) {
+                // If credentials match both user and org_user, show selection dialog
+                if (response.data?.multiple_accounts) {
+                    setAccountSelectionState({
+                        visible: true,
+                        accounts: response.data.accounts || [],
+                        authMethod: "password",
+                        googlePayload: null,
+                    });
+                    return;
+                }
+
                 const { token, user } = response.data;
 
                 await tokenStorage.setToken(token);
@@ -389,6 +433,17 @@ export default function Login({ navigation }) {
             toast.error(message, "Login Failed", true);
         } finally {
             setLoading((prev) => ({ ...prev, login: false }));
+        }
+    };
+
+    const handleAccountSelection = (accountType) => {
+        const { authMethod, googlePayload } = accountSelectionState;
+        setAccountSelectionState((prev) => ({ ...prev, visible: false }));
+
+        if (authMethod === "google") {
+            handleGoogleSignIn(accountType, googlePayload);
+        } else {
+            handleLogin(accountType);
         }
     };
 
@@ -468,7 +523,7 @@ export default function Login({ navigation }) {
 
                                 <Button
                                     mode="contained"
-                                    onPress={handleLogin}
+                                    onPress={() => handleLogin()}
                                     disabled={loading.login || loading.google}
                                     style={styles.submitButton}
                                     contentStyle={{ paddingVertical: 8 }}
@@ -511,7 +566,7 @@ export default function Login({ navigation }) {
                                     </View>
                                     <TouchableOpacity
                                         activeOpacity={0.8}
-                                        onPress={handleGoogleSignIn}
+                                        onPress={() => handleGoogleSignIn()}
                                         disabled={
                                             loading.google || loading.login
                                         }
@@ -575,6 +630,104 @@ export default function Login({ navigation }) {
                     </View>
                 </ScrollView>
             </View>
+
+            {/* Account Selection Modal for Dual Accounts */}
+            <Modal
+                transparent={true}
+                visible={accountSelectionState.visible}
+                animationType="fade"
+                onRequestClose={() =>
+                    setAccountSelectionState((prev) => ({
+                        ...prev,
+                        visible: false,
+                    }))
+                }
+            >
+                <View style={styles.modalOverlay}>
+                    <Surface
+                        elevation={5}
+                        style={styles.modalCard}
+                        className="bg-white p-6 rounded-3xl w-[90%] max-w-[400px] self-center"
+                    >
+                        <View className="items-center mb-2">
+                            <Avatar.Icon
+                                size={48}
+                                icon="account-switch"
+                                style={{ backgroundColor: "#ffedd5" }}
+                                color="#ff9933"
+                            />
+                        </View>
+                        <Text className="text-xl font-bold text-slate-800 text-center mb-1">
+                            Choose Account
+                        </Text>
+                        <Text className="text-xs text-slate-500 text-center mb-5 px-2">
+                            Multiple accounts found with this credential. Which account would you like to log in to?
+                        </Text>
+
+                        {accountSelectionState.accounts.map((acc, index) => {
+                            const isOrg = acc.account_type === "org";
+                            return (
+                                <Pressable
+                                    key={acc.account_type || index}
+                                    onPress={() =>
+                                        handleAccountSelection(acc.account_type)
+                                    }
+                                    className="flex-row items-center p-4 mb-3 border border-slate-100 bg-slate-50/70 rounded-2xl active:bg-orange-50 active:border-orange-300"
+                                >
+                                    <Avatar.Icon
+                                        size={44}
+                                        icon={isOrg ? "office-building" : "car"}
+                                        style={{
+                                            backgroundColor: isOrg
+                                                ? "#e0e7ff"
+                                                : "#ffedd5",
+                                        }}
+                                        color={isOrg ? "#4f46e5" : "#ff9933"}
+                                    />
+                                    <View className="ml-3 flex-1">
+                                        <Text className="text-sm font-bold text-slate-800">
+                                            {acc.label ||
+                                                (isOrg
+                                                    ? "Parking Agency Owner"
+                                                    : "Customer / Driver")}
+                                        </Text>
+                                        <Text className="text-xs text-slate-600 mt-0.5 font-medium">
+                                            {acc.name || acc.username}
+                                        </Text>
+                                        {acc.email ? (
+                                            <Text className="text-[11px] text-slate-400">
+                                                {acc.email}
+                                            </Text>
+                                        ) : null}
+                                    </View>
+                                    <IconButton
+                                        icon="chevron-right"
+                                        iconColor={
+                                            isOrg ? "#4f46e5" : "#ff9933"
+                                        }
+                                        size={20}
+                                        className="m-0"
+                                    />
+                                </Pressable>
+                            );
+                        })}
+
+                        <Button
+                            mode="text"
+                            onPress={() =>
+                                setAccountSelectionState((prev) => ({
+                                    ...prev,
+                                    visible: false,
+                                }))
+                            }
+                            textColor="#64748b"
+                            style={{ marginTop: 4 }}
+                        >
+                            Cancel
+                        </Button>
+                    </Surface>
+                </View>
+            </Modal>
 
             {/* Join / Signup Type Modal */}
             <Modal

@@ -37,6 +37,10 @@ import useToast from "../hooks/useToast";
 import { fileToBase64 } from "../utils/helperFunctions";
 import MediaViewerModal from "../components/MediaViewerModal";
 import SignupMap from "../components/SignupMap";
+import {
+    validateCapacityFitsSpace,
+    BLOCK_ON_CAPACITY_EXCEEDED,
+} from "../utils/capacityValidator";
 
 export default function Profile({ navigation }) {
     const dispatch = useDispatch();
@@ -386,8 +390,44 @@ export default function Profile({ navigation }) {
         return null;
     }, [parkingLength, parkingWidth, parkingHeight]);
 
+    // Validate parking capacity against dimensions and current capacities
+    const capacityValidation = useMemo(() => {
+        const l = parseFloat(parkingLength);
+        const w = parseFloat(parkingWidth);
+        if (isNaN(l) || isNaN(w) || l <= 0 || w <= 0 || !profile) {
+            return null;
+        }
+        return validateCapacityFitsSpace({
+            length: l,
+            width: w,
+            unit: dimensionUnit || "meters",
+            capacities: {
+                two_wheeler_capacity: profile.two_wheeler_capacity,
+                three_wheeler_capacity: profile.three_wheeler_capacity,
+                car_capacity: profile.car_capacity,
+                suv_capacity: profile.suv_capacity,
+                van_capacity: profile.van_capacity,
+                pickup_capacity: profile.pickup_capacity,
+                ev_capacity: profile.ev_capacity,
+            },
+        });
+    }, [parkingLength, parkingWidth, dimensionUnit, profile]);
+
     // Save Parking Dimensions
     const handleSaveDimensions = async () => {
+        if (
+            BLOCK_ON_CAPACITY_EXCEEDED &&
+            capacityValidation?.checked &&
+            !capacityValidation?.valid
+        ) {
+            toast.error(
+                capacityValidation.message,
+                "Capacity Exceeded",
+                true
+            );
+            return;
+        }
+
         setSavingDimensions(true);
         try {
             const payload = {
@@ -407,11 +447,19 @@ export default function Profile({ navigation }) {
             };
             const res = await apiService.put("users/profile", payload);
             if (res && res.success) {
-                toast.success(
-                    "Parking dimensions saved successfully!",
-                    "Success",
-                    true
-                );
+                if (res.data?.capacity_warning) {
+                    toast.warning(
+                        res.data.capacity_warning,
+                        "Capacity Notice",
+                        true
+                    );
+                } else {
+                    toast.success(
+                        "Parking dimensions saved successfully!",
+                        "Success",
+                        true
+                    );
+                }
                 setProfile(res.data);
                 dispatch(updateUser(res.data));
             } else {
@@ -1196,6 +1244,105 @@ export default function Profile({ navigation }) {
                                                     : "cu ft"}
                                             </Text>
                                         </View>
+                                    )}
+                                </View>
+                            )}
+
+                            {/* Capacity Space Utilization Preview */}
+                            {capacityValidation && capacityValidation.checked && (
+                                <View
+                                    style={{
+                                        backgroundColor: capacityValidation.valid
+                                            ? "#f0fdf4"
+                                            : "#fef2f2",
+                                        borderColor: capacityValidation.valid
+                                            ? "#86efac"
+                                            : "#fca5a5",
+                                    }}
+                                    className="p-3 rounded-xl border mt-1"
+                                >
+                                    <View className="flex-row items-center justify-between mb-1.5">
+                                        <View className="flex-row items-center gap-1.5">
+                                            <MaterialDesignIcons
+                                                name={
+                                                    capacityValidation.valid
+                                                        ? "check-circle"
+                                                        : "alert-circle"
+                                                }
+                                                size={16}
+                                                color={
+                                                    capacityValidation.valid
+                                                        ? "#16a34a"
+                                                        : "#dc2626"
+                                                }
+                                            />
+                                            <Text
+                                                style={{
+                                                    color: capacityValidation.valid
+                                                        ? "#15803d"
+                                                        : "#b91c1c",
+                                                    fontWeight: "bold",
+                                                    fontSize: 12,
+                                                }}
+                                            >
+                                                {capacityValidation.valid
+                                                    ? "Current Capacities Fit"
+                                                    : "Current Capacities Exceed Area"}
+                                            </Text>
+                                        </View>
+                                        <Text
+                                            style={{
+                                                color: capacityValidation.valid
+                                                    ? "#15803d"
+                                                    : "#b91c1c",
+                                                fontWeight: "bold",
+                                                fontSize: 11,
+                                            }}
+                                        >
+                                            {capacityValidation.occupancyPercentage}%
+                                        </Text>
+                                    </View>
+
+                                    {/* Progress Bar */}
+                                    <View className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden mb-2">
+                                        <View
+                                            style={{
+                                                width: `${Math.min(
+                                                    capacityValidation.occupancyPercentage,
+                                                    100
+                                                )}%`,
+                                                backgroundColor:
+                                                    capacityValidation.occupancyPercentage <= 80
+                                                        ? "#16a34a"
+                                                        : capacityValidation.occupancyPercentage <= 100
+                                                        ? "#f59e0b"
+                                                        : "#dc2626",
+                                                height: "100%",
+                                                borderRadius: 999,
+                                            }}
+                                        />
+                                    </View>
+
+                                    <View className="flex-row justify-between text-[10px]">
+                                        <Text className="text-slate-500 text-[10px]">
+                                            Usable: {capacityValidation.usableAreaM2} m²
+                                        </Text>
+                                        <Text
+                                            style={{
+                                                color: capacityValidation.valid
+                                                    ? "#15803d"
+                                                    : "#dc2626",
+                                            }}
+                                            className="text-[10px] font-bold"
+                                        >
+                                            Needed: {capacityValidation.requiredAreaM2} m² ({capacityValidation.totalVehicleCount} vehicles)
+                                        </Text>
+                                    </View>
+
+                                    {!capacityValidation.valid && (
+                                        <Text className="text-red-700 text-[11px] leading-3.5 mt-1.5 font-medium">
+                                            {capacityValidation.message}
+                                        </Text>
                                     )}
                                 </View>
                             )}

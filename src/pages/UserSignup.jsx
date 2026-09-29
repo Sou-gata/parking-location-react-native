@@ -131,6 +131,7 @@ const UserSignup = ({ navigation, route }) => {
         try {
             const res = await apiService.post("otp/send", {
                 phone_number: inputs.phoneNumber,
+                account_type: "user",
             });
             if (res && res.success) {
                 setOtpSent(true);

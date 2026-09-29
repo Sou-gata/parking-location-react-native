@@ -24,6 +24,10 @@ import { registerAgencyRequest } from "../store/slices/parkingSlice";
 import SignupMap from "../components/SignupMap";
 import apiService from "../utils/apiService";
 import useToast from "../hooks/useToast";
+import {
+    validateCapacityFitsSpace,
+    BLOCK_ON_CAPACITY_EXCEEDED,
+} from "../utils/capacityValidator";
 
 setConnected(true);
 
@@ -75,6 +79,41 @@ const Signup = ({ navigation }) => {
         loading: false,
     });
 
+    // Parking Dimensions & Capacities
+    const [dimensions, setDimensions] = useState({
+        length: "",
+        width: "",
+        height: "",
+        unit: "meters", // "meters" | "feet" | "yards"
+    });
+
+    const [capacities, setCapacities] = useState({
+        twoWheeler: "",
+        threeWheeler: "",
+        car: "",
+        suv: "",
+        van: "",
+        pickup: "",
+        ev: "",
+    });
+
+    const [capacityValidation, setCapacityValidation] = useState(null);
+
+    // Live capacity validation when dimensions or capacities change
+    useEffect(() => {
+        if (dimensions.length && dimensions.width) {
+            const res = validateCapacityFitsSpace({
+                length: dimensions.length,
+                width: dimensions.width,
+                unit: dimensions.unit,
+                capacities,
+            });
+            setCapacityValidation(res);
+        } else {
+            setCapacityValidation(null);
+        }
+    }, [dimensions.length, dimensions.width, dimensions.unit, capacities]);
+
     // OTP States
     const [otp, setOtp] = useState("");
     const [otpSent, setOtpSent] = useState(false);
@@ -110,6 +149,7 @@ const Signup = ({ navigation }) => {
         try {
             const res = await apiService.post("otp/send", {
                 phone_number: inputs.phoneNumber,
+                account_type: "org",
             });
             if (res && res.success) {
                 setOtpSent(true);
@@ -218,6 +258,20 @@ const Signup = ({ navigation }) => {
             return;
         }
 
+        // Capacity validation check (blocking mode only)
+        if (
+            BLOCK_ON_CAPACITY_EXCEEDED &&
+            capacityValidation?.checked &&
+            !capacityValidation?.valid
+        ) {
+            toast.error(
+                capacityValidation.message,
+                "Capacity Exceeded",
+                true
+            );
+            return;
+        }
+
         setInputs((prev) => ({ ...prev, loading: true }));
 
         try {
@@ -233,7 +287,54 @@ const Signup = ({ navigation }) => {
             formData.append("latitude", String(Number(inputs.latitude || 0)));
             formData.append("longitude", String(Number(inputs.longitude || 0)));
 
-            await apiService.post("users/orgregister", formData);
+            // Parking Space Dimensions
+            if (dimensions.length.trim())
+                formData.append("parking_length", dimensions.length.trim());
+            if (dimensions.width.trim())
+                formData.append("parking_width", dimensions.width.trim());
+            if (dimensions.height.trim())
+                formData.append("parking_height", dimensions.height.trim());
+            formData.append("dimension_unit", dimensions.unit);
+
+            // Vehicle Capacities
+            formData.append(
+                "two_wheeler_capacity",
+                String(parseInt(capacities.twoWheeler, 10) || 0)
+            );
+            formData.append(
+                "three_wheeler_capacity",
+                String(parseInt(capacities.threeWheeler, 10) || 0)
+            );
+            formData.append(
+                "car_capacity",
+                String(parseInt(capacities.car, 10) || 0)
+            );
+            formData.append(
+                "suv_capacity",
+                String(parseInt(capacities.suv, 10) || 0)
+            );
+            formData.append(
+                "van_capacity",
+                String(parseInt(capacities.van, 10) || 0)
+            );
+            formData.append(
+                "pickup_capacity",
+                String(parseInt(capacities.pickup, 10) || 0)
+            );
+            formData.append(
+                "ev_capacity",
+                String(parseInt(capacities.ev, 10) || 0)
+            );
+
+            const regRes = await apiService.post("users/orgregister", formData);
+
+            if (regRes?.data?.capacity_warning) {
+                toast.warning(
+                    regRes.data.capacity_warning,
+                    "Capacity Notice",
+                    true
+                );
+            }
 
             dispatch(
                 registerAgencyRequest({
@@ -543,6 +644,376 @@ const Signup = ({ navigation }) => {
                                     }}
                                 />
                             </View>
+                        </Card.Content>
+                    </Card>
+
+                    {/* Parking Space Dimensions & Vehicle Capacity Section */}
+                    <Card style={styles.card}>
+                        <Card.Content className="gap-4">
+                            <View>
+                                <View className="flex-row items-center gap-2">
+                                    <MaterialDesignIcons
+                                        name="ruler-square"
+                                        size={22}
+                                        color="#ff9933"
+                                    />
+                                    <Text
+                                        style={{ fontWeight: "bold" }}
+                                        className="text-lg text-gray-800"
+                                    >
+                                        Parking Space & Capacity
+                                    </Text>
+                                </View>
+                                <Text className="text-slate-500 text-xs mt-1">
+                                    Specify your parking area dimensions and vehicle slots. Multi-layer parking is not supported.
+                                </Text>
+                            </View>
+
+                            {/* Dimension Unit Selector */}
+                            <View className="flex-row items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                                <Text className="text-xs font-semibold text-slate-700">
+                                    Measurement Unit:
+                                </Text>
+                                <View className="flex-row gap-1">
+                                    {["meters", "feet", "yards"].map((u) => (
+                                        <TouchableOpacity
+                                            key={u}
+                                            onPress={() =>
+                                                setDimensions((prev) => ({
+                                                    ...prev,
+                                                    unit: u,
+                                                }))
+                                            }
+                                            style={{
+                                                backgroundColor:
+                                                    dimensions.unit === u
+                                                        ? "#ff9933"
+                                                        : "#e2e8f0",
+                                                paddingVertical: 5,
+                                                paddingHorizontal: 10,
+                                                borderRadius: 8,
+                                            }}
+                                        >
+                                            <Text
+                                                style={{
+                                                    color:
+                                                        dimensions.unit === u
+                                                            ? "#ffffff"
+                                                            : "#475569",
+                                                    fontSize: 11,
+                                                    fontWeight: "bold",
+                                                    textTransform: "capitalize",
+                                                }}
+                                            >
+                                                {u}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </View>
+
+                            {/* Dimensions Inputs */}
+                            <View className="flex-row gap-2">
+                                <View className="flex-1">
+                                    <TextInput
+                                        label={`Length (${dimensions.unit})`}
+                                        value={dimensions.length}
+                                        onChangeText={(t) =>
+                                            setDimensions((prev) => ({
+                                                ...prev,
+                                                length: t,
+                                            }))
+                                        }
+                                        keyboardType="numeric"
+                                        mode="outlined"
+                                        outlineColor="#e2e8f0"
+                                        activeOutlineColor="#ff9933"
+                                        left={<TextInput.Icon icon="arrow-expand-horizontal" />}
+                                    />
+                                </View>
+                                <View className="flex-1">
+                                    <TextInput
+                                        label={`Width (${dimensions.unit})`}
+                                        value={dimensions.width}
+                                        onChangeText={(t) =>
+                                            setDimensions((prev) => ({
+                                                ...prev,
+                                                width: t,
+                                            }))
+                                        }
+                                        keyboardType="numeric"
+                                        mode="outlined"
+                                        outlineColor="#e2e8f0"
+                                        activeOutlineColor="#ff9933"
+                                        left={<TextInput.Icon icon="arrow-expand-vertical" />}
+                                    />
+                                </View>
+                                <View className="flex-1">
+                                    <TextInput
+                                        label="Height (Opt)"
+                                        value={dimensions.height}
+                                        onChangeText={(t) =>
+                                            setDimensions((prev) => ({
+                                                ...prev,
+                                                height: t,
+                                            }))
+                                        }
+                                        keyboardType="numeric"
+                                        mode="outlined"
+                                        outlineColor="#e2e8f0"
+                                        activeOutlineColor="#ff9933"
+                                        left={<TextInput.Icon icon="arrow-up-down" />}
+                                    />
+                                </View>
+                            </View>
+
+                            {/* Vehicle Capacities */}
+                            <Text className="text-sm font-bold text-slate-700 mt-1">
+                                Declared Vehicle Capacities
+                            </Text>
+
+                            <View className="flex-row gap-2">
+                                <View className="flex-1">
+                                    <TextInput
+                                        label="Two-Wheeler"
+                                        value={capacities.twoWheeler}
+                                        onChangeText={(t) =>
+                                            setCapacities((prev) => ({
+                                                ...prev,
+                                                twoWheeler: t,
+                                            }))
+                                        }
+                                        keyboardType="numeric"
+                                        mode="outlined"
+                                        outlineColor="#e2e8f0"
+                                        activeOutlineColor="#ff9933"
+                                        left={<TextInput.Icon icon="motorbike" />}
+                                    />
+                                </View>
+                                <View className="flex-1">
+                                    <TextInput
+                                        label="Three-Wheeler"
+                                        value={capacities.threeWheeler}
+                                        onChangeText={(t) =>
+                                            setCapacities((prev) => ({
+                                                ...prev,
+                                                threeWheeler: t,
+                                            }))
+                                        }
+                                        keyboardType="numeric"
+                                        mode="outlined"
+                                        outlineColor="#e2e8f0"
+                                        activeOutlineColor="#ff9933"
+                                        left={<TextInput.Icon icon="rickshaw" />}
+                                    />
+                                </View>
+                            </View>
+
+                            <View className="flex-row gap-2">
+                                <View className="flex-1">
+                                    <TextInput
+                                        label="Car / Sedan"
+                                        value={capacities.car}
+                                        onChangeText={(t) =>
+                                            setCapacities((prev) => ({
+                                                ...prev,
+                                                car: t,
+                                            }))
+                                        }
+                                        keyboardType="numeric"
+                                        mode="outlined"
+                                        outlineColor="#e2e8f0"
+                                        activeOutlineColor="#ff9933"
+                                        left={<TextInput.Icon icon="car-side" />}
+                                    />
+                                </View>
+                                <View className="flex-1">
+                                    <TextInput
+                                        label="SUV"
+                                        value={capacities.suv}
+                                        onChangeText={(t) =>
+                                            setCapacities((prev) => ({
+                                                ...prev,
+                                                suv: t,
+                                            }))
+                                        }
+                                        keyboardType="numeric"
+                                        mode="outlined"
+                                        outlineColor="#e2e8f0"
+                                        activeOutlineColor="#ff9933"
+                                        left={<TextInput.Icon icon="car-estate" />}
+                                    />
+                                </View>
+                            </View>
+
+                            <View className="flex-row gap-2">
+                                <View className="flex-1">
+                                    <TextInput
+                                        label="Van / Minibus"
+                                        value={capacities.van}
+                                        onChangeText={(t) =>
+                                            setCapacities((prev) => ({
+                                                ...prev,
+                                                van: t,
+                                            }))
+                                        }
+                                        keyboardType="numeric"
+                                        mode="outlined"
+                                        outlineColor="#e2e8f0"
+                                        activeOutlineColor="#ff9933"
+                                        left={<TextInput.Icon icon="van-utility" />}
+                                    />
+                                </View>
+                                <View className="flex-1">
+                                    <TextInput
+                                        label="Pickup Truck"
+                                        value={capacities.pickup}
+                                        onChangeText={(t) =>
+                                            setCapacities((prev) => ({
+                                                ...prev,
+                                                pickup: t,
+                                            }))
+                                        }
+                                        keyboardType="numeric"
+                                        mode="outlined"
+                                        outlineColor="#e2e8f0"
+                                        activeOutlineColor="#ff9933"
+                                        left={<TextInput.Icon icon="truck-pickup" />}
+                                    />
+                                </View>
+                            </View>
+
+                            <TextInput
+                                label="EV Charging Spots"
+                                value={capacities.ev}
+                                onChangeText={(t) =>
+                                    setCapacities((prev) => ({
+                                        ...prev,
+                                        ev: t,
+                                    }))
+                                }
+                                keyboardType="numeric"
+                                mode="outlined"
+                                outlineColor="#e2e8f0"
+                                activeOutlineColor="#ff9933"
+                                left={<TextInput.Icon icon="ev-station" />}
+                            />
+
+                            {/* Live Area Fit & Capacity Validation Indicator */}
+                            {capacityValidation && capacityValidation.checked && (
+                                <View
+                                    style={{
+                                        backgroundColor: capacityValidation.valid
+                                            ? "#f0fdf4"
+                                            : "#fef2f2",
+                                        borderColor: capacityValidation.valid
+                                            ? "#86efac"
+                                            : "#fca5a5",
+                                    }}
+                                    className="p-3.5 rounded-2xl border mt-2"
+                                >
+                                    <View className="flex-row items-center justify-between mb-2">
+                                        <View className="flex-row items-center gap-1.5">
+                                            <MaterialDesignIcons
+                                                name={
+                                                    capacityValidation.valid
+                                                        ? "check-circle"
+                                                        : "alert-circle"
+                                                }
+                                                size={18}
+                                                color={
+                                                    capacityValidation.valid
+                                                        ? "#16a34a"
+                                                        : "#dc2626"
+                                                }
+                                            />
+                                            <Text
+                                                style={{
+                                                    color: capacityValidation.valid
+                                                        ? "#15803d"
+                                                        : "#b91c1c",
+                                                    fontWeight: "bold",
+                                                    fontSize: 13,
+                                                }}
+                                            >
+                                                {capacityValidation.valid
+                                                    ? "Capacity Fits Space"
+                                                    : "Capacity Exceeds Floor Space"}
+                                            </Text>
+                                        </View>
+                                        <Text
+                                            style={{
+                                                color: capacityValidation.valid
+                                                    ? "#15803d"
+                                                    : "#b91c1c",
+                                                fontWeight: "bold",
+                                                fontSize: 12,
+                                            }}
+                                        >
+                                            {capacityValidation.occupancyPercentage}% Space Used
+                                        </Text>
+                                    </View>
+
+                                    {/* Utilization Meter Bar */}
+                                    <View className="w-full bg-slate-200 h-2 rounded-full overflow-hidden mb-2.5">
+                                        <View
+                                            style={{
+                                                width: `${Math.min(
+                                                    capacityValidation.occupancyPercentage,
+                                                    100
+                                                )}%`,
+                                                backgroundColor:
+                                                    capacityValidation.occupancyPercentage <= 80
+                                                        ? "#16a34a"
+                                                        : capacityValidation.occupancyPercentage <= 100
+                                                        ? "#f59e0b"
+                                                        : "#dc2626",
+                                                height: "100%",
+                                                borderRadius: 999,
+                                            }}
+                                        />
+                                    </View>
+
+                                    {/* Area Details Breakdown */}
+                                    <View className="flex-row justify-between pt-1 border-t border-slate-200/60">
+                                        <View>
+                                            <Text className="text-[11px] text-slate-500">
+                                                Usable Slot Area
+                                            </Text>
+                                            <Text className="text-xs font-bold text-slate-800">
+                                                {capacityValidation.usableAreaM2} m²
+                                            </Text>
+                                            <Text className="text-[10px] text-slate-400">
+                                                (65% of {capacityValidation.totalAreaM2} m²)
+                                            </Text>
+                                        </View>
+                                        <View className="items-end">
+                                            <Text className="text-[11px] text-slate-500">
+                                                Required Slot Area
+                                            </Text>
+                                            <Text
+                                                style={{
+                                                    color: capacityValidation.valid
+                                                        ? "#15803d"
+                                                        : "#dc2626",
+                                                }}
+                                                className="text-xs font-bold"
+                                            >
+                                                {capacityValidation.requiredAreaM2} m²
+                                            </Text>
+                                            <Text className="text-[10px] text-slate-400">
+                                                ({capacityValidation.totalVehicleCount} vehicles)
+                                            </Text>
+                                        </View>
+                                    </View>
+
+                                    {!capacityValidation.valid && (
+                                        <Text className="text-red-700 text-xs leading-4 mt-2 font-medium">
+                                            {capacityValidation.message}
+                                        </Text>
+                                    )}
+                                </View>
+                            )}
                         </Card.Content>
                     </Card>
 
