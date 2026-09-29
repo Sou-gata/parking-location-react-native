@@ -7,6 +7,7 @@ import {
     onTokenRefresh,
     onNotificationOpenedApp,
     getInitialNotification,
+    registerDeviceForRemoteMessages,
 } from "@react-native-firebase/messaging";
 import notifee, { AndroidImportance, EventType } from "@notifee/react-native";
 import apiService from "./apiService";
@@ -68,6 +69,9 @@ class NotificationService {
     async getFCMToken() {
         try {
             const messaging = getMessaging();
+            if (Platform.OS === "ios") {
+                await registerDeviceForRemoteMessages(messaging);
+            }
             const token = await getToken(messaging);
             if (token) {
                 this.currentToken = token;

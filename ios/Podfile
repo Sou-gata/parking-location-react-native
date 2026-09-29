@@ -24,6 +24,7 @@ target 'ParkingLocation' do
   )
 
   post_install do |installer|
+    $MLRN.post_install(installer) if defined?($MLRN)
     react_native_post_install(
       installer,
       config[:reactNativePath],
